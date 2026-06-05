@@ -1,0 +1,44 @@
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+
+export default function LandingPage() {
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-2xl w-full text-center space-y-8">
+        <h1 className="text-4xl font-bold text-gray-900">
+          Chzzk DJ CLASS 채팅 위젯
+        </h1>
+        <p className="text-lg text-gray-600">
+          V-ARCHIVE의 DJ CLASS를 채팅에 표시하는 OBS 위젯 서비스입니다.
+        </p>
+
+        <Card className="border-0 shadow-none bg-transparent">
+          <CardContent className="space-y-4 pt-8">
+            <Link href="/link" className="block w-full">
+              <Button size="lg" className="w-full py-6 text-lg">
+                시청자이신가요? - DJ CLASS 연동하기
+              </Button>
+            </Link>
+            <Link href="/dashboard" className="block w-full">
+              <Button size="lg" variant="secondary" className="w-full py-6 text-lg">
+                스트리머이신가요? - 채팅 위젯 얻기
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <footer className="pt-12 text-sm text-gray-400">
+          <a
+            href="https://github.com/yourusername/chzzk-djclass-overlay"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-600"
+          >
+            GitHub
+          </a>
+        </footer>
+      </div>
+    </main>
+  )
+}
