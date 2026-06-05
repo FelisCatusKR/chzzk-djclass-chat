@@ -223,12 +223,6 @@ All UI text is in **Korean**.
 | GET | `/widget/[channelId]` | OBS Browser Source page (public, no auth) |
 | GET | `/api/widget/dj-class?chzzkId=&chzzkNickname=` | Lookup DJ CLASS for a given Chzzk user (internal, used by widget) |
 
-### 7.5 Cron (Internal)
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| POST | `/api/cron/sync-djclass` | Trigger manual sync (protected by secret header) |
-
 ---
 
 ## 8. Cron Worker
@@ -276,7 +270,7 @@ All UI text is in **Korean**.
   - `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`
   - `VARCHIVE_TOKEN_KEY` (encryption key)
   - `DATABASE_URL` (SQLite file path)
-  - `CRON_SECRET` (protects manual sync endpoint)
+  - No manual sync endpoint — the worker runs autonomously on schedule
 - **Session:** Encrypted cookies (NextAuth.js or custom session middleware).
 - **Widget URL:** Public but unguessable (channel ID is not secret, just obscure).
 
