@@ -152,7 +152,7 @@ dokku ps:scale chzzk-djclass-overlay web=1 worker=1
 
 ## Credit
 
-Special Thanks to [**똘똘똘이 님**](https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9)
+이 프로젝트는 [**똘똘똘이 님**](https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9)의 롤 티어 인증 시스템 프로젝트 영상에서 큰 영향을 받았습니다.
 
 ## 라이선스
 
