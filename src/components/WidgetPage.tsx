@@ -315,7 +315,10 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   }, [messages])
 
   return (
-    <div className="h-screen w-full overflow-hidden bg-transparent">
+    <div
+      className="h-screen w-full overflow-hidden bg-transparent"
+      style={{ fontFamily: "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans KR', sans-serif" }}
+    >
       {connectionStatus === 'connecting' && messages.length === 0 && (
         <div className="flex items-center justify-center h-full text-white/50 text-sm">
           채팅 연결 중...

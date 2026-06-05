@@ -19,14 +19,15 @@ const { chromium } = require('playwright');
   // Set viewport to OBS widget size
   await page.setViewportSize({ width: 400, height: 600 });
 
-  // Navigate to widget page
+  // Navigate to widget page and wait for fonts
   await page.goto('http://localhost:3000/widget/test-channel?mode=short', {
-    waitUntil: 'domcontentloaded',
+    waitUntil: 'networkidle',
     timeout: 30000,
   });
 
-  // Wait for the page to render (including WebSocket attempts)
-  await page.waitForTimeout(3000);
+  // Wait for web fonts (Pretendard) to fully load
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(500);
 
   // Inject demo chat messages into the widget
   await page.evaluate(() => {
@@ -114,8 +115,10 @@ const { chromium } = require('playwright');
     container.appendChild(anchor);
   });
 
-  // Wait for animations and styles to apply
-  await page.waitForTimeout(1000);
+  // Wait for injected content to render and fonts to settle
+  // document.fonts.ready resolves before rasterization; give extra time for CJK glyphs
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(5000);
 
   // Take screenshot
   await page.screenshot({

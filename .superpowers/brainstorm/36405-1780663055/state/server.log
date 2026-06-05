@@ -1,4 +1,0 @@
-{"type":"server-started","port":61882,"host":"0.0.0.0","url_host":"felis-rpi-2.lan","url":"http://felis-rpi-2.lan:61882","screen_dir":"/home/felis/Projects/chzzk-djclass-chat/.superpowers/brainstorm/36405-1780663055/content","state_dir":"/home/felis/Projects/chzzk-djclass-chat/.superpowers/brainstorm/36405-1780663055/state"}
-{"type":"screen-added","file":"/home/felis/Projects/chzzk-djclass-chat/.superpowers/brainstorm/36405-1780663055/content/architecture.html"}
-{"source":"user-event","type":"click","text":"B\n    \n      Needs Changes\n      Something doesn't look right, explain in terminal","choice":"changes","id":null,"timestamp":1780663135357}
-{"type":"screen-added","file":"/home/felis/Projects/chzzk-djclass-chat/.superpowers/brainstorm/36405-1780663055/content/architecture-v2.html"}
