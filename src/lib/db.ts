@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3'
+import fs from 'fs'
 import path from 'path'
 
 function getDbPath(): string {
@@ -9,8 +10,13 @@ function getDbPath(): string {
 
 export function getDb(): Database.Database {
   const dbPath = getDbPath()
+  const dir = path.dirname(dbPath)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
+  db.pragma('foreign_keys = ON')
   return db
 }
 
@@ -43,7 +49,7 @@ export function initSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS dj_classes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
-      button INTEGER NOT NULL,
+      button INTEGER NOT NULL CHECK (button IN (4, 5, 6, 8)),
       dj_class TEXT NOT NULL,
       dj_power_sum REAL,
       max_dj_power REAL,
@@ -53,6 +59,12 @@ export function initSchema(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_users_chzzk_id ON users(chzzk_id);
     CREATE INDEX IF NOT EXISTS idx_users_chzzk_nickname ON users(chzzk_nickname);
     CREATE INDEX IF NOT EXISTS idx_channels_chzzk_channel_id ON channels(chzzk_channel_id);
+
+    CREATE TRIGGER IF NOT EXISTS trg_varchive_tokens_updated_at
+    AFTER UPDATE ON varchive_tokens
+    BEGIN
+      UPDATE varchive_tokens SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    END;
   `)
 }
 
