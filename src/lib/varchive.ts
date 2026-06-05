@@ -51,16 +51,24 @@ export async function getDjClass(nickname: string, button: number): Promise<Varc
 }
 
 export async function getHighestDjClass(nickname: string): Promise<(VarchiveDjClass & { button: number }) | null> {
-  const buttons = [8, 6, 5, 4]
+  const buttons = [4, 5, 6, 8]
+  const results: Array<VarchiveDjClass & { button: number }> = []
+
   for (const button of buttons) {
     try {
       const result = await getDjClass(nickname, button)
       if (result.success && result.djClass) {
-        return { ...result, button }
+        results.push({ ...result, button })
       }
     } catch {
-      continue
+      // Skip failed buttons
     }
   }
-  return null
+
+  if (results.length === 0) return null
+
+  // Return the button with the highest djPowerSum
+  return results.reduce((best, current) =>
+    current.djPowerSum > best.djPowerSum ? current : best
+  )
 }
