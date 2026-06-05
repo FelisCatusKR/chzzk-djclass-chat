@@ -9,10 +9,10 @@ describe('V-ARCHIVE API', () => {
     vi.mocked(fetch).mockClear()
   })
 
-  it('should return the button with the highest djPowerConversion', async () => {
+  it('should return the button with the highest DJ POWER (djPowerConversion)', async () => {
     const mockFetch = vi.mocked(fetch)
     
-    // 4-button: lower score
+    // 4-button: lower DJ POWER
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -23,7 +23,7 @@ describe('V-ARCHIVE API', () => {
         maxDjPower: 6000.0,
       }),
     } as Response)
-    // 5-button: highest djPowerConversion
+    // 5-button: highest DJ POWER
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -36,7 +36,7 @@ describe('V-ARCHIVE API', () => {
     } as Response)
     // 6-button: fails
     mockFetch.mockRejectedValueOnce(new Error('Not found'))
-    // 8-button: lower djPowerConversion than 5-button
+    // 8-button: lower DJ POWER than 5-button
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
