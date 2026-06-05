@@ -1,8 +1,8 @@
 # Chzzk DJ CLASS OBS Overlay - Design Spec
 
-**Date:** 2026-06-05  
+**Date:** 2026-06-05 (Updated 2026-06-06)  
 **Topic:** chzzk-djclass-overlay  
-**Status:** Approved
+**Status:** Approved & Implemented
 
 ---
 
@@ -33,9 +33,30 @@ A full-stack web application that provides an OBS Browser Source widget for Chzz
 
 | Service | Purpose | Technology |
 |---------|---------|------------|
-| **Web Server** | Serves UI pages, API routes, and OBS widget | Next.js 15+ (App Router), TypeScript |
+| **Web Server** | Serves UI pages, API routes, OBS widget, and WebSocket chat proxy | Next.js 15+ (App Router), TypeScript, Socket.IO v2 |
 | **Cron Worker** | Daily DJ CLASS sync from V-ARCHIVE | Node.js + `node-cron` |
 | **Database** | Stores users, channels, tokens, cached DJ CLASS | SQLite (file-based) |
+
+### 3.1a Chat Proxy Architecture
+
+Chzzk chat requires authenticated access via the Open API session system. The widget cannot connect directly.
+
+**Flow:**
+1. Server stores streamer's encrypted Chzzk access token (from OAuth callback).
+2. Server calls `GET /open/v1/sessions/auth` to get a Socket.IO session URL.
+3. Server connects to Chzzk via **Socket.IO-client v2.0.3** (required by Chzzk).
+4. Server receives `SYSTEM` event with `sessionKey`, then subscribes to `CHAT` events.
+5. Widgets connect to our server via raw WebSocket (`/ws/chat?channelId=xxx`).
+6. Server relays Chzzk chat messages to all connected widgets.
+7. Widget performs DJ CLASS lookup via `/api/widget/dj-class`.
+
+**Resilience:**
+- **Race condition handling:** `connectingPromise` prevents duplicate Socket.IO connections when multiple widgets connect simultaneously.
+- **Auto-reconnect:** If Chzzk disconnects while widgets are still connected, the server schedules a reconnect after 5 seconds.
+- **Token refresh:** If the access token is expired at connection time, the server automatically refreshes it using the stored refresh token.
+- **Graceful disconnect:** When all widgets disconnect, the server waits 30 seconds before closing the Chzzk connection (allows OBS reloads without re-authing).
+
+**Note:** Socket.IO-client v4.x is **not compatible** with Chzzk. The API requires v2.0.3 specifically.
 
 ### 3.2 Deployment
 
@@ -51,6 +72,29 @@ A full-stack web application that provides an OBS Browser Source widget for Chzz
 | **Chzzk OAuth** | Authenticate streamers and viewers | OAuth 2.0 |
 | **V-ARCHIVE User Lookup** | Validate Open API token, get `userNo` and `nickname` | `Bearer {token}` |
 | **V-ARCHIVE DJ CLASS** | Fetch DJ CLASS by nickname and button | None (public) |
+
+#### Chzzk API Endpoints & Formats
+
+**OAuth Initiation** (`GET /account-interlock`):
+Query parameters (camelCase):
+- `clientId` (String)
+- `redirectUri` (String)
+- `state` (String)
+
+**Token Exchange** (`POST /auth/v1/token`):
+Request body (camelCase):
+- `grantType` (String, e.g., `"authorization_code"`)
+- `clientId` (String)
+- `clientSecret` (String)
+- `code` (String)
+- `state` (String)
+
+Response: May be wrapped in `{ code, message, content }` envelope. `content.accessToken`, `content.refreshToken`, `content.expiresIn`.
+
+**User Info** (`GET /open/v1/users/me`):
+Response: Top-level fields (NOT wrapped in `content`):
+- `channelId` (String) — The unique identifier for the channel.
+- `channelName` (String) — The name of the channel.
 
 ---
 
@@ -72,6 +116,9 @@ CREATE TABLE channels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
     chzzk_channel_id TEXT UNIQUE NOT NULL,  -- The channel/streamer ID
+    chzzk_access_token_encrypted TEXT,       -- For chat proxy (AES-256-GCM encrypted)
+    chzzk_refresh_token_encrypted TEXT,      -- Token refresh
+    token_expires_at DATETIME,               -- Access token expiration
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -90,10 +137,11 @@ CREATE TABLE varchive_tokens (
 CREATE TABLE dj_classes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
-    button INTEGER NOT NULL,                 -- 4, 5, 6, or 8 (we use the highest)
+    button INTEGER NOT NULL CHECK (button IN (4, 5, 6, 8)),  -- 4, 5, 6, or 8 (highest selected)
     dj_class TEXT NOT NULL,                  -- e.g., "HIGH CLASS II"
     dj_power_sum REAL,
     max_dj_power REAL,
+    dj_power_conversion REAL,                -- DJ POWER used for theory badge (≥10000)
     synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -132,22 +180,25 @@ All UI text is in **Korean**.
 
 ### 5.3 Streamer Dashboard (`/dashboard`)
 
-- Streamer's Chzzk 프로필 정보 display.
-- Unique OBS widget URL: `https://<domain>/widget/<channelId>`
-- **"URL 복사"** button.
-- Simple OBS setup instructions:
-  - Browser Source 추가
-  - URL 입력
-  - Width/Height 설정 (e.g., 400x600)
-- Optional: live preview of widget appearance.
+- Unique OBS widget URL: `https://<domain>/widget/<channelId>?mode=short`
+- **"URL 복사"** button (copies URL with current mode parameter).
+- Widget preview link.
+- **Badge mode chooser:** Buttons to select `short` / `threshold` / `power` mode. Updates URL in real-time.
+- Simple OBS setup instructions.
+- **Connection status card:**
+  - Chzzk 로그인 status (whether tokens are stored)
+  - 채팅 서버 연결 status (whether Socket.IO is actually connected to Chzzk)
+  - Alerts if tokens are missing (requires re-login)
 
 ### 5.4 OBS Widget (`/widget/[channelId]`)
 
 - **Transparent background** (suitable for OBS overlay).
-- Connects directly to Chzzk chat WebSocket.
+- Connects to our server via WebSocket (`/ws/chat?channelId=xxx`), which proxies Chzzk chat.
 - Displays incoming chat messages.
-- **Message format:** `[DJ CLASS]: message text` (no Chzzk nickname shown).
+- **Message format:** `[{button}B {DJ CLASS}]: message text` (no Chzzk nickname shown).
+- DJ CLASS badges use official V-ARCHIVE tier colors (gradients).
 - Auto-scrolls with smooth animations.
+- Unlinked viewers shown at 25% opacity.
 
 ---
 
@@ -157,16 +208,42 @@ All UI text is in **Korean**.
 
 | Viewer State | Display | Opacity | Badge |
 |--------------|---------|---------|-------|
-| Linked + Has DJ CLASS | `[DJ CLASS]: message` | 100% | Actual class (e.g., `[HIGH CLASS II]`) |
-| Linked + No DJ CLASS (fallback) | `[BEGINNER]: message` | 100% | `[BEGINNER]` |
+| Linked + Has DJ CLASS | `[Badge] | message` | 100% | Single colored badge, content by mode |
+| Linked + No DJ CLASS (fallback) | `[4B BG] | message` | 100% | Silver BEGINNER badge (treats as 4B 0 point) |
 | Not Linked (no V-ARCHIVE token) | `message` | 25% | None (faded text) |
+
+**Badge Mode:** Set via URL query parameter on the widget (`?mode=short|threshold|power`). Exactly one colored badge is shown per message:
+
+1. **Short Name** (`short`, default): Colored badge shows button + short name + level, e.g., `4B SS II`.
+2. **Threshold** (`threshold`): Colored badge shows button + threshold, e.g., `4B 9800+`.
+3. **Integer Power** (`power`): Colored badge shows button + integer power, e.g., `4B 9843`.
+
+All modes use the official V-ARCHIVE tier color gradient for the badge background.
+
+**Short Rank Names:**
+- `LoD` (THE LORD OF DJMAX), `BM` (BEAT MAESTRO), `SS` (SHOWSTOPPER)
+- `HL` (HEADLINER), `TS` (TREND SETTER), `PRO` (PROFESSIONAL)
+- `HC` (HIGH CLASS), `PD` (PRO DJ), `MM` (MIDDLEMAN)
+- `SD` (STREET DJ), `RK` (ROOKIE), `AM` (AMATEUR), `TR` (TRAINEE), `BG` (BEGINNER)
+
+**Per-Level Thresholds:** Each rank (except LoD and BEGINNER) has 4 thresholds by Roman numeral level (IV, III, II, I):
+- BEAT MAESTRO: IV=9900, III=9930, II=9950, I=9970
+- SHOWSTOPPER: IV=9700, III=9750, II=9800, I=9850
+- etc.
+
+**Theory Badge (이론치):** Special red/orange glittering gradient badge shown when DJ POWER ≥ 10000. Displayed as a separate badge alongside the main DJ CLASS badge.
+
+**Auto-sync:** After Chzzk OAuth login, if V-ARCHIVE is already linked, DJ CLASS is automatically synced.
 
 ### 6.2 Examples
 
 ```
-[HIGH CLASS II]: 안녕하세요!              ← Normal opacity, full badge
-[BEGINNER]: 반갑습니다                     ← Normal opacity, BEGINNER badge
-(안녕하세요...)                           ← 25% opacity, faded, no badge
+4B SS II 안녕하세요!                        ← Short name mode
+4B 9800+ 안녕하세요!                        ← Threshold mode
+4B 9843 안녕하세요!                         ← Power mode
+4B LoD 이론치 안녕하세요!                   ← Theory mode (any mode + 이론치)
+4B BG 반갑습니다                            ← BEGINNER fallback (4B 0 point)
+안녕하세요...                                ← 25% opacity, faded, no badge
 ```
 
 ### 6.3 Technical Flow
@@ -175,20 +252,15 @@ All UI text is in **Korean**.
 2. Widget page connects to Chzzk WebSocket chat server directly.
 3. On each chat message:
    - Extract sender's identifier (Chzzk user ID if available from WebSocket, otherwise nickname).
-   - **Cache Lookup:** Check in-memory LRU cache first (key: `chzzk_id` or `chzzk_nickname`).
-     - Cache hit: Use cached DJ CLASS directly.
-     - Cache miss: Query local SQLite and populate cache.
-   - **SQLite Query (on cache miss):**
-     - By `chzzk_id` (preferred): `SELECT d.dj_class, u.id AS user_exists, t.id AS token_exists FROM users u LEFT JOIN dj_classes d ON u.id = d.user_id LEFT JOIN varchive_tokens t ON u.id = t.user_id WHERE u.chzzk_id = ?`.
-     - Fallback by `chzzk_nickname`: Same query with `u.chzzk_nickname = ?`.
-   - **Cache Population:**
-     - If DJ CLASS found → cache result for 5 minutes.
-     - If user exists in `varchive_tokens` but no `dj_classes` → cache `"BEGINNER"` for 5 minutes.
-     - If user not in `varchive_tokens` → cache `"UNLINKED"` for 1 minute.
-   - If DJ CLASS found, prepend `[DJ CLASS]:`.
-   - If cached as `"BEGINNER"` → `[BEGINNER]:`.
-   - If cached as `"UNLINKED"` → render at 25% opacity with no badge.
-   - Note: Chzzk WebSocket payload format to be verified during implementation. User ID lookup is preferred over nickname.
+    - **Cache Lookup (client-side):** Check in-memory Map cache first (2-minute TTL, key: `chzzk_id` or `chzzk_nickname`).
+      - Cache hit: Use cached DJ CLASS directly.
+      - Cache miss: Call `/api/widget/dj-class` and populate cache.
+    - **Cache Lookup (server-side):** LRU cache with differentiated TTLs:
+      - **Linked with DJ CLASS** → cache for 5 minutes (rich metadata: `rankName`, `rankLevel`, `powerInteger`, `isTheory`).
+      - **Linked but no DJ CLASS** (fallback BEGINNER) → cache for 15 seconds (retries until sync finishes).
+      - **Not linked / not in DB** → cache for 10 seconds (retries until user links).
+      - `updateAgeOnGet: false` — active chatters do NOT extend TTLs.
+    - **Widget rendering:** Colored prefix badge (`{button}B {shortName} {level}`) shown for all linked users. Mode-specific badge (`threshold+` or integer power) shown alongside. Theory badge (`이론치`) shown when DJ POWER ≥ 10000.
 
 ---
 
@@ -207,12 +279,14 @@ All UI text is in **Korean**.
 | Method | Route | Description |
 |--------|-------|-------------|
 | POST | `/api/user/link-varchive` | Submit V-ARCHIVE token (validates via V-ARCHIVE API) |
+| POST | `/api/user/sync-djclass` | Manual DJ CLASS sync (fetches from V-ARCHIVE immediately) |
+| GET | `/api/user/me` | Get current user's info (nickname, V-ARCHIVE link status, current DJ CLASS) |
 
 ### 7.3 Streamer
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/channel` | Get current user's channel info and widget URL (creates if not exists) |
+| GET | `/api/channel` | Get current user's channel info, widget URL, and connection status (creates if not exists) |
 
 ### 7.4 Widget
 
@@ -257,7 +331,9 @@ All UI text is in **Korean**.
 | DJ CLASS not found for linked user | Fallback to `[BEGINNER]` in widget |
 | Chzzk OAuth failure | Generic error page: "로그인에 실패했습니다. 다시 시도해주세요." |
 | Database connection issue | Worker retries; web server returns 500 with generic message |
-| Widget can't connect to Chzzk chat | Show offline message, auto-reconnect WebSocket |
+| Widget can't connect to chat proxy | Show offline message, auto-reconnect WebSocket (up to 5 retries) |
+| Chzzk token expired | Chat proxy disconnects; streamer must re-login via `/link` |
+| No DJ CLASS data (first time) | Show "BEGINNER" badge; user can click "DJ CLASS 동기화" on `/link` |
 
 ---
 
@@ -272,7 +348,10 @@ All UI text is in **Korean**.
   - `NEXT_PUBLIC_BASE_URL` (public base URL for OAuth callbacks)
   - No manual sync endpoint — the worker runs autonomously on schedule
 - **Session:** HMAC-SHA256 signed `session` httpOnly cookie. The cookie value is `${userId}.${signature}` where signature is derived from `SESSION_SECRET`. This prevents session tampering (users can't forge another user's session by changing the cookie value).
+- **Chzzk Token Storage:** Streamer's Chzzk access/refresh tokens are encrypted with AES-256-GCM and stored in the `channels` table. Required for the server-side chat proxy.
+- **Widget Badge Mode:** Set via URL query parameter (`?mode=short|threshold|power`). Not stored in database.
 - **Widget URL:** Public but unguessable (channel ID is not secret, just obscure).
+- **Database Migrations:** Simple migration system using `ALTER TABLE ADD COLUMN` with `columnExists()` checks. Runs automatically on server startup.
 
 ---
 
@@ -285,9 +364,18 @@ All UI text is in **Korean**.
   - DJ CLASS API response parsing and button selection (`tests/varchive.test.ts`).
   - Session cookie signing and tamper resistance (`tests/session.test.ts`).
 
-**Planned (not yet implemented):**
-- Integration tests for OAuth callback flow.
-- Manual testing: OBS widget rendering, real Chzzk chat connection, daily sync job execution.
+**Completed via manual testing:**
+- OAuth callback flow with real Chzzk credentials.
+- V-ARCHIVE token linking and validation.
+- Manual DJ CLASS sync (`POST /api/user/sync-djclass`).
+- Server-side chat proxy with Socket.IO v2.0.3.
+- OBS widget rendering with colored DJ CLASS badges.
+- WebSocket relay from Chzzk to widgets.
+- Logout and session clearing.
+
+**Still planned:**
+- Automated integration tests for OAuth callback flow.
+- Daily sync worker execution test.
 
 ---
 

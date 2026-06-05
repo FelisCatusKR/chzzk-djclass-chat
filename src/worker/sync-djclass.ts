@@ -1,6 +1,7 @@
 import { initDb } from '../lib/db'
 import { decrypt } from '../lib/crypto'
 import { lookupUser, getHighestDjClass } from '../lib/varchive'
+import { invalidateAllUserCaches } from '../lib/cache'
 
 export async function syncDjClasses(): Promise<{
   success: number
@@ -47,26 +48,36 @@ export async function syncDjClasses(): Promise<{
 
         if (djClassData) {
           db.prepare(`
-            INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, synced_at)
-            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id) DO UPDATE SET
               button = excluded.button,
               dj_class = excluded.dj_class,
               dj_power_sum = excluded.dj_power_sum,
               max_dj_power = excluded.max_dj_power,
+              dj_power_conversion = excluded.dj_power_conversion,
               synced_at = excluded.synced_at
           `).run(
             token.user_id,
             djClassData.button,
             djClassData.djClass,
             djClassData.djPowerSum,
-            djClassData.maxDjPower
+            djClassData.maxDjPower,
+            djClassData.djPowerConversion
           )
           success++
         } else {
           // No DJ CLASS found → delete existing row so widget shows BEGINNER
           db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(token.user_id)
           success++
+        }
+
+        // Invalidate cache so widgets show updated data immediately
+        const userRow = db.prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?').get(token.user_id) as
+          | { chzzk_id: string; chzzk_nickname: string }
+          | undefined
+        if (userRow) {
+          invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
         }
       } catch (error) {
         failed++

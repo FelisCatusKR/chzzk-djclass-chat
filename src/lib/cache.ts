@@ -1,11 +1,13 @@
 import { LRUCache } from 'lru-cache'
 
-type CacheValue = { djClass: string } | { unlinked: true } | { beginner: true }
+type CacheValue =
+  | { djClass: string; rankName: string; rankLevel: string | null; powerInteger: number | null; isTheory: boolean }
+  | { unlinked: true }
 
 const cache = new LRUCache<string, CacheValue>({
   max: 10000,
-  ttl: 1000 * 60 * 5, // 5 minutes default
-  updateAgeOnGet: true,
+  ttl: 1000 * 60 * 5, // 5 minutes default for linked users
+  updateAgeOnGet: false, // TTL should not extend on active chat
 })
 
 export function getDjClassFromCache(key: string): CacheValue | undefined {
@@ -24,10 +26,19 @@ export function invalidateUserCache(chzzkId: string): void {
   cache.delete(`id:${chzzkId}`)
 }
 
-export function getCacheStats(): { size: number; hits: number; misses: number } {
+export function invalidateNicknameCache(nickname: string): void {
+  cache.delete(`nick:${nickname}`)
+}
+
+export function invalidateAllUserCaches(chzzkId: string, chzzkNickname?: string): void {
+  invalidateUserCache(chzzkId)
+  if (chzzkNickname) {
+    invalidateNicknameCache(chzzkNickname)
+  }
+}
+
+export function getCacheStats(): { size: number } {
   return {
     size: cache.size,
-    hits: (cache as any).hits || 0,
-    misses: (cache as any).misses || 0,
   }
 }

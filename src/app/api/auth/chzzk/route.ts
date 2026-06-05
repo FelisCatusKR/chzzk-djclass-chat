@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   const state = randomBytes(32).toString('hex')
   const url = getOAuthUrl(state)
   
+  console.log('[OAuth Init] Redirecting to:', url)
+  
   const response = NextResponse.redirect(url)
   response.cookies.set('oauth_state', state, {
     httpOnly: true,

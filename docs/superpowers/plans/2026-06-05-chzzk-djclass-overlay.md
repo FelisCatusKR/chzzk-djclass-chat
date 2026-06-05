@@ -4,9 +4,21 @@
 
 **Goal:** Build a Next.js full-stack app that provides an OBS chat widget for Chzzk streamers, displaying viewers' DJ CLASS (from V-ARCHIVE) instead of nicknames.
 
-**Architecture:** Next.js 15 (App Router) serves web UI, API routes, and the OBS widget page. A separate Node.js worker process runs daily cron jobs to sync DJ CLASS data. SQLite stores users, tokens, and cached DJ CLASS. All UI is in Korean.
+**Architecture:** Next.js 15 (App Router) serves web UI, API routes, and the OBS widget page. A custom server (`server.ts`) adds a WebSocket proxy for Chzzk chat. A separate Node.js worker process runs daily cron jobs to sync DJ CLASS data. SQLite stores users, channels, tokens, and cached DJ CLASS. All UI is in Korean.
 
-**Tech Stack:** Next.js 15, TypeScript, better-sqlite3, node-cron, shadcn/ui, Tailwind CSS, Docker, Dokku
+**Tech Stack:** Next.js 15, TypeScript, better-sqlite3, node-cron, socket.io-client v2.0.3, ws, shadcn/ui, Tailwind CSS, Docker, Dokku
+
+**Key Implementation Notes:**
+- Chzzk chat requires **Socket.IO-client v2.0.3** (not v4.x). Server proxies chat via raw WebSocket to widgets.
+- DJ CLASS badges are **configurable** via URL query parameter: `?mode=short|threshold|power`.
+- Badge mode set via widget URL query parameter (`?mode=short|threshold|power`). Not stored in database.
+- Theory badge (`이론치`) shown when DJ POWER ≥ 10000 with glittering CSS animation.
+- Manual sync endpoint (`POST /api/user/sync-djclass`) for immediate DJ CLASS updates.
+- Auto-sync runs after OAuth login if V-ARCHIVE token already linked.
+- Cache TTLs: Linked 5min, Unlinked 10sec, Fallback BEGINNER 15sec. `updateAgeOnGet: false`.
+- Fallback BEGINNER shows as `4B BG` (treats as 4B 0 point), same structure as real BEGINNER.
+- Chat proxy has `connectingPromise` to prevent race conditions, auto-reconnects on disconnect.
+- Database migrations run automatically via `runMigrations()` in `initSchema()`.
 
 ---
 
@@ -18,6 +30,8 @@
 ├── package.json
 ├── tsconfig.json
 ├── next.config.js
+├── global.d.ts                         # Ambient type declarations
+├── server.ts                           # Custom server with WebSocket proxy
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx                    # Landing page (/)
@@ -28,6 +42,8 @@
 │   │   ├── widget/
 │   │   │   └── [channelId]/
 │   │   │       └── page.tsx            # OBS widget (/widget/[channelId])
+│   │   ├── not-found.tsx               # 404 page
+│   │   ├── layout.tsx                  # Root layout
 │   │   ├── api/
 │   │   │   ├── auth/
 │   │   │   │   ├── chzzk/
@@ -35,32 +51,45 @@
 │   │   │   │   └── chzzk/
 │   │   │   │       └── callback/
 │   │   │   │           └── route.ts    # GET /api/auth/chzzk/callback
+│   │   │   │   └── logout/
+│   │   │   │       └── route.ts        # POST /api/auth/logout
 │   │   │   ├── user/
-│   │   │   │   └── link-varchive/
-│   │   │   │       └── route.ts        # POST /api/user/link-varchive
+│   │   │   │   ├── link-varchive/
+│   │   │   │   │   └── route.ts        # POST /api/user/link-varchive
+│   │   │   │   ├── sync-djclass/
+│   │   │   │   │   └── route.ts        # POST /api/user/sync-djclass
+│   │   │   │   └── me/
+│   │   │   │       └── route.ts        # GET /api/user/me
 │   │   │   ├── channel/
 │   │   │   │   └── route.ts            # GET /api/channel
 │   │   │   └── widget/
 │   │   │       └── dj-class/
 │   │   │           └── route.ts        # GET /api/widget/dj-class
 │   ├── lib/
-│   │   ├── db.ts                       # SQLite connection + schema
+│   │   ├── db.ts                       # SQLite connection + schema + migrations
 │   │   ├── crypto.ts                   # AES-256-GCM token encryption
-│   │   ├── chzzk.ts                    # Chzzk OAuth helpers
+│   │   ├── chzzk.ts                    # Chzzk OAuth helpers + token refresh
 │   │   ├── varchive.ts                 # V-ARCHIVE API client
-│   │   └── cache.ts                    # In-memory LRU cache for widget
+│   │   ├── cache.ts                    # In-memory LRU cache (rich metadata)
+│   │   ├── session.ts                  # HMAC-SHA256 session cookies
+│   │   ├── chat-proxy.ts               # Socket.IO v2 Chzzk chat proxy
+│   │   ├── types.ts                    # Shared types (BadgeMode, Socket.IO types)
+│   │   └── utils.ts                    # cn() Tailwind utility
 │   ├── components/
-│   │   ├── ui/                         # shadcn/ui components (auto-generated)
+│   │   ├── ui/                         # shadcn/ui components
 │   │   ├── LandingPage.tsx
 │   │   ├── LinkPage.tsx
 │   │   ├── DashboardPage.tsx
 │   │   └── WidgetPage.tsx
+│   ├── types/
+│   │   └── socket.io-client.d.ts       # Module augmentation for socket.io-client v2
 │   └── worker/
 │       ├── index.ts                    # Worker entry point
-│       └── sync-djclass.ts             # Daily sync logic
+│       └── sync-djclass.ts             # Daily sync logic + cache invalidation
 ├── tests/
 │   ├── crypto.test.ts
 │   ├── db.test.ts
+│   ├── session.test.ts
 │   └── varchive.test.ts
 └── docker-compose.yml (optional, for local dev)
 ```
@@ -77,7 +106,7 @@
 
 **Goal:** Initialize the Next.js project with required dependencies.
 
-- [ ] **Step 1: Create package.json**
+- [x] **Step 1: Create package.json**
 
 ```json
 {
@@ -85,9 +114,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx server.ts",
     "worker": "tsx src/worker/index.ts",
     "test": "vitest run"
   },
@@ -119,7 +148,7 @@
 }
 ```
 
-- [ ] **Step 2: Create tsconfig.json**
+- [x] **Step 2: Create tsconfig.json**
 
 ```json
 {
@@ -146,7 +175,7 @@
 }
 ```
 
-- [ ] **Step 3: Create next.config.js**
+- [x] **Step 3: Create next.config.js**
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -160,7 +189,7 @@ const nextConfig = {
 module.exports = nextConfig
 ```
 
-- [ ] **Step 4: Create .gitignore**
+- [x] **Step 4: Create .gitignore**
 
 ```
 /node_modules
@@ -172,13 +201,13 @@ module.exports = nextConfig
 *.log
 ```
 
-- [ ] **Step 5: Install dependencies**
+- [x] **Step 5: Install dependencies**
 
 Run: `npm install`
 
 Expected: Dependencies installed successfully.
 
-- [ ] **Step 6: Initialize shadcn/ui**
+- [x] **Step 6: Initialize shadcn/ui**
 
 Create `components.json`:
 
@@ -341,7 +370,7 @@ Run: `npx shadcn-ui@latest add button card input label`
 
 Expected: Components installed in `src/components/ui/`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add package.json tsconfig.json next.config.js .gitignore components.json tailwind.config.ts postcss.config.js src/app/globals.css src/lib/utils.ts src/components/ui/
@@ -358,25 +387,45 @@ git commit -m "chore: initial project setup with Next.js 15 and shadcn/ui"
 
 **Goal:** Set up SQLite schema and connection.
 
-- [ ] **Step 1: Create database module with schema**
+- [x] **Step 1: Create database module with schema**
 
 ```typescript
 // src/lib/db.ts
 import Database from 'better-sqlite3'
+import fs from 'fs'
 import path from 'path'
 
-const DB_PATH = process.env.DATABASE_URL || './data/app.db'
-
 function getDbPath(): string {
-  if (path.isAbsolute(DB_PATH)) return DB_PATH
-  return path.join(process.cwd(), DB_PATH)
+  const dbPath = process.env.DATABASE_URL || './data/app.db'
+  if (path.isAbsolute(dbPath)) return dbPath
+  return path.join(process.cwd(), dbPath)
 }
 
 export function getDb(): Database.Database {
   const dbPath = getDbPath()
+  const dir = path.dirname(dbPath)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
+  db.pragma('foreign_keys = ON')
   return db
+}
+
+function columnExists(db: Database.Database, table: string, column: string): boolean {
+  const result = db.prepare(
+    `SELECT 1 FROM pragma_table_info(?) WHERE name = ?`
+  ).get(table, column)
+  return !!result
+}
+
+function runMigrations(db: Database.Database): void {
+  // Migration 1: Add Chzzk token columns to channels table
+  if (!columnExists(db, 'channels', 'chzzk_access_token_encrypted')) {
+    db.exec(`ALTER TABLE channels ADD COLUMN chzzk_access_token_encrypted TEXT`)
+  }
+  // ... additional migrations
 }
 
 export function initSchema(db: Database.Database): void {
@@ -392,6 +441,9 @@ export function initSchema(db: Database.Database): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
       chzzk_channel_id TEXT UNIQUE NOT NULL,
+      chzzk_access_token_encrypted TEXT,
+      chzzk_refresh_token_encrypted TEXT,
+      token_expires_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -408,17 +460,26 @@ export function initSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS dj_classes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
-      button INTEGER NOT NULL,
+      button INTEGER NOT NULL CHECK (button IN (4, 5, 6, 8)),
       dj_class TEXT NOT NULL,
       dj_power_sum REAL,
       max_dj_power REAL,
+      dj_power_conversion REAL,
       synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE INDEX IF NOT EXISTS idx_users_chzzk_id ON users(chzzk_id);
     CREATE INDEX IF NOT EXISTS idx_users_chzzk_nickname ON users(chzzk_nickname);
     CREATE INDEX IF NOT EXISTS idx_channels_chzzk_channel_id ON channels(chzzk_channel_id);
+
+    CREATE TRIGGER IF NOT EXISTS trg_varchive_tokens_updated_at
+    AFTER UPDATE ON varchive_tokens
+    BEGIN
+      UPDATE varchive_tokens SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+    END;
   `)
+
+  runMigrations(db)
 }
 
 export function initDb(): Database.Database {
@@ -428,7 +489,7 @@ export function initDb(): Database.Database {
 }
 ```
 
-- [ ] **Step 2: Write test for database initialization**
+- [x] **Step 2: Write test for database initialization**
 
 ```typescript
 // tests/db.test.ts
@@ -464,13 +525,13 @@ describe('Database', () => {
 })
 ```
 
-- [ ] **Step 3: Run test to verify it passes**
+- [x] **Step 3: Run test to verify it passes**
 
 Run: `npx vitest run tests/db.test.ts`
 
-Expected: PASS - 1 test passes
+Expected: PASS - 5 tests pass (schema, indexes, idempotent, foreign keys, button CHECK constraint)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/db.ts tests/db.test.ts
@@ -487,7 +548,7 @@ git commit -m "feat: add SQLite database layer with schema"
 
 **Goal:** Implement AES-256-GCM encryption for V-ARCHIVE tokens.
 
-- [ ] **Step 1: Create crypto module**
+- [x] **Step 1: Create crypto module**
 
 ```typescript
 // src/lib/crypto.ts
@@ -556,13 +617,13 @@ describe('Crypto', () => {
 })
 ```
 
-- [ ] **Step 3: Run test to verify it passes**
+- [x] **Step 3: Run test to verify it passes**
 
 Run: `VARCHIVE_TOKEN_KEY=test-key-32-chars-long!!! npx vitest run tests/crypto.test.ts`
 
 Expected: PASS - 2 tests pass
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/crypto.ts tests/crypto.test.ts
@@ -728,13 +789,13 @@ describe('V-ARCHIVE API', () => {
 })
 ```
 
-- [ ] **Step 3: Run test to verify it passes**
+- [x] **Step 3: Run test to verify it passes**
 
 Run: `npx vitest run tests/varchive.test.ts`
 
 Expected: PASS - 2 tests pass
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/varchive.ts tests/varchive.test.ts
@@ -750,18 +811,20 @@ git commit -m "feat: add V-ARCHIVE API client with button selection"
 
 **Goal:** Implement LRU cache for widget DJ CLASS lookups to avoid frequent DB queries.
 
-- [ ] **Step 1: Create cache module**
+- [x] **Step 1: Create cache module**
 
 ```typescript
 // src/lib/cache.ts
 import { LRUCache } from 'lru-cache'
 
-type CacheValue = { djClass: string } | { unlinked: true } | { beginner: true }
+type CacheValue =
+  | { djClass: string; rankName: string; rankLevel: string | null; powerInteger: number | null; isTheory: boolean }
+  | { unlinked: true }
 
 const cache = new LRUCache<string, CacheValue>({
   max: 10000,
-  ttl: 1000 * 60 * 5, // 5 minutes default
-  updateAgeOnGet: true,
+  ttl: 1000 * 60 * 5, // 5 minutes default for linked users
+  updateAgeOnGet: false, // TTL should not extend on active chat
 })
 
 export function getDjClassFromCache(key: string): CacheValue | undefined {
@@ -780,16 +843,25 @@ export function invalidateUserCache(chzzkId: string): void {
   cache.delete(`id:${chzzkId}`)
 }
 
-export function getCacheStats(): { size: number; hits: number; misses: number } {
+export function invalidateNicknameCache(nickname: string): void {
+  cache.delete(`nick:${nickname}`)
+}
+
+export function invalidateAllUserCaches(chzzkId: string, chzzkNickname?: string): void {
+  invalidateUserCache(chzzkId)
+  if (chzzkNickname) {
+    invalidateNicknameCache(chzzkNickname)
+  }
+}
+
+export function getCacheStats(): { size: number } {
   return {
     size: cache.size,
-    hits: (cache as any).hits || 0,
-    misses: (cache as any).misses || 0,
   }
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/lib/cache.ts
@@ -807,38 +879,38 @@ git commit -m "feat: add LRU cache for widget DJ CLASS lookups"
 
 **Goal:** Implement Chzzk OAuth flow.
 
-- [ ] **Step 1: Create Chzzk OAuth helpers**
+- [x] **Step 1: Create Chzzk OAuth helpers**
 
 ```typescript
 // src/lib/chzzk.ts
 
-const CHZZK_AUTH_URL = 'https://chzzk.naver.com/auth/oauth2/authorize'
+const CHZZK_AUTH_URL = 'https://chzzk.naver.com/account-interlock'
 const CHZZK_TOKEN_URL = 'https://openapi.chzzk.naver.com/auth/v1/token'
 const CHZZK_API_URL = 'https://openapi.chzzk.naver.com/open/v1'
 
 export function getOAuthUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.CHZZK_CLIENT_ID!,
-    redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/chzzk/callback`,
-    response_type: 'code',
+    clientId: process.env.CHZZK_CLIENT_ID!,
+    redirectUri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/chzzk/callback`,
     state,
   })
   return `${CHZZK_AUTH_URL}?${params.toString()}`
 }
 
-export async function exchangeCodeForToken(code: string): Promise<{
+export async function exchangeCodeForToken(code: string, state: string): Promise<{
   accessToken: string
   refreshToken: string
+  expiresIn: number
 }> {
   const response = await fetch(CHZZK_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      grant_type: 'authorization_code',
-      client_id: process.env.CHZZK_CLIENT_ID,
-      client_secret: process.env.CHZZK_CLIENT_SECRET,
+      grantType: 'authorization_code',
+      clientId: process.env.CHZZK_CLIENT_ID,
+      clientSecret: process.env.CHZZK_CLIENT_SECRET,
       code,
-      redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/chzzk/callback`,
+      state,
     }),
   })
 
@@ -847,9 +919,40 @@ export async function exchangeCodeForToken(code: string): Promise<{
   }
 
   const data = await response.json()
+  const content = data.content ?? data
   return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token,
+    accessToken: content.accessToken,
+    refreshToken: content.refreshToken,
+    expiresIn: parseInt(content.expiresIn, 10) || 86400,
+  }
+}
+
+export async function refreshAccessToken(refreshToken: string): Promise<{
+  accessToken: string
+  refreshToken: string
+  expiresIn: number
+}> {
+  const response = await fetch(CHZZK_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      grantType: 'refresh_token',
+      clientId: process.env.CHZZK_CLIENT_ID,
+      clientSecret: process.env.CHZZK_CLIENT_SECRET,
+      refreshToken,
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Token refresh failed: ${response.status}`)
+  }
+
+  const data = await response.json()
+  const content = data.content ?? data
+  return {
+    accessToken: content.accessToken,
+    refreshToken: content.refreshToken,
+    expiresIn: parseInt(content.expiresIn, 10) || 86400,
   }
 }
 
@@ -857,10 +960,8 @@ export async function getUserInfo(accessToken: string): Promise<{
   userId: string
   nickname: string
 }> {
-  const response = await fetch(`${CHZZK_API_URL}/users`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+  const response = await fetch(`${CHZZK_API_URL}/users/me`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
   })
 
   if (!response.ok) {
@@ -868,14 +969,15 @@ export async function getUserInfo(accessToken: string): Promise<{
   }
 
   const data = await response.json()
+  const content = data.content ?? data
   return {
-    userId: data.content?.userId,
-    nickname: data.content?.nickname,
+    userId: content.channelId,
+    nickname: content.channelName,
   }
 }
 ```
 
-- [ ] **Step 2: Create OAuth init route**
+- [x] **Step 2: Create OAuth init route**
 
 ```typescript
 // src/app/api/auth/chzzk/route.ts
@@ -899,13 +1001,17 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-- [ ] **Step 3: Create OAuth callback route**
+- [x] **Step 3: Create OAuth callback route**
 
 ```typescript
 // src/app/api/auth/chzzk/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForToken, getUserInfo } from '@/lib/chzzk'
 import { initDb } from '@/lib/db'
+import { createSessionCookie } from '@/lib/session'
+import { encrypt } from '@/lib/crypto'
+import { decrypt } from '@/lib/crypto'
+import { lookupUser, getHighestDjClass } from '@/lib/varchive'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -913,12 +1019,12 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state')
   const storedState = request.cookies.get('oauth_state')?.value
 
-  if (!code || !state || state !== storedState) {
-    return NextResponse.redirect(new URL('/?error=auth_failed', request.url))
+  if (!code || !state || !storedState || state !== storedState) {
+    return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
   }
 
   try {
-    const { accessToken } = await exchangeCodeForToken(code)
+    const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(code, state)
     const userInfo = await getUserInfo(accessToken)
 
     const db = initDb()
@@ -930,8 +1036,49 @@ export async function GET(request: NextRequest) {
     `)
     const result = stmt.get(userInfo.userId, userInfo.nickname) as { id: number }
 
-    const response = NextResponse.redirect(new URL('/link', request.url))
-    response.cookies.set('user_id', String(result.id), {
+    // Store encrypted Chzzk tokens in channels table for chat proxy
+    const expiresAt = new Date(Date.now() + (expiresIn || 86400) * 1000).toISOString()
+    db.prepare(`
+      INSERT INTO channels (user_id, chzzk_channel_id, chzzk_access_token_encrypted, chzzk_refresh_token_encrypted, token_expires_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(user_id) DO UPDATE SET
+        chzzk_access_token_encrypted = excluded.chzzk_access_token_encrypted,
+        chzzk_refresh_token_encrypted = excluded.chzzk_refresh_token_encrypted,
+        token_expires_at = excluded.token_expires_at
+    `).run(result.id, userInfo.userId, encrypt(accessToken), encrypt(refreshToken), expiresAt)
+
+    // Auto-sync DJ CLASS if V-ARCHIVE already linked
+    const tokenRow = db.prepare(
+      'SELECT token_encrypted, varchive_nickname FROM varchive_tokens WHERE user_id = ? AND is_active = true'
+    ).get(result.id) as { token_encrypted: string; varchive_nickname: string } | undefined
+
+    if (tokenRow) {
+      try {
+        const vtoken = decrypt(tokenRow.token_encrypted)
+        const vuser = await lookupUser(vtoken)
+        if (vuser.success) {
+          const djData = await getHighestDjClass(vuser.nickname)
+          if (djData) {
+            db.prepare(`
+              INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
+              VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(user_id) DO UPDATE SET
+                button = excluded.button,
+                dj_class = excluded.dj_class,
+                dj_power_sum = excluded.dj_power_sum,
+                max_dj_power = excluded.max_dj_power,
+                dj_power_conversion = excluded.dj_power_conversion,
+                synced_at = excluded.synced_at
+            `).run(result.id, djData.button, djData.djClass, djData.djPowerSum, djData.maxDjPower, djData.djPowerConversion)
+          }
+        }
+      } catch (syncErr) {
+        console.error(`[OAuth Callback] Auto-sync failed for user ${result.id}:`, syncErr)
+      }
+    }
+
+    const response = NextResponse.redirect(new URL('/link', baseUrl))
+    response.cookies.set('session', createSessionCookie(result.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -942,13 +1089,13 @@ export async function GET(request: NextRequest) {
     db.close()
     return response
   } catch (error) {
-    console.error('OAuth callback error:', error)
-    return NextResponse.redirect(new URL('/?error=auth_failed', request.url))
+    console.error('[OAuth Callback] Error:', error)
+    return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
   }
 }
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/lib/chzzk.ts src/app/api/auth/chzzk/route.ts src/app/api/auth/chzzk/callback/route.ts
@@ -964,7 +1111,7 @@ git commit -m "feat: implement Chzzk OAuth flow"
 
 **Goal:** API endpoint for viewers to link their V-ARCHIVE token.
 
-- [ ] **Step 1: Create link V-ARCHIVE API route**
+- [x] **Step 1: Create link V-ARCHIVE API route**
 
 ```typescript
 // src/app/api/user/link-varchive/route.ts
@@ -972,9 +1119,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { initDb } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
 import { lookupUser } from '@/lib/varchive'
+import { verifySessionCookie } from '@/lib/session'
+import { invalidateAllUserCaches } from '@/lib/cache'
 
 export async function POST(request: NextRequest) {
-  const userId = request.cookies.get('user_id')?.value
+  const signedSession = request.cookies.get('session')?.value
+  const userId = signedSession ? verifySessionCookie(signedSession) : null
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -1009,19 +1159,30 @@ export async function POST(request: NextRequest) {
     `)
     stmt.run(Number(userId), encryptedToken, userInfo.nickname)
 
+    // Get user's chzzk info for cache invalidation
+    const userRow = db.prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?').get(Number(userId)) as
+      | { chzzk_id: string; chzzk_nickname: string }
+      | undefined
+
     db.close()
+
+    // Invalidate cache so widget shows updated status immediately
+    if (userRow) {
+      invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
+    }
+
     return NextResponse.json({ success: true, message: '연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.' })
   } catch (error) {
     console.error('Link V-ARCHIVE error:', error)
     return NextResponse.json(
-      { error: '조회토큰이 유효하지 않습니다. 다시 확인해주세요.' },
+      { error: '조회토큰이 유효하지 않습니다. 다시 확인해주세요.', code: 'VALIDATION_ERROR' },
       { status: 400 }
     )
   }
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add src/app/api/user/link-varchive/route.ts
@@ -1038,29 +1199,30 @@ git commit -m "feat: add V-ARCHIVE token linking API"
 
 **Goal:** API endpoints for streamer channel and widget DJ CLASS lookup.
 
-- [ ] **Step 1: Create channel API**
+- [x] **Step 1: Create channel API**
 
 ```typescript
 // src/app/api/channel/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { initDb } from '@/lib/db'
+import { verifySessionCookie } from '@/lib/session'
+import { getActiveConnections } from '@/lib/chat-proxy'
 
 export async function GET(request: NextRequest) {
-  const userId = request.cookies.get('user_id')?.value
+  const signedSession = request.cookies.get('session')?.value
+  const userId = signedSession ? verifySessionCookie(signedSession) : null
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const db = initDb()
 
-  // Get or create channel
   const getStmt = db.prepare('SELECT * FROM channels WHERE user_id = ?')
   let channel = getStmt.get(Number(userId)) as
-    | { id: number; chzzk_channel_id: string }
+    | { id: number; chzzk_channel_id: string; chzzk_access_token_encrypted: string | null }
     | undefined
 
   if (!channel) {
-    // Get user's chzzk_id to use as channel_id
     const userStmt = db.prepare('SELECT chzzk_id FROM users WHERE id = ?')
     const user = userStmt.get(Number(userId)) as { chzzk_id: string } | undefined
 
@@ -1078,8 +1240,13 @@ export async function GET(request: NextRequest) {
     channel = insertStmt.get(Number(userId), user.chzzk_id) as {
       id: number
       chzzk_channel_id: string
+      chzzk_access_token_encrypted: string | null
     }
   }
+
+  const activeConnections = getActiveConnections()
+  const isConnected = activeConnections.includes(channel.chzzk_channel_id)
+  const hasTokens = !!channel.chzzk_access_token_encrypted
 
   db.close()
 
@@ -1087,11 +1254,13 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     channelId: channel.chzzk_channel_id,
     widgetUrl: `${baseUrl}/widget/${channel.chzzk_channel_id}`,
+    isConnected,
+    hasTokens,
   })
 }
 ```
 
-- [ ] **Step 2: Create widget DJ CLASS lookup API**
+- [x] **Step 2: Create widget DJ CLASS lookup API**
 
 ```typescript
 // src/app/api/widget/dj-class/route.ts
@@ -1114,10 +1283,14 @@ export async function GET(request: NextRequest) {
   const cached = getDjClassFromCache(cacheKey)
   if (cached) {
     if ('djClass' in cached) {
-      return NextResponse.json({ djClass: cached.djClass, source: 'cache' })
-    }
-    if ('beginner' in cached) {
-      return NextResponse.json({ djClass: 'BEGINNER', source: 'cache' })
+      return NextResponse.json({
+        djClass: cached.djClass,
+        rankName: cached.rankName,
+        rankLevel: cached.rankLevel,
+        powerInteger: cached.powerInteger,
+        isTheory: cached.isTheory,
+        source: 'cache',
+      })
     }
     if ('unlinked' in cached) {
       return NextResponse.json({ unlinked: true, source: 'cache' })
@@ -1126,9 +1299,7 @@ export async function GET(request: NextRequest) {
 
   const db = initDb()
 
-  // Try to find user by chzzk_id first, then by nickname
   let userId: number | undefined
-  let hasToken = false
 
   if (chzzkId) {
     const stmt = db.prepare('SELECT id FROM users WHERE chzzk_id = ?')
@@ -1143,40 +1314,45 @@ export async function GET(request: NextRequest) {
   }
 
   if (!userId) {
-    setDjClassCache(cacheKey, { unlinked: true }, 1)
+    setDjClassCache(cacheKey, { unlinked: true }, 0.15)
     db.close()
     return NextResponse.json({ unlinked: true, source: 'db' })
   }
 
-  // Check if user has linked V-ARCHIVE
   const tokenStmt = db.prepare('SELECT id FROM varchive_tokens WHERE user_id = ? AND is_active = true')
   const tokenResult = tokenStmt.get(userId) as { id: number } | undefined
-  hasToken = !!tokenResult
-
-  if (!hasToken) {
-    setDjClassCache(cacheKey, { unlinked: true }, 1)
+  if (!tokenResult) {
+    setDjClassCache(cacheKey, { unlinked: true }, 0.15)
     db.close()
     return NextResponse.json({ unlinked: true, source: 'db' })
   }
 
-  // Look up DJ CLASS
-  const djStmt = db.prepare('SELECT dj_class FROM dj_classes WHERE user_id = ?')
-  const djResult = djStmt.get(userId) as { dj_class: string } | undefined
+  const djStmt = db.prepare('SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?')
+  const djResult = djStmt.get(userId) as { dj_class: string; button: number; dj_power_conversion: number | null } | undefined
 
   db.close()
 
   if (djResult) {
-    setDjClassCache(cacheKey, { djClass: djResult.dj_class })
-    return NextResponse.json({ djClass: djResult.dj_class, source: 'db' })
+    const formattedClass = `${djResult.button}B ${djResult.dj_class}`
+    const isTheory = djResult.dj_power_conversion !== null && djResult.dj_power_conversion >= 10000
+    const powerInteger = djResult.dj_power_conversion ? Math.floor(djResult.dj_power_conversion) : null
+
+    const rankMatch = djResult.dj_class.match(/^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/)
+    const rankName = rankMatch ? rankMatch[1].trim() : djResult.dj_class
+    const rankLevel = rankMatch ? rankMatch[2] : null
+
+    setDjClassCache(cacheKey, { djClass: formattedClass, rankName, rankLevel, powerInteger, isTheory })
+    return NextResponse.json({ djClass: formattedClass, rankName, rankLevel, powerInteger, isTheory, source: 'db' })
   }
 
-  // Linked but no DJ CLASS data → BEGINNER
-  setDjClassCache(cacheKey, { beginner: true })
-  return NextResponse.json({ djClass: 'BEGINNER', source: 'db' })
+  // Linked but no DJ CLASS data → fallback BEGINNER
+  const fallbackData = { djClass: '4B BEGINNER', rankName: 'BEGINNER', rankLevel: null, powerInteger: 0, isTheory: false }
+  setDjClassCache(cacheKey, fallbackData, 0.25)
+  return NextResponse.json({ ...fallbackData, source: 'db' })
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/api/channel/route.ts src/app/api/widget/dj-class/route.ts
@@ -1254,7 +1430,7 @@ export default function Home() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/LandingPage.tsx src/app/page.tsx
@@ -1271,12 +1447,13 @@ git commit -m "feat: add Korean landing page"
 
 **Goal:** Create the viewer linking page with Chzzk OAuth and V-ARCHIVE token input.
 
-- [ ] **Step 1: Create LinkPage component**
+- [x] **Step 1: Create LinkPage component**
 
 ```tsx
+// src/components/LinkPage.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -1284,27 +1461,74 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
+interface UserInfo {
+  chzzkNickname: string
+  varchiveLinked: boolean
+  varchiveNickname: string | null
+  djClass: string | null
+  powerInteger: number | null
+  isTheory: boolean
+}
+
 export default function LinkPage() {
   const [token, setToken] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [syncMessage, setSyncMessage] = useState('')
   const [message, setMessage] = useState('')
+  const [user, setUser] = useState<UserInfo | null>(null)
+  const [loadingUser, setLoadingUser] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/user/me')
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data)
+        }
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => setLoadingUser(false))
+  }, [])
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.reload()
+  }
+
+  const handleSync = async () => {
+    setSyncStatus('loading')
+    try {
+      const response = await fetch('/api/user/sync-djclass', { method: 'POST' })
+      const data = await response.json()
+      if (response.ok) {
+        setSyncStatus('success')
+        setSyncMessage(`DJ CLASS 동기화 완료: ${data.djClass}`)
+        setUser((prev) => prev ? { ...prev, djClass: data.djClass, powerInteger: data.djPowerConversion ? Math.floor(data.djPowerConversion) : null, isTheory: data.djPowerConversion >= 10000 } : null)
+      } else {
+        setSyncStatus('error')
+        setSyncMessage(data.error || '동기화에 실패했습니다.')
+      }
+    } catch {
+      setSyncStatus('error')
+      setSyncMessage('네트워크 오류가 발생했습니다.')
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
-
     try {
       const response = await fetch('/api/user/link-varchive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       })
-
       const data = await response.json()
-
       if (response.ok) {
         setStatus('success')
         setMessage(data.message)
+        setUser((prev) => prev ? { ...prev, varchiveLinked: true } : null)
       } else {
         setStatus('error')
         setMessage(data.error || '연동에 실패했습니다.')
@@ -1315,82 +1539,8 @@ export default function LinkPage() {
     }
   }
 
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900 text-center">
-          DJ CLASS 연동
-        </h1>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">1. Chzzk에 로그인</CardTitle>
-            <CardDescription>Chzzk 계정으로 로그인해주세요.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <a href="/api/auth/chzzk" className="block w-full">
-              <Button className="w-full">Chzzk 로그인</Button>
-            </a>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">2. V-ARCHIVE 토큰 입력</CardTitle>
-            <CardDescription>
-              토큰은{' '}
-              <a
-                href="https://v-archive.net/mypage"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                V-ARCHIVE 마이페이지
-              </a>
-              에서 발급받을 수 있습니다.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="token">조회토큰</Label>
-                <Input
-                  id="token"
-                  type="text"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  placeholder="조회토큰을 입력하세요"
-                  disabled={status === 'loading'}
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={status === 'loading' || !token.trim()}
-                className="w-full"
-              >
-                {status === 'loading' ? '연동 중...' : '연동하기'}
-              </Button>
-            </form>
-
-            {status === 'success' && (
-              <Alert className="mt-4 bg-green-50 border-green-200">
-                <AlertDescription className="text-green-800">{message}</AlertDescription>
-              </Alert>
-            )}
-            {status === 'error' && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertDescription>{message}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-
-        <Link href="/" className="block text-center text-gray-500 hover:text-gray-700">
-          ← 돌아가기
-        </Link>
-      </div>
-    </main>
-  )
+  // Shows login status, V-ARCHIVE link form, DJ CLASS sync button, and current DJ CLASS badges
+  // ... (see full file)
 }
 ```
 
@@ -1405,7 +1555,7 @@ export default function Link() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/LinkPage.tsx src/app/link/page.tsx
@@ -1422,9 +1572,10 @@ git commit -m "feat: add viewer V-ARCHIVE linking page"
 
 **Goal:** Create streamer dashboard with widget URL.
 
-- [ ] **Step 1: Create DashboardPage component**
+- [x] **Step 1: Create DashboardPage component**
 
 ```tsx
+// src/components/DashboardPage.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -1432,16 +1583,25 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import type { BadgeMode } from '@/lib/types'
 
 interface ChannelData {
   channelId: string
   widgetUrl: string
+  isConnected: boolean
+  hasTokens: boolean
+}
+
+const BADGE_MODE_LABELS: Record<BadgeMode, string> = {
+  short: '짧은 이름 (4B SS II)',
+  threshold: '근사 파워 (4B 9800+)',
+  power: '정수 파워 (4B 9843)',
 }
 
 export default function DashboardPage() {
   const [data, setData] = useState<ChannelData | null>(null)
+  const [badgeMode, setBadgeMode] = useState<BadgeMode>('short')
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
 
@@ -1461,71 +1621,24 @@ export default function DashboardPage() {
       .catch((err) => setError(err.message))
   }, [])
 
+  const getWidgetUrl = (mode?: BadgeMode) => {
+    if (!data?.widgetUrl) return ''
+    const url = new URL(data.widgetUrl, window.location.origin)
+    url.searchParams.set('mode', mode || badgeMode)
+    return url.toString()
+  }
+
   const copyUrl = () => {
-    if (data?.widgetUrl) {
-      navigator.clipboard.writeText(data.widgetUrl)
+    const url = getWidgetUrl()
+    if (url) {
+      navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
   }
 
-  if (error) {
-    return (
-      <main className="min-h-screen flex items-center justify-center">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </main>
-    )
-  }
-
-  return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-lg w-full space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900 text-center">
-          채팅 위젯 설정
-        </h1>
-
-        {!data ? (
-          <p className="text-center text-gray-500">로딩 중...</p>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>위젯 URL</CardTitle>
-              <CardDescription>OBS Browser Source에 이 URL을 사용하세요.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={data.widgetUrl}
-                  readOnly
-                  className="flex-1 bg-gray-100"
-                />
-                <Button onClick={copyUrl}>
-                  {copied ? '복사됨!' : 'URL 복사'}
-                </Button>
-              </div>
-
-              <div className="space-y-2 pt-4">
-                <h2 className="font-medium">OBS 설정 방법</h2>
-                <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
-                  <li>OBS에서 소스 추가 → 브라우저 선택</li>
-                  <li>위 URL을 입력하세요</li>
-                  <li>너비: 400, 높이: 600 권장</li>
-                  <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
-                </ol>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Link href="/" className="block text-center text-gray-500 hover:text-gray-700">
-          ← 돌아가기
-        </Link>
-      </div>
-    </main>
-  )
+  // Shows widget URL with mode parameter, badge mode chooser, connection status, logout
+  // ... (see full file)
 }
 ```
 
@@ -1540,7 +1653,7 @@ export default function Dashboard() {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/DashboardPage.tsx src/app/dashboard/page.tsx
@@ -1557,16 +1670,23 @@ git commit -m "feat: add streamer dashboard with widget URL"
 
 **Goal:** Create the OBS widget page that connects to Chzzk chat and displays DJ CLASS badges.
 
-- [ ] **Step 1: Create WidgetPage component**
+- [x] **Step 1: Create WidgetPage component**
 
 ```tsx
+// src/components/WidgetPage.tsx
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 
+type BadgeMode = 'short' | 'threshold' | 'power'
+
 interface ChatMessage {
   id: string
   djClass: string | null
+  rankShort: string | null
+  rankLevel: string | null
+  powerInteger: number | null
+  isTheory: boolean
   text: string
   isUnlinked: boolean
 }
@@ -1579,104 +1699,28 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const retryCountRef = useRef(0)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isUnmountingRef = useRef(false)
+  const pendingQueueRef = useRef<PendingMessage[]>([])
+  const isProcessingRef = useRef(false)
+  const badgeModeRef = useRef<BadgeMode>('short')
+
+  // Read badge mode from URL query parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const mode = params.get('mode')
+    if (mode === 'threshold' || mode === 'power' || mode === 'short') {
+      badgeModeRef.current = mode
+    }
+  }, [])
 
   useEffect(() => {
-    // Connect to Chzzk WebSocket
-    const wsUrl = `wss://chat.chzzk.naver.com/chat?channelId=${channelId}`
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
-
-    ws.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        
-        // Parse Chzzk chat message format
-        // Note: Actual Chzzk WebSocket format needs to be verified
-        const senderId = data.userId || data.sender?.userId
-        const senderNickname = data.nickname || data.sender?.nickname
-        const messageText = data.message || data.content
-
-        if (!messageText) return
-
-        // Lookup DJ CLASS
-        let djClass: string | null = null
-        let isUnlinked = false
-
-        try {
-          const params = new URLSearchParams()
-          if (senderId) params.append('chzzkId', senderId)
-          if (senderNickname) params.append('chzzkNickname', senderNickname)
-
-          const response = await fetch(`/api/widget/dj-class?${params.toString()}`)
-          const result = await response.json()
-
-          if (result.unlinked) {
-            isUnlinked = true
-          } else if (result.djClass) {
-            djClass = result.djClass
-          }
-        } catch {
-          // On error, treat as unlinked
-          isUnlinked = true
-        }
-
-        const newMessage: ChatMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          djClass,
-          text: messageText,
-          isUnlinked,
-        }
-
-        setMessages((prev) => [...prev.slice(-99), newMessage])
-      } catch {
-        // Ignore malformed messages
-      }
-    }
-
-    ws.onerror = () => {
-      console.error('WebSocket error')
-    }
-
-    ws.onclose = () => {
-      // Auto-reconnect after 3 seconds
-      setTimeout(() => {
-        window.location.reload()
-      }, 3000)
-    }
-
-    return () => {
-      ws.close()
-    }
+    isUnmountingRef.current = false
+    // WebSocket connection + sequential message queue processing
+    // ... (see full file)
   }, [channelId])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
-
-  return (
-    <div className="h-screen w-full overflow-hidden bg-transparent">
-      <div className="flex flex-col justify-end h-full px-2 py-2 space-y-1">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`text-sm break-words ${
-              msg.isUnlinked ? 'opacity-25' : 'opacity-100'
-            }`}
-          >
-            {msg.djClass && (
-              <span className="inline-block px-1.5 py-0.5 bg-gray-800 text-white rounded text-xs font-medium mr-1">
-                {msg.djClass}
-              </span>
-            )}
-            <span className="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-              {msg.text}
-            </span>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-    </div>
-  )
+  // ...
 }
 ```
 
@@ -1696,7 +1740,7 @@ export default async function Widget({ params }: PageProps) {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/components/WidgetPage.tsx "src/app/widget/[channelId]/page.tsx"
@@ -1713,13 +1757,14 @@ git commit -m "feat: add OBS widget page with Chzzk chat and DJ CLASS display"
 
 **Goal:** Implement the daily DJ CLASS sync worker.
 
-- [ ] **Step 1: Create sync logic**
+- [x] **Step 1: Create sync logic**
 
 ```typescript
 // src/worker/sync-djclass.ts
 import { initDb } from '../lib/db'
 import { decrypt } from '../lib/crypto'
 import { lookupUser, getHighestDjClass } from '../lib/varchive'
+import { invalidateAllUserCaches } from '../lib/cache'
 
 export async function syncDjClasses(): Promise<{
   success: number
@@ -1766,26 +1811,35 @@ export async function syncDjClasses(): Promise<{
 
         if (djClassData) {
           db.prepare(`
-            INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, synced_at)
-            VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id) DO UPDATE SET
               button = excluded.button,
               dj_class = excluded.dj_class,
               dj_power_sum = excluded.dj_power_sum,
               max_dj_power = excluded.max_dj_power,
+              dj_power_conversion = excluded.dj_power_conversion,
               synced_at = excluded.synced_at
           `).run(
             token.user_id,
-            djClassData.djPowerSum,
+            djClassData.button,
             djClassData.djClass,
             djClassData.djPowerSum,
-            djClassData.maxDjPower
+            djClassData.maxDjPower,
+            djClassData.djPowerConversion
           )
           success++
         } else {
-          // No DJ CLASS found → delete existing row so widget shows BEGINNER
           db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(token.user_id)
           success++
+        }
+
+        // Invalidate cache so widgets show updated data immediately
+        const userRow = db.prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?').get(token.user_id) as
+          | { chzzk_id: string; chzzk_nickname: string }
+          | undefined
+        if (userRow) {
+          invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
         }
       } catch (error) {
         failed++
@@ -1800,7 +1854,7 @@ export async function syncDjClasses(): Promise<{
 }
 ```
 
-- [ ] **Step 2: Create worker entry point**
+- [x] **Step 2: Create worker entry point**
 
 ```typescript
 // src/worker/index.ts
@@ -1840,7 +1894,7 @@ process.on('SIGTERM', () => {
 })
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/worker/index.ts src/worker/sync-djclass.ts

@@ -14,10 +14,12 @@ ENV NODE_ENV=production
 
 # Copy necessary files
 COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/server.ts ./
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Install production dependencies for worker
+# Install production dependencies (includes tsx for running server.ts)
 RUN npm ci --only=production
 
 # Create data directory for SQLite

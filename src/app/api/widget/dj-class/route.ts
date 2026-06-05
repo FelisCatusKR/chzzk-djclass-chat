@@ -17,10 +17,14 @@ export async function GET(request: NextRequest) {
   const cached = getDjClassFromCache(cacheKey)
   if (cached) {
     if ('djClass' in cached) {
-      return NextResponse.json({ djClass: cached.djClass, source: 'cache' })
-    }
-    if ('beginner' in cached) {
-      return NextResponse.json({ djClass: 'BEGINNER', source: 'cache' })
+      return NextResponse.json({
+        djClass: cached.djClass,
+        rankName: cached.rankName,
+        rankLevel: cached.rankLevel,
+        powerInteger: cached.powerInteger,
+        isTheory: cached.isTheory,
+        source: 'cache',
+      })
     }
     if ('unlinked' in cached) {
       return NextResponse.json({ unlinked: true, source: 'cache' })
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!userId) {
-    setDjClassCache(cacheKey, { unlinked: true }, 1)
+    setDjClassCache(cacheKey, { unlinked: true }, 0.15) // 10 seconds — keep retrying until they link
     db.close()
     return NextResponse.json({ unlinked: true, source: 'db' })
   }
@@ -57,23 +61,53 @@ export async function GET(request: NextRequest) {
   hasToken = !!tokenResult
 
   if (!hasToken) {
-    setDjClassCache(cacheKey, { unlinked: true }, 1)
+    setDjClassCache(cacheKey, { unlinked: true }, 0.15) // 10 seconds — keep retrying until they link
     db.close()
     return NextResponse.json({ unlinked: true, source: 'db' })
   }
 
   // Look up DJ CLASS
-  const djStmt = db.prepare('SELECT dj_class FROM dj_classes WHERE user_id = ?')
-  const djResult = djStmt.get(userId) as { dj_class: string } | undefined
+  const djStmt = db.prepare('SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?')
+  const djResult = djStmt.get(userId) as { dj_class: string; button: number; dj_power_conversion: number | null } | undefined
 
   db.close()
 
   if (djResult) {
-    setDjClassCache(cacheKey, { djClass: djResult.dj_class })
-    return NextResponse.json({ djClass: djResult.dj_class, source: 'db' })
+    const formattedClass = `${djResult.button}B ${djResult.dj_class}`
+    const isTheory = djResult.dj_power_conversion !== null && djResult.dj_power_conversion >= 10000
+    const powerInteger = djResult.dj_power_conversion ? Math.floor(djResult.dj_power_conversion) : null
+    
+    // Parse rank name and level
+    const rankMatch = djResult.dj_class.match(/^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/)
+    const rankName = rankMatch ? rankMatch[1].trim() : djResult.dj_class
+    const rankLevel = rankMatch ? rankMatch[2] : null
+    
+    setDjClassCache(cacheKey, {
+      djClass: formattedClass,
+      rankName,
+      rankLevel,
+      powerInteger,
+      isTheory,
+    })
+    return NextResponse.json({
+      djClass: formattedClass,
+      rankName,
+      rankLevel,
+      powerInteger,
+      isTheory,
+      source: 'db',
+    })
   }
 
-  // Linked but no DJ CLASS data → BEGINNER
-  setDjClassCache(cacheKey, { beginner: true })
-  return NextResponse.json({ djClass: 'BEGINNER', source: 'db' })
+  // Linked but no DJ CLASS data → fallback BEGINNER (treat as 4B 0 point)
+  const fallbackClass = '4B BEGINNER'
+  const fallbackData = {
+    djClass: fallbackClass,
+    rankName: 'BEGINNER',
+    rankLevel: null,
+    powerInteger: 0,
+    isTheory: false,
+  }
+  setDjClassCache(cacheKey, fallbackData, 0.25) // 15 seconds — sync may finish soon
+  return NextResponse.json({ ...fallbackData, source: 'db' })
 }

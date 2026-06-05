@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initDb } from '@/lib/db'
 import { verifySessionCookie } from '@/lib/session'
+import { getActiveConnections } from '@/lib/chat-proxy'
 
 export async function GET(request: NextRequest) {
   const signedSession = request.cookies.get('session')?.value
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   // Get or create channel
   const getStmt = db.prepare('SELECT * FROM channels WHERE user_id = ?')
   let channel = getStmt.get(Number(userId)) as
-    | { id: number; chzzk_channel_id: string }
+    | { id: number; chzzk_channel_id: string; chzzk_access_token_encrypted: string | null }
     | undefined
 
   if (!channel) {
@@ -36,8 +37,14 @@ export async function GET(request: NextRequest) {
     channel = insertStmt.get(Number(userId), user.chzzk_id) as {
       id: number
       chzzk_channel_id: string
+      chzzk_access_token_encrypted: string | null
     }
   }
+
+  // Check if chat proxy is active
+  const activeConnections = getActiveConnections()
+  const isConnected = activeConnections.includes(channel.chzzk_channel_id)
+  const hasTokens = !!channel.chzzk_access_token_encrypted
 
   db.close()
 
@@ -45,5 +52,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     channelId: channel.chzzk_channel_id,
     widgetUrl: `${baseUrl}/widget/${channel.chzzk_channel_id}`,
+    isConnected,
+    hasTokens,
   })
 }

@@ -1,4 +1,3 @@
-// src/app/widget/[channelId]/page.tsx
 import WidgetPage from '@/components/WidgetPage'
 
 interface PageProps {
