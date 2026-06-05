@@ -20,7 +20,7 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
 # Install production dependencies (includes tsx for running server.ts)
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Create data directory for SQLite
 RUN mkdir -p /app/data
