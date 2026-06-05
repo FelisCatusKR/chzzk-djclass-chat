@@ -2,6 +2,10 @@
 
 V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니다.
 
+![Widget Screenshot](./docs/screenshot.png)
+
+> 위 스크린샷은 OBS 위젯 화면으로, 실제 채팅 메시지에 DJ CLASS 뱃지가 표시되는 모습입니다.
+
 ## 기능
 
 - **스트리머**: OBS Browser Source로 채팅 위젯을 추가할 수 있습니다.
@@ -55,6 +59,29 @@ npm run worker
 
 # 테스트
 npm test
+```
+
+### 스크린샷 생성
+
+아래 명령으로 README에 사용되는 위젯 스크린샷을 생성할 수 있습니다.
+Chromium 시스템 의존성이 필요합니다 (Trixie 환경에서는 아래 패키지를 설치하세요):
+
+```bash
+# 시스템 의존성 설치 (root 권한 필요)
+sudo apt-get update
+sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
+  libxkbcommon0 libgbm1 libcairo2 libpango-1.0-0 libxcomposite1 \
+  libxdamage1 libxfixes3 libxrandr2 libatspi2.0-0
+
+# Playwright 브라우저 설치
+npx playwright install chromium
+
+# 개발 서버 실행 후 (별도 터미널)
+npm run dev
+
+# 스크린샷 생성
+npm run screenshot
+# → docs/screenshot.png
 ```
 
 ## 사용 방법
