@@ -6,7 +6,7 @@
 
 **Architecture:** Next.js 15 (App Router) serves web UI, API routes, and the OBS widget page. A separate Node.js worker process runs daily cron jobs to sync DJ CLASS data. SQLite stores users, tokens, and cached DJ CLASS. All UI is in Korean.
 
-**Tech Stack:** Next.js 15, TypeScript, better-sqlite3, node-cron, Tailwind CSS, Docker, Dokku
+**Tech Stack:** Next.js 15, TypeScript, better-sqlite3, node-cron, shadcn/ui, Tailwind CSS, Docker, Dokku
 
 ---
 
@@ -50,6 +50,7 @@
 │   │   ├── varchive.ts                 # V-ARCHIVE API client
 │   │   └── cache.ts                    # In-memory LRU cache for widget
 │   ├── components/
+│   │   ├── ui/                         # shadcn/ui components (auto-generated)
 │   │   ├── LandingPage.tsx
 │   │   ├── LinkPage.tsx
 │   │   ├── DashboardPage.tsx
@@ -96,7 +97,11 @@
     "react-dom": "^19.0.0",
     "better-sqlite3": "^12.1.0",
     "node-cron": "^3.0.3",
-    "lru-cache": "^11.0.0"
+    "lru-cache": "^11.0.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.6.0",
+    "@radix-ui/react-slot": "^1.1.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
@@ -104,8 +109,9 @@
     "@types/node-cron": "^3.0.11",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "tailwindcss": "^4.0.0",
-    "@tailwindcss/postcss": "^4.0.0",
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.0",
+    "autoprefixer": "^10.4.0",
     "typescript": "^5.7.0",
     "tsx": "^4.19.0",
     "vitest": "^3.0.0"
@@ -172,11 +178,174 @@ Run: `npm install`
 
 Expected: Dependencies installed successfully.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Initialize shadcn/ui**
+
+Create `components.json`:
+
+```json
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "default",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.ts",
+    "css": "src/app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils"
+  }
+}
+```
+
+Create `tailwind.config.ts`:
+
+```typescript
+import type { Config } from "tailwindcss"
+
+const config = {
+  darkMode: ["class"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
+  theme: {
+    container: {
+      center: true,
+      padding: "2rem",
+      screens: {
+        "2xl": "1400px",
+      },
+    },
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
+        },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
+        },
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+    },
+  },
+  plugins: [require("tailwindcss-animate")],
+} satisfies Config
+
+export default config
+```
+
+Create `postcss.config.js`:
+
+```javascript
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+Create `src/app/globals.css`:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+```
+
+Create `src/lib/utils.ts`:
+
+```typescript
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+```
+
+Install shadcn/ui components:
+
+Run: `npx shadcn-ui@latest add button card input label`
+
+Expected: Components installed in `src/components/ui/`
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add package.json tsconfig.json next.config.js .gitignore
-git commit -m "chore: initial project setup with Next.js 15"
+git add package.json tsconfig.json next.config.js .gitignore components.json tailwind.config.ts postcss.config.js src/app/globals.css src/lib/utils.ts src/components/ui/
+git commit -m "chore: initial project setup with Next.js 15 and shadcn/ui"
 ```
 
 ---
@@ -996,6 +1165,8 @@ git commit -m "feat: add channel and widget DJ CLASS lookup APIs"
 ```tsx
 // src/components/LandingPage.tsx
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function LandingPage() {
   return (
@@ -1008,20 +1179,20 @@ export default function LandingPage() {
           V-ARCHIVE의 DJ CLASS를 채팅에 표시하는 OBS 위젯 서비스입니다.
         </p>
 
-        <div className="space-y-4 pt-8">
-          <Link
-            href="/link"
-            className="block w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-          >
-            시청자이신가요? - DJ CLASS 연동하기
-          </Link>
-          <Link
-            href="/dashboard"
-            className="block w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-          >
-            스트리머이신가요? - 채팅 위젯 얻기
-          </Link>
-        </div>
+        <Card className="border-0 shadow-none bg-transparent">
+          <CardContent className="space-y-4 pt-8">
+            <Link href="/link" className="block w-full">
+              <Button size="lg" className="w-full py-6 text-lg">
+                시청자이신가요? - DJ CLASS 연동하기
+              </Button>
+            </Link>
+            <Link href="/dashboard" className="block w-full">
+              <Button size="lg" variant="secondary" className="w-full py-6 text-lg">
+                스트리머이신가요? - 채팅 위젯 얻기
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
         <footer className="pt-12 text-sm text-gray-400">
           <a
@@ -1074,6 +1245,11 @@ git commit -m "feat: add Korean landing page"
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function LinkPage() {
   const [token, setToken] = useState('')
@@ -1113,65 +1289,70 @@ export default function LinkPage() {
           DJ CLASS 연동
         </h1>
 
-        <div className="bg-white p-6 rounded-lg shadow space-y-4">
-          <p className="text-gray-600">
-            1. Chzzk에 로그인해주세요.
-          </p>
-          <a
-            href="/api/auth/chzzk"
-            className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-center font-medium transition-colors"
-          >
-            Chzzk 로그인
-          </a>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow space-y-4">
-          <p className="text-gray-600">
-            2. V-ARCHIVE Open API 조회토큰을 입력해주세요.
-          </p>
-          <p className="text-sm text-gray-400">
-            토큰은{' '}
-            <a
-              href="https://v-archive.net/mypage"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
-            >
-              V-ARCHIVE 마이페이지
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">1. Chzzk에 로그인</CardTitle>
+            <CardDescription>Chzzk 계정으로 로그인해주세요.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <a href="/api/auth/chzzk" className="block w-full">
+              <Button className="w-full">Chzzk 로그인</Button>
             </a>
-            에서 발급받을 수 있습니다.
-          </p>
+          </CardContent>
+        </Card>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              type="text"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="조회토큰을 입력하세요"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={status === 'loading'}
-            />
-            <button
-              type="submit"
-              disabled={status === 'loading' || !token.trim()}
-              className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
-            >
-              {status === 'loading' ? '연동 중...' : '연동하기'}
-            </button>
-          </form>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">2. V-ARCHIVE 토큰 입력</CardTitle>
+            <CardDescription>
+              토큰은{' '}
+              <a
+                href="https://v-archive.net/mypage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                V-ARCHIVE 마이페이지
+              </a>
+              에서 발급받을 수 있습니다.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="token">조회토큰</Label>
+                <Input
+                  id="token"
+                  type="text"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="조회토큰을 입력하세요"
+                  disabled={status === 'loading'}
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={status === 'loading' || !token.trim()}
+                className="w-full"
+              >
+                {status === 'loading' ? '연동 중...' : '연동하기'}
+              </Button>
+            </form>
 
-          {status === 'success' && (
-            <p className="text-green-600 text-center">{message}</p>
-          )}
-          {status === 'error' && (
-            <p className="text-red-600 text-center">{message}</p>
-          )}
-        </div>
+            {status === 'success' && (
+              <Alert className="mt-4 bg-green-50 border-green-200">
+                <AlertDescription className="text-green-800">{message}</AlertDescription>
+              </Alert>
+            )}
+            {status === 'error' && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertDescription>{message}</AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
 
-        <Link
-          href="/"
-          className="block text-center text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/" className="block text-center text-gray-500 hover:text-gray-700">
           ← 돌아가기
         </Link>
       </div>
@@ -1215,6 +1396,11 @@ git commit -m "feat: add viewer V-ARCHIVE linking page"
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface ChannelData {
   channelId: string
@@ -1253,7 +1439,9 @@ export default function DashboardPage() {
   if (error) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <p className="text-red-600">{error}</p>
+        <Alert variant="destructive" className="max-w-md">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       </main>
     )
   }
@@ -1268,43 +1456,38 @@ export default function DashboardPage() {
         {!data ? (
           <p className="text-center text-gray-500">로딩 중...</p>
         ) : (
-          <div className="bg-white p-6 rounded-lg shadow space-y-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                위젯 URL
-              </label>
+          <Card>
+            <CardHeader>
+              <CardTitle>위젯 URL</CardTitle>
+              <CardDescription>OBS Browser Source에 이 URL을 사용하세요.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <input
+                <Input
                   type="text"
                   value={data.widgetUrl}
                   readOnly
-                  className="flex-1 px-4 py-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-600"
+                  className="flex-1 bg-gray-100"
                 />
-                <button
-                  onClick={copyUrl}
-                  className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
+                <Button onClick={copyUrl}>
                   {copied ? '복사됨!' : 'URL 복사'}
-                </button>
+                </Button>
               </div>
-            </div>
 
-            <div className="space-y-2 pt-4">
-              <h2 className="font-medium text-gray-900">OBS 설정 방법</h2>
-              <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
-                <li>OBS에서 소스 추가 → 브라우저 선택</li>
-                <li>위 URL을 입력하세요</li>
-                <li>너비: 400, 높이: 600 권장</li>
-                <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
-              </ol>
-            </div>
-          </div>
+              <div className="space-y-2 pt-4">
+                <h2 className="font-medium">OBS 설정 방법</h2>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600">
+                  <li>OBS에서 소스 추가 → 브라우저 선택</li>
+                  <li>위 URL을 입력하세요</li>
+                  <li>너비: 400, 높이: 600 권장</li>
+                  <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
-        <Link
-          href="/"
-          className="block text-center text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/" className="block text-center text-gray-500 hover:text-gray-700">
           ← 돌아가기
         </Link>
       </div>
