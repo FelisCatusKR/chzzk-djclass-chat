@@ -50,13 +50,13 @@ export async function getDjClass(nickname: string, button: number): Promise<Varc
   return response.json()
 }
 
-export async function getHighestDjClass(nickname: string): Promise<VarchiveDjClass | null> {
+export async function getHighestDjClass(nickname: string): Promise<(VarchiveDjClass & { button: number }) | null> {
   const buttons = [8, 6, 5, 4]
   for (const button of buttons) {
     try {
       const result = await getDjClass(nickname, button)
       if (result.success && result.djClass) {
-        return result
+        return { ...result, button }
       }
     } catch {
       continue

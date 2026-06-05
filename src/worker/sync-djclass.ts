@@ -57,7 +57,7 @@ export async function syncDjClasses(): Promise<{
               synced_at = excluded.synced_at
           `).run(
             token.user_id,
-            djClassData.djPowerSum,
+            djClassData.button,
             djClassData.djClass,
             djClassData.djPowerSum,
             djClassData.maxDjPower
