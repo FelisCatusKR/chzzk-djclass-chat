@@ -1,9 +1,19 @@
 const { chromium } = require('playwright');
 
 (async () => {
-  // Connect to Lightpanda CDP server
-  const browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
-  const context = browser.contexts()[0] || await browser.newContext();
+  // Check if dev server is running
+  try {
+    const res = await fetch('http://localhost:3000', { signal: AbortSignal.timeout(2000) });
+    if (!res.ok) throw new Error('Server not ready');
+  } catch {
+    console.error('❌ Development server is not running on http://localhost:3000');
+    console.error('   Please run "npm run dev" in another terminal first.');
+    process.exit(1);
+  }
+
+  // Launch Playwright's built-in Chromium (not Lightpanda — it has no graphics engine)
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
   const page = await context.newPage();
 
   // Set viewport to OBS widget size
@@ -113,7 +123,7 @@ const { chromium } = require('playwright');
     fullPage: false,
   });
 
-  console.log('Screenshot saved to docs/screenshot.png');
+  console.log('✅ Screenshot saved to docs/screenshot.png');
 
   await browser.close();
 })();
