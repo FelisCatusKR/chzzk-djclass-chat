@@ -67,8 +67,8 @@ export async function getHighestDjClass(nickname: string): Promise<(VarchiveDjCl
 
   if (results.length === 0) return null
 
-  // Return the button with the highest djPowerSum
+  // Return the button with the highest djPowerConversion (actual DJ CLASS point value)
   return results.reduce((best, current) =>
-    current.djPowerSum > best.djPowerSum ? current : best
+    current.djPowerConversion > best.djPowerConversion ? current : best
   )
 }

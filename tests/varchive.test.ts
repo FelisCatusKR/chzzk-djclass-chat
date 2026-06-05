@@ -9,7 +9,7 @@ describe('V-ARCHIVE API', () => {
     vi.mocked(fetch).mockClear()
   })
 
-  it('should return the button with the highest djPowerSum', async () => {
+  it('should return the button with the highest djPowerConversion', async () => {
     const mockFetch = vi.mocked(fetch)
     
     // 4-button: lower score
@@ -19,28 +19,31 @@ describe('V-ARCHIVE API', () => {
         success: true,
         djClass: 'HIGH CLASS I',
         djPowerSum: 5000.0,
+        djPowerConversion: 5500.0,
         maxDjPower: 6000.0,
       }),
     } as Response)
-    // 5-button: medium score
+    // 5-button: highest djPowerConversion
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true,
         djClass: 'HIGH CLASS II',
-        djPowerSum: 7707.418,
+        djPowerSum: 7000.0,
+        djPowerConversion: 8385.9047,
         maxDjPower: 9190.92,
       }),
     } as Response)
     // 6-button: fails
     mockFetch.mockRejectedValueOnce(new Error('Not found'))
-    // 8-button: lower than 5-button
+    // 8-button: lower djPowerConversion than 5-button
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true,
         djClass: 'HIGH CLASS I',
-        djPowerSum: 6000.0,
+        djPowerSum: 8000.0,
+        djPowerConversion: 6000.0,
         maxDjPower: 7000.0,
       }),
     } as Response)
@@ -48,7 +51,7 @@ describe('V-ARCHIVE API', () => {
     const result = await getHighestDjClass('testuser')
     expect(result?.djClass).toBe('HIGH CLASS II')
     expect(result?.button).toBe(5)
-    expect(result?.djPowerSum).toBe(7707.418)
+    expect(result?.djPowerConversion).toBe(8385.9047)
     expect(mockFetch).toHaveBeenCalledTimes(4)
   })
 
