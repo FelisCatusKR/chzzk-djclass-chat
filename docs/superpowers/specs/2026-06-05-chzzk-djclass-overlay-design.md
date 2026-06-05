@@ -1,6 +1,6 @@
 # Chzzk DJ CLASS OBS Overlay - Design Spec
 
-**Date:** 2025-01-15  
+**Date:** 2026-06-05  
 **Topic:** chzzk-djclass-overlay  
 **Status:** Approved
 
@@ -102,7 +102,7 @@ CREATE TABLE dj_classes (
 
 - **Token Encryption:** V-ARCHIVE tokens are encrypted at rest using `AES-256-GCM` with a key from the `VARCHIVE_TOKEN_KEY` environment variable.
 - **Nickname from Token:** The V-ARCHIVE nickname is fetched once during linking via `/api/v2/open-token/user` and stored. It is used to look up DJ CLASS via `/api/v2/archive/{nickname}/djClass/{button}`.
-- **Button Selection:** The **highest** available button (8 > 6 > 5 > 4) is used for DJ CLASS lookup. This is non-configurable to prevent users from displaying a class they haven't earned.
+- **Button Selection:** All buttons (4, 5, 6, 8) are tried, and the one with the highest **DJ POWER** (`djPowerConversion`) is selected. This is non-configurable to prevent users from displaying a class they haven't earned.
 - **Daily Sync:** The worker fetches fresh DJ CLASS for all active `varchive_tokens` and upserts into `dj_classes`.
 
 ---
@@ -207,14 +207,12 @@ All UI text is in **Korean**.
 | Method | Route | Description |
 |--------|-------|-------------|
 | POST | `/api/user/link-varchive` | Submit V-ARCHIVE token (validates via V-ARCHIVE API) |
-| GET | `/api/user/status` | Check if current user has linked V-ARCHIVE |
 
 ### 7.3 Streamer
 
 | Method | Route | Description |
 |--------|-------|-------------|
-| GET | `/api/channel` | Get current user's channel info (creates if not exists) |
-| GET | `/api/channel/widget-url` | Get the unique widget URL |
+| GET | `/api/channel` | Get current user's channel info and widget URL (creates if not exists) |
 
 ### 7.4 Widget
 
@@ -237,16 +235,16 @@ All UI text is in **Korean**.
    - Decrypt the token.
    - Call `GET /api/v2/open-token/user` to get current V-ARCHIVE nickname.
    - If nickname changed, update `varchive_tokens.varchive_nickname`.
-   - Try buttons in descending order: 8, 6, 5, 4.
-   - For the first successful button, call `GET /api/v2/archive/{nickname}/djClass/{button}`.
-   - Upsert into `dj_classes` table.
+   - Try all buttons: 4, 5, 6, 8.
+   - Select the button with the highest **DJ POWER** (`djPowerConversion`).
+   - Upsert into `dj_classes` table with the selected button.
 3. Log successes and failures.
 4. Continue on individual failures (don't let one bad token stop the whole batch).
 
-### 8.2 Retry Logic
+### 8.2 Error Handling
 
-- Individual API failures: 3 retries with exponential backoff (1s, 2s, 4s).
-- Full batch failure: Log error, retry next scheduled run.
+- Individual API failures: Log error, skip user, continue batch.
+- Full batch failure: Log error, retry at next scheduled run (03:00 KST next day).
 
 ---
 
@@ -271,25 +269,22 @@ All UI text is in **Korean**.
   - `VARCHIVE_TOKEN_KEY` (encryption key)
   - `DATABASE_URL` (SQLite file path)
   - No manual sync endpoint — the worker runs autonomously on schedule
-- **Session:** Encrypted cookies (NextAuth.js or custom session middleware).
+- **Session:** Simple `user_id` httpOnly cookie set by OAuth callback (7-day expiry).
 - **Widget URL:** Public but unguessable (channel ID is not secret, just obscure).
 
 ---
 
 ## 11. Testing Strategy
 
+**Implemented:**
 - **Unit Tests:**
-  - Token encryption/decryption round-trip.
-  - DJ CLASS API response parsing.
-  - Button selection logic (highest available).
-- **Integration Tests:**
-  - OAuth callback flow (mock Chzzk API).
-  - V-ARCHIVE token validation (mock V-ARCHIVE API).
-  - Full linking flow: OAuth → token submission → DB state.
-- **Manual Tests:**
-  - OBS widget rendering in actual OBS.
-  - Real-time Chzzk chat connection.
-  - Daily sync job execution.
+  - Token encryption/decryption round-trip (`tests/crypto.test.ts`).
+  - Database schema initialization and constraints (`tests/db.test.ts`).
+  - DJ CLASS API response parsing and button selection (`tests/varchive.test.ts`).
+
+**Planned (not yet implemented):**
+- Integration tests for OAuth callback flow.
+- Manual testing: OBS widget rendering, real Chzzk chat connection, daily sync job execution.
 
 ---
 
