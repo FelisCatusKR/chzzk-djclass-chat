@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { initDb } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
 import { lookupUser } from '@/lib/varchive'
+import { verifySessionCookie } from '@/lib/session'
 
 export async function POST(request: NextRequest) {
-  const userId = request.cookies.get('user_id')?.value
+  const signedSession = request.cookies.get('session')?.value
+  const userId = signedSession ? verifySessionCookie(signedSession) : null
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

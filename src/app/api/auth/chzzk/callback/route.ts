@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForToken, getUserInfo } from '@/lib/chzzk'
 import { initDb } from '@/lib/db'
+import { createSessionCookie } from '@/lib/session'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
     const result = stmt.get(userInfo.userId, userInfo.nickname) as { id: number }
 
     const response = NextResponse.redirect(new URL('/link', request.url))
-    response.cookies.set('user_id', String(result.id), {
+    response.cookies.set('session', createSessionCookie(result.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

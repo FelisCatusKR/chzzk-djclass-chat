@@ -266,10 +266,12 @@ All UI text is in **Korean**.
 - **Token Encryption:** V-ARCHIVE tokens encrypted with AES-256-GCM.
 - **Environment Variables:**
   - `CHZZK_CLIENT_ID`, `CHZZK_CLIENT_SECRET`
-  - `VARCHIVE_TOKEN_KEY` (encryption key)
+  - `VARCHIVE_TOKEN_KEY` (AES-256-GCM encryption key for V-ARCHIVE tokens)
+  - `SESSION_SECRET` (HMAC-SHA256 signing key for session cookies)
   - `DATABASE_URL` (SQLite file path)
+  - `NEXT_PUBLIC_BASE_URL` (public base URL for OAuth callbacks)
   - No manual sync endpoint — the worker runs autonomously on schedule
-- **Session:** Simple `user_id` httpOnly cookie set by OAuth callback (7-day expiry).
+- **Session:** HMAC-SHA256 signed `session` httpOnly cookie. The cookie value is `${userId}.${signature}` where signature is derived from `SESSION_SECRET`. This prevents session tampering (users can't forge another user's session by changing the cookie value).
 - **Widget URL:** Public but unguessable (channel ID is not secret, just obscure).
 
 ---
@@ -281,6 +283,7 @@ All UI text is in **Korean**.
   - Token encryption/decryption round-trip (`tests/crypto.test.ts`).
   - Database schema initialization and constraints (`tests/db.test.ts`).
   - DJ CLASS API response parsing and button selection (`tests/varchive.test.ts`).
+  - Session cookie signing and tamper resistance (`tests/session.test.ts`).
 
 **Planned (not yet implemented):**
 - Integration tests for OAuth callback flow.
