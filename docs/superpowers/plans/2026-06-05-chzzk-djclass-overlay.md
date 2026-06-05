@@ -636,19 +636,27 @@ export async function getDjClass(nickname: string, button: number): Promise<Varc
   return response.json()
 }
 
-export async function getHighestDjClass(nickname: string): Promise<VarchiveDjClass | null> {
-  const buttons = [8, 6, 5, 4]
+export async function getHighestDjClass(nickname: string): Promise<(VarchiveDjClass & { button: number }) | null> {
+  const buttons = [4, 5, 6, 8]
+  const results: Array<VarchiveDjClass & { button: number }> = []
+
   for (const button of buttons) {
     try {
       const result = await getDjClass(nickname, button)
       if (result.success && result.djClass) {
-        return result
+        results.push({ ...result, button })
       }
     } catch {
-      continue
+      // Skip failed buttons
     }
   }
-  return null
+
+  if (results.length === 0) return null
+
+  // Return the button with the highest DJ POWER (djPowerConversion)
+  return results.reduce((best, current) =>
+    current.djPowerConversion > best.djPowerConversion ? current : best
+  )
 }
 ```
 
@@ -663,25 +671,50 @@ import { getHighestDjClass, getDjClass } from '../src/lib/varchive'
 global.fetch = vi.fn()
 
 describe('V-ARCHIVE API', () => {
-  it('should try buttons in descending order and return first success', async () => {
+  it('should return the button with the highest DJ POWER (djPowerConversion)', async () => {
     const mockFetch = vi.mocked(fetch)
     
-    // 8-button fails
-    mockFetch.mockRejectedValueOnce(new Error('Not found'))
-    // 6-button succeeds
+    // 4-button: lower DJ POWER
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        djClass: 'HIGH CLASS I',
+        djPowerSum: 5000.0,
+        djPowerConversion: 5500.0,
+        maxDjPower: 6000.0,
+      }),
+    } as Response)
+    // 5-button: highest DJ POWER
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         success: true,
         djClass: 'HIGH CLASS II',
-        djPowerSum: 7707.418,
+        djPowerSum: 7000.0,
+        djPowerConversion: 8385.9047,
         maxDjPower: 9190.92,
+      }),
+    } as Response)
+    // 6-button: fails
+    mockFetch.mockRejectedValueOnce(new Error('Not found'))
+    // 8-button: lower DJ POWER than 5-button
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        djClass: 'HIGH CLASS I',
+        djPowerSum: 8000.0,
+        djPowerConversion: 6000.0,
+        maxDjPower: 7000.0,
       }),
     } as Response)
 
     const result = await getHighestDjClass('testuser')
     expect(result?.djClass).toBe('HIGH CLASS II')
-    expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(result?.button).toBe(5)
+    expect(result?.djPowerConversion).toBe(8385.9047)
+    expect(mockFetch).toHaveBeenCalledTimes(4)
   })
 
   it('should return null if all buttons fail', async () => {
