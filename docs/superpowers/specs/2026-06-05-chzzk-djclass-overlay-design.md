@@ -311,7 +311,7 @@ All UI text is in **Korean**.
 dokku apps:create chzzk-djclass-overlay
 
 # Set environment variables
-dokku config:set chzzk-djclass-overlay CHZZK_CLIENT_ID=xxx CHZZK_CLIENT_SECRET=xxx VARCHIVE_TOKEN_KEY=xxx CRON_SECRET=xxx
+dokku config:set chzzk-djclass-overlay CHZZK_CLIENT_ID=xxx CHZZK_CLIENT_SECRET=xxx VARCHIVE_TOKEN_KEY=xxx
 
 # Create volume for SQLite persistence
 dokku storage:mount chzzk-djclass-overlay /var/lib/dokku/data/storage/chzzk-djclass-overlay:/app/data
