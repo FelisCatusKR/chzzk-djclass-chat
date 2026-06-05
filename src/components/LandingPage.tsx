@@ -28,7 +28,18 @@ export default function LandingPage() {
           </CardContent>
         </Card>
 
-        <footer className="pt-12 text-sm text-gray-400">
+        <footer className="pt-12 text-sm text-gray-400 space-y-2">
+          <div>
+            Special Thanks to{' '}
+            <a
+              href="https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-600 underline"
+            >
+              똘똘똘이 님
+            </a>
+          </div>
           <a
             href="https://github.com/yourusername/chzzk-djclass-overlay"
             target="_blank"

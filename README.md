@@ -150,6 +150,10 @@ dokku ps:scale chzzk-djclass-overlay web=1 worker=1
 - 세션 쿠키: HMAC-SHA256 서명 (`session` 쿠키)
 - SQLite: WAL 모드, 외래 키, CHECK 제약조건 사용
 
+## Credit
+
+Special Thanks to [**똘똘똘이 님**](https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9)
+
 ## 라이선스
 
 MIT
