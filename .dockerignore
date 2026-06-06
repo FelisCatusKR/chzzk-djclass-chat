@@ -1,7 +1,9 @@
 node_modules
-.next
-.git
-tests
+.next/cache
 data
-*.md
-.env*
+test-data
+.env
+.env.local
+.git
+docs
+*.log

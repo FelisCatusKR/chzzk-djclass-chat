@@ -12,3 +12,4 @@ coverage/
 tsconfig.tsbuildinfo
 next-env.d.ts
 .superpowers/
+/test-data
