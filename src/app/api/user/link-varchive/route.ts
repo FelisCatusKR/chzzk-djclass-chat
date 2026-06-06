@@ -5,6 +5,7 @@ import { lookupUser } from '@/lib/varchive'
 import { verifySessionCookie } from '@/lib/session'
 import { invalidateAllUserCaches } from '@/lib/cache'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   const rl = rateLimit(`link:${getClientIp(request)}`, 5, 60_000)
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       message: '연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.',
     })
   } catch (error) {
-    console.error('Link V-ARCHIVE error:', error)
+    logger.error('Link V-ARCHIVE error:', error)
     const errorCode =
       error instanceof Error && error.message.includes('fetch')
         ? 'NETWORK_ERROR'

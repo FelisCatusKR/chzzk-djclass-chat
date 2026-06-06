@@ -5,6 +5,7 @@ import { decrypt } from '@/lib/crypto'
 import { lookupUser, getHighestDjClass } from '@/lib/varchive'
 import { invalidateAllUserCaches } from '@/lib/cache'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   const rl = rateLimit(`sync:${getClientIp(request)}`, 3, 60_000)
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
       djPowerConversion: djClassData?.djPowerConversion ?? 0,
     })
   } catch (error) {
-    console.error('Manual sync error:', error)
+    logger.error('Manual sync error:', error)
     return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
   } finally {
     db.close()
