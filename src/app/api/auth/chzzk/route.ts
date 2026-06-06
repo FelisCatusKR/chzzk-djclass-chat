@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOAuthUrl } from '@/lib/chzzk'
 import { randomBytes } from 'crypto'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const rl = rateLimit(`auth:${getClientIp(request)}`, 10, 60_000)
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   const state = randomBytes(32).toString('hex')
   const url = getOAuthUrl(state)
 
-  console.log('[OAuth Init] Redirecting to:', url)
+  logger.debug('[OAuth Init] redirecting')
 
   const response = NextResponse.redirect(url)
   response.cookies.set('oauth_state', state, {

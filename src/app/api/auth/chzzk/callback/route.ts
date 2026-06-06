@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForToken, getUserInfo } from '@/lib/chzzk'
+import { logger } from '@/lib/logger'
 import { initDb } from '@/lib/db'
 import { createSessionCookie } from '@/lib/session'
 import { encrypt } from '@/lib/crypto'
@@ -20,36 +21,25 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state')
   const storedState = request.cookies.get('oauth_state')?.value
 
-  console.log(
-    '[OAuth Callback] code:',
-    code ? code.substring(0, 10) + '...' : 'missing'
-  )
-  console.log(
-    '[OAuth Callback] state:',
-    state ? state.substring(0, 10) + '...' : 'missing'
-  )
-  console.log(
-    '[OAuth Callback] storedState:',
-    storedState ? storedState.substring(0, 10) + '...' : 'missing'
-  )
+  logger.debug('[OAuth Callback] received callback')
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.url
 
   if (!code || !state || !storedState || state !== storedState) {
-    console.error('[OAuth Callback] State mismatch or missing parameters')
+    logger.warn('[OAuth Callback] State mismatch or missing parameters')
     return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
   }
 
   try {
-    console.log('[OAuth Callback] Exchanging code for token...')
+    logger.debug('[OAuth Callback] Exchanging code for token...')
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(
       code,
       state
     )
-    console.log('[OAuth Callback] Token received')
+    logger.debug('[OAuth Callback] Token received')
 
     const userInfo = await getUserInfo(accessToken)
-    console.log('[OAuth Callback] User info:', {
+    logger.debug('[OAuth Callback] User info:', {
       userId: userInfo.userId,
       nickname: userInfo.nickname,
     })
@@ -122,13 +112,13 @@ export async function GET(request: NextRequest) {
               djData.maxDjPower,
               djData.djPowerConversion
             )
-            console.log(
+            logger.debug(
               `[OAuth Callback] Auto-synced DJ CLASS for user ${result.id}`
             )
           }
         }
       } catch (syncErr) {
-        console.error(
+        logger.error(
           `[OAuth Callback] Auto-sync failed for user ${result.id}:`,
           syncErr
         )
@@ -147,9 +137,9 @@ export async function GET(request: NextRequest) {
     db.close()
     return response
   } catch (error) {
-    console.error('[OAuth Callback] Error:', error)
+    logger.error('[OAuth Callback] Error:', error)
     if (error instanceof Error) {
-      console.error('[OAuth Callback] Error details:', error.message)
+      logger.error('[OAuth Callback] Error details:', error.message)
     }
     return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
   }

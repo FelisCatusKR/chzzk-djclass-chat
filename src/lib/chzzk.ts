@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 const CHZZK_AUTH_URL = 'https://chzzk.naver.com/account-interlock'
 const CHZZK_TOKEN_URL = 'https://openapi.chzzk.naver.com/auth/v1/token'
 const CHZZK_API_URL = 'https://openapi.chzzk.naver.com/open/v1'
@@ -91,7 +93,7 @@ export async function getUserInfo(accessToken: string): Promise<{
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.log(`[Chzzk] User info ${response.status} response:`, errorText)
+    logger.error('[Chzzk] User info fetch failed:', response.status)
     throw new Error(`User info fetch failed: ${response.status} - ${errorText}`)
   }
 

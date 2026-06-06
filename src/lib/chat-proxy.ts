@@ -3,6 +3,7 @@ import { initDb } from './db'
 import { decrypt } from './crypto'
 import { refreshAccessToken } from './chzzk'
 import { encrypt } from './crypto'
+import { logger } from './logger'
 import type { SocketIOClientSocket, SocketIOEventPacket } from './types'
 
 interface ChatMessage {
@@ -51,9 +52,6 @@ async function getSessionUrl(accessToken: string): Promise<string> {
 
   const data = await response.json()
   const content = data.content || data
-  console.log(
-    `[ChatProxy] Session URL response: ${JSON.stringify({ code: data.code, message: data.message, urlPrefix: content.url?.substring(0, 60) })}`
-  )
   return content.url
 }
 
@@ -61,10 +59,6 @@ async function subscribeToChat(
   accessToken: string,
   sessionKey: string
 ): Promise<void> {
-  console.log(
-    `[ChatProxy] Subscribing to chat with sessionKey ${sessionKey.substring(0, 15)}...`
-  )
-
   const response = await fetch(
     `https://openapi.chzzk.naver.com/open/v1/sessions/events/subscribe/chat?sessionKey=${encodeURIComponent(sessionKey)}`,
     {
@@ -82,18 +76,18 @@ async function subscribeToChat(
     throw new Error(`Subscribe failed: ${response.status} - ${errorText}`)
   }
 
-  console.log(`[ChatProxy] Subscribe response OK`)
+  logger.debug(`[ChatProxy] Subscribe response OK`)
 }
 
 export async function connectToChat(channelId: string): Promise<void> {
   // Check for existing connection or in-progress connection
   const existing = connections.get(channelId)
   if (existing?.socket?.connected) {
-    console.log(`[ChatProxy] Already connected to ${channelId}`)
+    logger.debug(`[ChatProxy] Already connected to ${channelId}`)
     return
   }
   if (existing?.connectingPromise) {
-    console.log(
+    logger.debug(
       `[ChatProxy] Connection in progress for ${channelId}, waiting...`
     )
     await existing.connectingPromise
@@ -143,7 +137,7 @@ export async function connectToChat(channelId: string): Promise<void> {
       | undefined
 
     if (!channel || !channel.chzzk_access_token_encrypted) {
-      console.log(`[ChatProxy] No tokens found for ${channelId}`)
+      logger.debug(`[ChatProxy] No tokens found for ${channelId}`)
       return
     }
 
@@ -160,7 +154,7 @@ export async function connectToChat(channelId: string): Promise<void> {
       tokenExpiresRow &&
       new Date(tokenExpiresRow.token_expires_at) < new Date()
     ) {
-      console.log(
+      logger.debug(
         `[ChatProxy] Access token expired for ${channelId}, refreshing...`
       )
       if (channel.chzzk_refresh_token_encrypted) {
@@ -191,30 +185,27 @@ export async function connectToChat(channelId: string): Promise<void> {
             channelId
           )
 
-          console.log(`[ChatProxy] Token refreshed for ${channelId}`)
+          logger.debug(`[ChatProxy] Token refreshed for ${channelId}`)
         } catch (refreshErr) {
-          console.error(
+          logger.error(
             `[ChatProxy] Token refresh failed for ${channelId}:`,
             refreshErr
           )
           return
         }
       } else {
-        console.log(`[ChatProxy] No refresh token available for ${channelId}`)
+        logger.debug(`[ChatProxy] No refresh token available for ${channelId}`)
         return
       }
     }
 
-    console.log(`[ChatProxy] Getting session URL for ${channelId}`)
+    logger.debug(`[ChatProxy] Getting session URL for ${channelId}`)
     const sessionUrlBase = await getSessionUrl(accessToken)
 
     // The API may already include auth; don't double-append
     const sessionUrl = sessionUrlBase.includes('?auth=')
       ? sessionUrlBase
       : `${sessionUrlBase}?auth=${encodeURIComponent(accessToken)}`
-    console.log(
-      `[ChatProxy] Full session URL: ${sessionUrl.substring(0, 120)}...`
-    )
 
     // Clear any existing connection's disconnect timeout
     if (conn.disconnectTimeout) {
@@ -224,7 +215,7 @@ export async function connectToChat(channelId: string): Promise<void> {
 
     conn.accessToken = accessToken
 
-    console.log(`[ChatProxy] Creating Socket.IO connection for ${channelId}`)
+    logger.debug(`[ChatProxy] Creating Socket.IO connection for ${channelId}`)
 
     // Socket.IO v2 options from Chzzk docs
     const socket = io(sessionUrl, {
@@ -237,7 +228,7 @@ export async function connectToChat(channelId: string): Promise<void> {
     conn.socket = socket
 
     socket.on('connect', () => {
-      console.log(
+      logger.debug(
         `[ChatProxy] Socket CONNECTED for ${channelId}, socket.id=${socket.id}`
       )
     })
@@ -253,7 +244,7 @@ export async function connectToChat(channelId: string): Promise<void> {
       } else if (typeof data === 'object' && data !== null) {
         parsed = data as Record<string, unknown>
       }
-      console.log(
+      logger.debug(
         `[ChatProxy] SYSTEM event for ${channelId}: type=${parsed.type}, data=`,
         JSON.stringify(parsed.data || {})
       )
@@ -262,25 +253,19 @@ export async function connectToChat(channelId: string): Promise<void> {
       if (parsed.type === 'connected' && parsedData?.sessionKey) {
         const sessionKey = String(parsedData.sessionKey)
         conn.sessionKey = sessionKey
-        console.log(
-          `[ChatProxy] Got sessionKey for ${channelId}: ${sessionKey.substring(0, 15)}...`
-        )
 
         try {
           await subscribeToChat(accessToken, sessionKey)
-          console.log(
+          logger.debug(
             `[ChatProxy] Subscribe API called successfully for ${channelId}`
           )
         } catch (err) {
-          console.error(
-            `[ChatProxy] Failed to subscribe for ${channelId}:`,
-            err
-          )
+          logger.error(`[ChatProxy] Failed to subscribe for ${channelId}:`, err)
         }
       }
 
       if (parsed.type === 'subscribed') {
-        console.log(
+        logger.debug(
           `[ChatProxy] Subscription CONFIRMED for ${channelId}, eventType=${parsedData?.eventType}, channelId=${parsedData?.channelId}`
         )
       }
@@ -303,7 +288,7 @@ export async function connectToChat(channelId: string): Promise<void> {
       const content = String(parsed.content ?? '')
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log(
+        logger.debug(
           `[ChatProxy] CHAT event for ${channelId}:`,
           JSON.stringify({
             sender,
@@ -337,21 +322,21 @@ export async function connectToChat(channelId: string): Promise<void> {
         }
       })
       if (process.env.NODE_ENV !== 'production') {
-        console.log(
+        logger.debug(
           `[ChatProxy] Forwarded CHAT to ${sent}/${conn.widgets.size} widgets`
         )
       }
     })
 
     socket.on('disconnect', (reason: string) => {
-      console.log(
+      logger.debug(
         `[ChatProxy] Socket DISCONNECTED for ${channelId}, reason=${reason}`
       )
       conn.socket = null
       conn.sessionKey = null
       if (conn.widgets.size > 0) {
         // Widgets are still connected — retry after delay
-        console.log(
+        logger.debug(
           `[ChatProxy] Scheduling reconnect for ${channelId} (${conn.widgets.size} widgets waiting)`
         )
         setTimeout(() => {
@@ -362,7 +347,7 @@ export async function connectToChat(channelId: string): Promise<void> {
             !checkConn.socket?.connected
           ) {
             connectToChat(channelId).catch((err) => {
-              console.error(
+              logger.error(
                 `[ChatProxy] Reconnect failed for ${channelId}:`,
                 err
               )
@@ -375,11 +360,11 @@ export async function connectToChat(channelId: string): Promise<void> {
     })
 
     socket.on('error', (err: Error) => {
-      console.error(`[ChatProxy] Socket ERROR for ${channelId}:`, err)
+      logger.error(`[ChatProxy] Socket ERROR for ${channelId}:`, err)
     })
 
     socket.on('connect_error', (err: Error) => {
-      console.error(
+      logger.error(
         `[ChatProxy] Connect ERROR for ${channelId}:`,
         err.message || err
       )
@@ -407,7 +392,7 @@ export async function connectToChat(channelId: string): Promise<void> {
                 /* keep raw */
               }
             }
-            console.log(
+            logger.debug(
               `[ChatProxy] Unknown event for ${channelId}:`,
               eventName,
               JSON.stringify(payload ?? {}).substring(0, 200)
@@ -438,7 +423,7 @@ export function disconnectFromChat(channelId: string): void {
       conn.socket.disconnect()
     }
     connections.delete(channelId)
-    console.log(`[ChatProxy] Disconnected from ${channelId}`)
+    logger.debug(`[ChatProxy] Disconnected from ${channelId}`)
   }
 }
 
@@ -457,7 +442,7 @@ export function addWidget(channelId: string, ws: WidgetSocket): void {
     connections.set(channelId, conn)
 
     connectToChat(channelId).catch((err) => {
-      console.error(`[ChatProxy] Failed to connect to ${channelId}:`, err)
+      logger.error(`[ChatProxy] Failed to connect to ${channelId}:`, err)
     })
   }
 
@@ -468,7 +453,7 @@ export function addWidget(channelId: string, ws: WidgetSocket): void {
   }
 
   conn.widgets.add(ws)
-  console.log(
+  logger.debug(
     `[ChatProxy] Widget added for ${channelId}, total widgets: ${conn.widgets.size}`
   )
 }
@@ -477,7 +462,7 @@ export function removeWidget(channelId: string, ws: WidgetSocket): void {
   const conn = connections.get(channelId)
   if (conn) {
     conn.widgets.delete(ws)
-    console.log(
+    logger.debug(
       `[ChatProxy] Widget removed for ${channelId}, remaining widgets: ${conn.widgets.size}`
     )
     if (conn.widgets.size === 0) {
