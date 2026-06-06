@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { BadgeMode } from '@/lib/types'
+import { FONT_SIZE_DEFAULT, parseFontSize } from '@/lib/font-size'
 import { SHORT_NAMES } from '@/lib/dj-class'
 import ChatMessageRow, { type ChatMessage } from './ChatMessageRow'
 
@@ -59,14 +60,16 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   const pendingQueueRef = useRef<PendingMessage[]>([])
   const isProcessingRef = useRef(false)
   const badgeModeRef = useRef<BadgeMode>('short')
+  const [fontSize, setFontSize] = useState<number>(FONT_SIZE_DEFAULT)
 
-  // Read badge mode from URL query parameter on mount
+  // Read badge mode and font size from URL query parameters on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const mode = params.get('mode')
     if (mode === 'threshold' || mode === 'power' || mode === 'short') {
       badgeModeRef.current = mode
     }
+    setFontSize(parseFontSize(params.get('fontSize')))
   }, [])
 
   useEffect(() => {
@@ -266,7 +269,10 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           채팅 연결 실패
         </div>
       )}
-      <div className="flex h-full flex-col justify-end space-y-1 px-2 py-2">
+      <div
+        className="flex h-full flex-col justify-end space-y-1 px-2 py-2"
+        style={{ fontSize }}
+      >
         {messages.map((msg) => (
           <ChatMessageRow
             key={msg.id}
