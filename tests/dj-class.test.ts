@@ -4,6 +4,8 @@ import {
   getDjClassColor,
   getBadgeText,
   parseRankName,
+  isTheoryPower,
+  THEORY_POWER_THRESHOLD,
   DJ_CLASS_COLORS,
   SHORT_NAMES,
 } from '../src/lib/dj-class'
@@ -75,5 +77,31 @@ describe('getBadgeText', () => {
 
   it('power mode defaults null power to 0', () => {
     expect(getBadgeText('power', '4B BEGINNER', 'BG', null, null)).toBe('4B 0')
+  })
+})
+
+describe('isTheoryPower', () => {
+  it('is true at exactly the threshold', () => {
+    expect(isTheoryPower(10000)).toBe(true)
+  })
+
+  it('is true above the threshold', () => {
+    expect(isTheoryPower(10001)).toBe(true)
+  })
+
+  it('is false just below the threshold', () => {
+    expect(isTheoryPower(9999)).toBe(false)
+  })
+
+  it('is false for null', () => {
+    expect(isTheoryPower(null)).toBe(false)
+  })
+
+  it('is false for undefined', () => {
+    expect(isTheoryPower(undefined)).toBe(false)
+  })
+
+  it('exposes the threshold constant as 10000', () => {
+    expect(THEORY_POWER_THRESHOLD).toBe(10000)
   })
 })

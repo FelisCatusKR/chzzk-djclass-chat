@@ -1,5 +1,16 @@
 import type { BadgeMode } from './types'
 
+// DJ power at or above this value is a "theory" (이론치) / perfect score.
+// Single source of truth for the theory check across badge rendering,
+// threshold-mode text, and previews.
+export const THEORY_POWER_THRESHOLD = 10000
+
+export function isTheoryPower(
+  powerInteger: number | null | undefined
+): boolean {
+  return powerInteger != null && powerInteger >= THEORY_POWER_THRESHOLD
+}
+
 // V-ARCHIVE DJ CLASS color scheme (from official wiki)
 export const DJ_CLASS_COLORS: Record<string, string> = {
   'THE LORD OF DJMAX': 'linear-gradient(to right, #f2b2f7, #acebff)',
