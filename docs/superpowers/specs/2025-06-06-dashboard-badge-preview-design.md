@@ -22,6 +22,12 @@ The widget page (`src/components/WidgetPage.tsx`) already renders badges with V-
 - Do not add a connection status indicator to the preview widget.
 - Do not create a separate preview page (all on Dashboard).
 
+## Design Principles
+
+**shadcn/ui first:** All dashboard UI elements must be built with shadcn/ui primitives (Card, Button, RadioGroup, etc.) rather than plain Tailwind utility classes. If an existing dashboard component uses raw Tailwind for structure or interaction, refactor it to the closest shadcn/ui equivalent during this work. The widget page (OBS-facing) may keep its optimized inline styles since it is a transparent overlay, but any new shared component that appears on the dashboard should follow shadcn/ui patterns.
+
+**Easily modifiable fake chat:** The fake message list in `src/lib/fake-chat-messages.ts` is the user's domain for personalization. The file must remain a flat, self-contained array export with no logic or imports from the rest of the app so it can be edited without risk.
+
 ## Architecture
 
 ### Extract Shared Components
@@ -120,8 +126,8 @@ interface BadgeModePreviewRowProps {
 ```
 
 **Rendering:**
-- A clickable card row with a radio-style indicator (filled circle when selected, empty ring when not).
-- Label text above the preview line.
+- Built on shadcn/ui `RadioGroup` / `RadioGroupItem` primitives (or custom row that matches the same accessibility/keyboard behavior). Do not use raw styled `<div>` radio indicators.
+- Label text above the preview line using shadcn/ui `Label`.
 - Preview line: `DjClassBadge` with fixed example data + the Korean text "안녕하세요".
 - Example data (hardcoded):
   - `djClass`: `"4B SHOWSTOPPER II"`
@@ -157,25 +163,25 @@ interface WidgetPreviewProps {
 | # | Text | Rank | Level | Power | Button | Theory | Unlinked |
 |---|------|------|-------|-------|--------|--------|----------|
 | 1 | 안녕하세요 | SHOWSTOPPER | II | 9823 | 4B | No | No |
-| 2 | 오늘 방송 너무 재밌어요! | SHOWSTOPPER | I | 9850 | 6B | No | No |
-| 3 | 처음 왔어요 잘 부탁드려요 | STREET DJ | — | — | 5B | No | No |
-| 4 | 커스텀 신청해도 될까요? | PRO DJ | III | 7200 | 8B | No | No |
-| 5 | 노래 선곡 최고... | HEADLINER | II | 9600 | 6B | No | No |
-| 6 | ㄱㅅㄱㅅ | TREND SETTER | I | 9300 | 4B | No | No |
+| 2 | 이거 쉽던데 | SHOWSTOPPER | I | 9888 | 6B | No | No |
+| 3 | 처음 왔어요 잘 부탁드려요 | STREET DJ | IV | 5342 | 5B | No | No |
+| 4 | 신청곡 넣어도 되나요? | PRO DJ | III | 7337 | 8B | No | No |
+| 5 | 망이조아 | HEADLINER | II | 9600 | 6B | No | No |
+| 6 | ㅎㅇ | THE LORD OF DJMAX | — | 10000 | 4B | Yes | No |
 | 7 | 스코어 인증 완료했습니다 | PROFESSIONAL | II | 8800 | 5B | Yes | No |
-| 8 | 방송 언제까지 하세요? | AMATEUR | III | 2800 | 6B | No | No |
-| 9 | 하이라이트 부탁 | MIDDLEMAN | I | 6800 | 8B | No | No |
-| 10 | 오늘 컨디션 별로네 | ROOKIE | II | 4600 | 4B | No | No |
-| 11 | 이거 좀 어렵... | BEGINNER | — | — | 5B | No | No |
-| 12 | 다음 곡 기대돼요 | HIGH CLASS | I | 8400 | 6B | No | No |
-| 13 | 클리어 ㄷㄷ | BEAT MAESTRO | IV | 9900 | 8B | No | No |
+| 8 | 로페바이럴 | AMATEUR | III | 2800 | 6B | No | No |
+| 9 | 잘 좀 해봐요 | MIDDLEMAN | I | 6999 | 8B | No | No |
+| 10 | 키보드 혹시 뭔가요? | ROOKIE | II | 4600 | 4B | No | No |
+| 11 | 이거 좀 어렵... | BEGINNER | — | 652 | 5B | No | No |
+| 12 | 오늘도 래더 하시나요? | HIGH CLASS | I | 8400 | 6B | No | No |
+| 13 | 지린다 ㄷㄷ | BEAT MAESTRO | IV | 9900 | 8B | No | No |
 | 14 | 반가워요 | TRAINEE | I | 2000 | 4B | No | No |
-| 15 | 핫딜 어디갔어 | PROFESSIONAL | I | 8900 | 5B | No | No |
-| 16 | 공략 영상 올려주세요 | TREND SETTER | II | 9200 | 6B | No | No |
-| 17 | 이 노래 뭐예요? | STREET DJ | III | 5500 | 4B | No | No |
-| 18 | 풀콤보 축하 | SHOWSTOPPER | III | 9750 | 8B | Yes | No |
-| 19 | 열심히 하고 있어요 | MIDDLEMAN | II | 6600 | 5B | No | No |
-| 20 | 방송 끝나면 같이 게임해요 | ROOKIE | I | 4900 | 6B | No | No |
+| 15 | 연타를 변기에 넣고 내려 | PROFESSIONAL | I | 8900 | 5B | No | No |
+| 16 | ㅁㅁㅁㅁㄷㄴㅅ | — | — | — | — | No | Yes |
+| 17 | 방금 어케 친거임 | STREET DJ | III | 5704 | 4B | No | No |
+| 18 | 퍼펙 ㅊㅊㅊㅊㅊ | SHOWSTOPPER | III | 9750 | 8B | Yes | No |
+| 19 | 탭소닉은다시돌아온다 | — | — | — | — | No | Yes |
+| 20 | 혹시 제가 연타를 잘 못하는데 이거 방법 있을까요? ㅠㅠ | ROOKIE | I | 4943 | 6B | No | No |
 
 > Note: The user will modify these messages later. The list should be defined in a separate file (`src/lib/fake-chat-messages.ts`) so it's easy to edit without touching component logic.
 
@@ -213,8 +219,10 @@ Both `WidgetPage` and `DjClassBadge` import from here.
 ## Styling Notes
 
 - `WidgetPreview` uses a dark background to simulate the transparent OBS widget over a dark scene. The `ChatMessageRow` inside it should use the same text-shadow and white text as the real widget.
-- `BadgeModePreviewRow` uses a light card background with dark text for readability on the dashboard.
-- The radio indicator in `BadgeModePreviewRow` is a simple SVG or CSS circle, not a native `<input type="radio">` (easier to style).
+- `BadgeModePreviewRow` is wrapped in a shadcn/ui `Card` or styled as a selectable row within a `RadioGroup`.
+- The radio indicator in `BadgeModePreviewRow` uses shadcn/ui `RadioGroupItem` (or a custom indicator that follows the same design tokens). Do not use a hand-rolled CSS circle.
+- Any layout spacing on the dashboard uses shadcn/ui `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent` instead of raw margin/padding utilities where possible.
+- If existing dashboard elements (e.g., the URL copy input/button, connection status badges) are using plain Tailwind, refactor them to shadcn/ui `Input`, `Button`, and `Badge` components during this work.
 
 ## Testing Strategy
 
