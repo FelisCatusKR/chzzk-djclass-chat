@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  let db: ReturnType<typeof initDb> | null = null
   try {
     const { token } = await request.json()
     if (!token || typeof token !== 'string') {
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Encrypt and store token
     const encryptedToken = encrypt(token)
-    const db = initDb()
+    db = initDb()
 
     const stmt = db.prepare(`
       INSERT INTO varchive_tokens (user_id, token_encrypted, varchive_nickname)
@@ -57,8 +58,6 @@ export async function POST(request: NextRequest) {
       .get(Number(userId)) as
       | { chzzk_id: string; chzzk_nickname: string }
       | undefined
-
-    db.close()
 
     // Invalidate cache so widget shows updated status immediately
     if (userRow) {
@@ -82,5 +81,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     )
+  } finally {
+    if (db) db.close()
   }
 }
