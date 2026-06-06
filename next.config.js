@@ -32,6 +32,7 @@ if (isProd) {
 }
 
 const nextConfig = {
+  allowedDevOrigins: ['dev-chatoverlay.felis.kr'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },
