@@ -297,7 +297,6 @@ export default function LinkPage() {
                                 {user.powerInteger}
                               </span>
                             )}
-
                           </>
                         )
                       })()}
