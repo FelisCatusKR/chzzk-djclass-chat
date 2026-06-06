@@ -26,3 +26,37 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm run build
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Never let two pushes race the same Dokku build.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      DOKKU_HOST: ${{ secrets.DOKKU_SSH_HOST }}
+      # cloudflared reads these for non-interactive Access service-token auth.
+      TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+    steps:
+      - name: Install cloudflared
+        run: |
+          sudo curl -fsSL \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o /usr/local/bin/cloudflared
+          sudo chmod +x /usr/local/bin/cloudflared
+      - name: Configure deploy SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.DOKKU_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Trigger Dokku deploy through Cloudflare Tunnel
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new \
+              -o ProxyCommand="cloudflared access ssh --hostname %h" \
+              dokku@"$DOKKU_HOST" -- \
+              git:sync --build chatoverlay \
+              https://github.com/FelisCatusKR/chzzk-djclass-chat.git main
