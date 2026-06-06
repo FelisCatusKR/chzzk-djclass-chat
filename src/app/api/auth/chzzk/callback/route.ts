@@ -5,8 +5,16 @@ import { createSessionCookie } from '@/lib/session'
 import { encrypt } from '@/lib/crypto'
 import { decrypt } from '@/lib/crypto'
 import { lookupUser, getHighestDjClass } from '@/lib/varchive'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
+  const rl = rateLimit(`authcb:${getClientIp(request)}`, 10, 60_000)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+      { status: 429 }
+    )
+  }
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
   const state = searchParams.get('state')

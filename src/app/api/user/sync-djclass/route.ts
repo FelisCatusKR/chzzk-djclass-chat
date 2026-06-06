@@ -4,8 +4,16 @@ import { initDb } from '@/lib/db'
 import { decrypt } from '@/lib/crypto'
 import { lookupUser, getHighestDjClass } from '@/lib/varchive'
 import { invalidateAllUserCaches } from '@/lib/cache'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
+  const rl = rateLimit(`sync:${getClientIp(request)}`, 3, 60_000)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+      { status: 429 }
+    )
+  }
   const sessionCookie = request.cookies.get('session')?.value
   if (!sessionCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

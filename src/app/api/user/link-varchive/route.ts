@@ -4,8 +4,16 @@ import { encrypt } from '@/lib/crypto'
 import { lookupUser } from '@/lib/varchive'
 import { verifySessionCookie } from '@/lib/session'
 import { invalidateAllUserCaches } from '@/lib/cache'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
+  const rl = rateLimit(`link:${getClientIp(request)}`, 5, 60_000)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+      { status: 429 }
+    )
+  }
   const signedSession = request.cookies.get('session')?.value
   const userId = signedSession ? verifySessionCookie(signedSession) : null
   if (!userId) {
