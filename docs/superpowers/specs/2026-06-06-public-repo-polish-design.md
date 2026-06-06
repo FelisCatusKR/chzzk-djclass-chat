@@ -19,6 +19,9 @@ Decisions made during brainstorming:
 - **Workflow:** Work directly on `main` (project is unpublished; no feature branch).
 - **Crypto fix:** Random per-record salt; reset the local DB (acceptable, unpublished).
 - **Docker fix:** Drop `output: 'standalone'`; keep running `tsx server.ts` at runtime.
+- **Node version:** Bump from 22 to **24** (current latest LTS). Verified 2026-06-06:
+  full 27-test suite passes under Node 24.15.0, `better-sqlite3@12.10.0` native module
+  loads under the Node 24 ABI (NODE_MODULE_VERSION 137), entire dependency stack compatible.
 
 ## Out of Scope (YAGNI — noted as "future", not built)
 
@@ -51,7 +54,9 @@ All user-facing copy in Korean.
 - `.editorconfig` — mirror `.prettierrc` (UTF-8, LF, 2-space, final newline).
 - Rename `LICENSE.md` → `LICENSE` (identical MIT content) so GitHub auto-detects it;
   update the README link.
-- README: add a badges row (CI status, license, Node 22+).
+- README: add a badges row (CI status, license, Node 24+).
+- Pin the Node version: add an `engines.node` field (`>=24`) to `package.json` and a
+  `.nvmrc` (`24`) so contributors and CI use the same runtime.
 
 **Done when:** GitHub "community standards" checklist items exist; license auto-detected.
 
@@ -61,7 +66,7 @@ All user-facing copy in Korean.
 
 - `.github/workflows/ci.yml`:
   - Triggers: `push` and `pull_request`.
-  - Node 22, `npm ci` with npm cache.
+  - Node 24, `npm ci` with npm cache.
   - Steps: `npm run lint`, `npm run format:check`, `npm test`, `npm run build`.
   - CI env: provide dummy values for required env vars so `build`/tests don't fail
     on missing secrets (no real secrets in CI).
@@ -129,6 +134,8 @@ items marked **Note** are documented but not changed unless trivial.
 
 ## Section 4 — Infra / Docker Cleanup
 
+- Bump both Dockerfile stages `node:22-alpine` → `node:24-alpine`; align README
+  ("Node.js 24+"), CI, `.nvmrc`, and `package.json` `engines`.
 - Remove `output: 'standalone'` from `next.config.js` (it is not used — runtime is
   `tsx server.ts`, required for the WebSocket proxy).
 - Update `Dockerfile`: stop copying `.next/standalone`; copy what `tsx server.ts`
