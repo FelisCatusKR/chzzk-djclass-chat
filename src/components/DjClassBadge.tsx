@@ -28,11 +28,12 @@ export default function DjClassBadge({
 
   return (
     <span
-      className="mr-1 inline-block rounded px-1 py-0.5 text-xs font-bold shadow-sm"
+      className="mr-1 inline-block rounded px-1 py-0.5 font-bold shadow-sm"
       style={{
         background: getDjClassColor(parseRankName(djClass)),
         color: '#000',
         textShadow: '0 0 1px rgba(255,255,255,0.5)',
+        fontSize: '0.85em',
       }}
     >
       {badgeText}

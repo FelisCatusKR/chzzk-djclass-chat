@@ -24,7 +24,7 @@ export default function ChatMessageRow({
 }: ChatMessageRowProps) {
   return (
     <div
-      className={`break-words text-sm ${
+      className={`break-words ${
         message.isUnlinked ? 'opacity-75' : 'opacity-100'
       }`}
     >
