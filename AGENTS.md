@@ -230,7 +230,7 @@ Required variables in `.env`:
 - **Docker:** Multi-stage `Dockerfile`
   - Base image: **Node.js 24**
   - Runtime: `tsx server.ts` (no `output: 'standalone'`)
-  - Includes a **HEALTHCHECK** (`wget -qO- http://localhost:PORT/api/health`)
+  - Includes a **HEALTHCHECK** that fetches `http://localhost:3000/` via Node's global `fetch`
 
 ---
 
