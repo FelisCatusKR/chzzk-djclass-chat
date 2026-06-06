@@ -15,10 +15,16 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { RadioGroup } from '@/components/ui/radio-group'
+import { Slider } from '@/components/ui/slider'
 import BadgeModePreviewRow from './BadgeModePreviewRow'
 import WidgetPreview from './WidgetPreview'
 
 import type { BadgeMode } from '@/lib/types'
+import {
+  FONT_SIZE_MIN,
+  FONT_SIZE_MAX,
+  FONT_SIZE_DEFAULT,
+} from '@/lib/font-size'
 
 interface ChannelData {
   channelId: string
@@ -36,6 +42,7 @@ const BADGE_MODE_LABELS: Record<BadgeMode, string> = {
 export default function DashboardPage() {
   const [data, setData] = useState<ChannelData | null>(null)
   const [badgeMode, setBadgeMode] = useState<BadgeMode>('short')
+  const [fontSize, setFontSize] = useState<number>(FONT_SIZE_DEFAULT)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
 
@@ -60,6 +67,7 @@ export default function DashboardPage() {
     const url = new URL(data.widgetUrl, window.location.origin)
     const m = mode || badgeMode
     url.searchParams.set('mode', m)
+    url.searchParams.set('fontSize', String(fontSize))
     return url.toString()
   }
 
@@ -188,13 +196,35 @@ export default function DashboardPage() {
 
               <Card>
                 <CardHeader>
+                  <CardTitle>글자 크기</CardTitle>
+                  <CardDescription>
+                    위젯 채팅 글자 크기를 선택하세요.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Slider
+                    aria-label="글자 크기"
+                    min={FONT_SIZE_MIN}
+                    max={FONT_SIZE_MAX}
+                    step={1}
+                    value={[fontSize]}
+                    onValueChange={(value) => setFontSize(value[0])}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    현재: <span className="font-semibold">{fontSize}px</span>
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
                   <CardTitle>위젯 미리보기</CardTitle>
                   <CardDescription>
                     실제 위젯 화면 미리보기 (400×200)
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col items-center space-y-3">
-                  <WidgetPreview badgeMode={badgeMode} />
+                  <WidgetPreview badgeMode={badgeMode} fontSize={fontSize} />
                   <p className="text-center text-xs text-muted-foreground">
                     가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
                   </p>
