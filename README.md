@@ -21,12 +21,24 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 
 ## 기술 스택
 
+- Node.js 24
 - Next.js 15 (App Router)
 - TypeScript
 - SQLite (better-sqlite3)
 - Socket.IO-client v2.0.3 (Chzzk 채팅 연동)
 - Tailwind CSS + shadcn/ui
 - Docker + Dokku (배포)
+
+## 프로젝트 구조
+
+```
+src/
+  app/         # Next.js App Router 페이지 및 API 라우트
+  components/  # UI 컴포넌트 (ui/ 는 shadcn/ui)
+  lib/         # 비즈니스 로직: db, 암호화, 세션, 캐시, 레이트리밋, 로거, 외부 API 클라이언트
+  worker/      # node-cron 동기화 워커
+tests/         # Vitest 테스트
+```
 
 ## 설치 및 실행
 
@@ -176,9 +188,11 @@ dokku ps:scale chzzk-djclass-overlay web=1 worker=1
 
 ## 보안
 
-- V-ARCHIVE 토큰: AES-256-GCM 암호화 저장
-- Chzzk 토큰: AES-256-GCM 암호화 저장
-- 세션 쿠키: HMAC-SHA256 서명 (`session` 쿠키)
+- V-ARCHIVE 토큰: AES-256-GCM 암호화 저장 (레코드별 랜덤 솔트)
+- Chzzk 토큰: AES-256-GCM 암호화 저장 (레코드별 랜덤 솔트)
+- 세션 쿠키: 서버 검증 만료(7일) 포함 HMAC-SHA256 서명
+- 요청 속도 제한: 인증/연동/동기화 엔드포인트에 IP 기준 제한
+- 보안 헤더: 모든 응답에 CSP 및 보안 헤더 적용
 - SQLite: WAL 모드, 외래 키, CHECK 제약조건 사용
 
 ## Credit

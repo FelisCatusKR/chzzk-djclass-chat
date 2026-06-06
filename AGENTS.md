@@ -18,6 +18,7 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 
 | Technology       | Version          | Purpose                                                |
 | ---------------- | ---------------- | ------------------------------------------------------ |
+| Node.js          | 24               | Runtime (engines field, .nvmrc, Dockerfile base image) |
 | Next.js          | 15+ (App Router) | Web server, API routes, pages                          |
 | TypeScript       | 5.7+             | Entire codebase                                        |
 | Tailwind CSS     | 3.4+             | Styling                                                |
@@ -74,6 +75,8 @@ src/
     varchive.ts           # V-ARCHIVE API client
     chat-proxy.ts         # Chzzk chat proxy (Socket.IO v2)
     cache.ts              # LRU cache
+    logger.ts             # Leveled logger (debug suppressed in production)
+    rate-limit.ts         # In-memory per-IP rate limiting
     types.ts              # Shared TypeScript types
     utils.ts              # Utilities like cn()
   worker/                 # Cron workers (node-cron based)
@@ -111,9 +114,9 @@ tests/                    # Vitest test files
 
 ### 5.3 Token Encryption
 
-- V-ARCHIVE tokens: `AES-256-GCM` + `VARCHIVE_TOKEN_KEY` environment variable
+- V-ARCHIVE tokens: `AES-256-GCM` + `VARCHIVE_TOKEN_KEY` environment variable; each record uses a **random per-record salt**
 - Chzzk tokens: stored in the `channels` table using the same encryption method
-- Session cookies: `HMAC-SHA256` signed (`SESSION_SECRET`)
+- Session cookies: `HMAC-SHA256` signed (`SESSION_SECRET`) with a **server-verified 7-day expiry** embedded in the payload
 
 ### 5.4 Caching
 
@@ -122,6 +125,25 @@ tests/                    # Vitest test files
   - Linked user without DJ CLASS → 15 seconds
   - Unlinked user → 10 seconds
 - `updateAgeOnGet: false` — active chatters do NOT extend their TTL.
+
+### 5.5 Rate Limiting
+
+- `src/lib/rate-limit.ts` provides in-memory per-IP rate limiting.
+- Applied to the auth, link-varchive, and sync-djclass routes; violations return **HTTP 429**.
+
+### 5.6 Security Headers
+
+- Security headers (including **CSP**) are injected on all responses via `next.config.js` `headers()`.
+
+### 5.7 Outbound Fetch Timeouts
+
+- All outbound HTTP calls to Chzzk and V-ARCHIVE use an **8-second `AbortSignal` timeout**.
+
+### 5.8 Logging
+
+- All server-side logging goes through `src/lib/logger.ts`.
+- `debug` level is suppressed in production (`NODE_ENV=production`).
+- **Never log tokens, session keys, or other secrets**, regardless of log level.
 
 ---
 
@@ -162,6 +184,7 @@ export async function GET(request: Request) {
 - **Config Files:**
   - `eslint.config.mjs` — ESLint flat config
   - `.prettierrc` — Prettier settings
+  - `.editorconfig` — Editor settings mirroring Prettier (indent, line endings, trailing newline)
 
 ### 8.1 Mandatory Commands
 
@@ -205,6 +228,9 @@ Required variables in `.env`:
 - **Containers:** 1 web + 1 worker via `Procfile`
 - **Database:** SQLite file mounted as a Dokku volume
 - **Docker:** Multi-stage `Dockerfile`
+  - Base image: **Node.js 24**
+  - Runtime: `tsx server.ts` (no `output: 'standalone'`)
+  - Includes a **HEALTHCHECK** (`wget -qO- http://localhost:PORT/api/health`)
 
 ---
 
