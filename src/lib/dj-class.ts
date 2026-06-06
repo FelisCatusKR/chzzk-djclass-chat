@@ -103,6 +103,9 @@ export function getBadgeText(
   const buttonPrefix = buttonMatch ? buttonMatch[1] : ''
 
   if (mode === 'threshold') {
+    if (isTheoryPower(powerInteger)) {
+      return `${buttonPrefix} ${THEORY_POWER_THRESHOLD}`
+    }
     const rankName = parseRankName(djClass)
     const levelMatch = djClass?.match(LEVEL_RE)
     const resolvedLevel = levelMatch ? levelMatch[1] : null

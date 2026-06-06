@@ -78,6 +78,18 @@ describe('getBadgeText', () => {
   it('power mode defaults null power to 0', () => {
     expect(getBadgeText('power', '4B BEGINNER', 'BG', null, null)).toBe('4B 0')
   })
+
+  it('threshold mode shows 10000 for a theory player', () => {
+    expect(
+      getBadgeText('threshold', '4B THE LORD OF DJMAX', 'LoD', null, 10000)
+    ).toBe('4B 10000')
+  })
+
+  it('threshold mode shows rank threshold for a non-theory LoD player', () => {
+    expect(
+      getBadgeText('threshold', '4B THE LORD OF DJMAX', 'LoD', null, 9990)
+    ).toBe('4B 9980+')
+  })
 })
 
 describe('isTheoryPower', () => {
