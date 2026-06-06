@@ -96,7 +96,7 @@ export default function DashboardPage() {
   if (error) {
     return (
       <SiteBackground>
-        <main className="flex min-h-screen items-center justify-center px-4">
+        <main className="flex min-h-screen items-center justify-center px-4 py-8 sm:py-12">
           <Alert variant="destructive" className="max-w-md">
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
   return (
     <SiteBackground>
-      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-lg space-y-6">
           <h1 className="text-center text-3xl font-bold text-gray-900">
             채팅 위젯 설정

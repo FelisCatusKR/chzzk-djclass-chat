@@ -128,7 +128,7 @@ export default function LinkPage() {
 
   return (
     <SiteBackground>
-      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-md space-y-6">
           <h1 className="text-center text-3xl font-bold text-gray-900">
             DJ CLASS 연동

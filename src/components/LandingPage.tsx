@@ -7,7 +7,7 @@ const FROSTED =
 export default function LandingPage() {
   return (
     <SiteBackground>
-      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+      <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-3xl space-y-8 text-center">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-gray-900">

@@ -27,7 +27,7 @@ export default async function LoginPage({
 
   return (
     <SiteBackground>
-      <main className="flex min-h-screen items-center justify-center px-4">
+      <main className="flex min-h-screen items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-sm rounded-2xl border border-white/90 bg-white/70 p-8 text-center shadow-lg backdrop-blur-md">
           <div className="mb-4 text-4xl">🔒</div>
           <h1 className="mb-2 text-xl font-bold text-gray-900">
