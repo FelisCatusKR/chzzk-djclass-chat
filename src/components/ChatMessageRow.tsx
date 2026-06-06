@@ -7,7 +7,6 @@ export interface ChatMessage {
   rankShort: string | null
   rankLevel: string | null
   powerInteger: number | null
-  isTheory: boolean
   text: string
   isUnlinked: boolean
 }

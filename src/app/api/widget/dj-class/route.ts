@@ -25,7 +25,6 @@ export async function GET(request: NextRequest) {
         rankName: cached.rankName,
         rankLevel: cached.rankLevel,
         powerInteger: cached.powerInteger,
-        isTheory: cached.isTheory,
         source: 'cache',
       })
     }
@@ -83,9 +82,6 @@ export async function GET(request: NextRequest) {
 
   if (djResult) {
     const formattedClass = `${djResult.button}B ${djResult.dj_class}`
-    const isTheory =
-      djResult.dj_power_conversion !== null &&
-      djResult.dj_power_conversion >= 10000
     const powerInteger = djResult.dj_power_conversion
       ? Math.floor(djResult.dj_power_conversion)
       : null
@@ -102,14 +98,12 @@ export async function GET(request: NextRequest) {
       rankName,
       rankLevel,
       powerInteger,
-      isTheory,
     })
     return NextResponse.json({
       djClass: formattedClass,
       rankName,
       rankLevel,
       powerInteger,
-      isTheory,
       source: 'db',
     })
   }
@@ -121,7 +115,6 @@ export async function GET(request: NextRequest) {
     rankName: 'BEGINNER',
     rankLevel: null,
     powerInteger: 0,
-    isTheory: false,
   }
   setDjClassCache(cacheKey, fallbackData, 0.25) // 15 seconds — sync may finish soon
   return NextResponse.json({ ...fallbackData, source: 'db' })

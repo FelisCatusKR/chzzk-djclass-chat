@@ -23,7 +23,6 @@ interface CacheEntry {
   rankShort: string | null
   rankLevel: string | null
   powerInteger: number | null
-  isTheory: boolean
   unlinked: boolean
   expiry: number
 }
@@ -157,7 +156,6 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           rankShort: null,
           rankLevel: null,
           powerInteger: null,
-          isTheory: false,
           unlinked: false,
         }
 
@@ -169,7 +167,6 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             rankShort: cached.rankShort,
             rankLevel: cached.rankLevel,
             powerInteger: cached.powerInteger,
-            isTheory: cached.isTheory,
             unlinked: cached.unlinked,
           }
         } else {
@@ -203,7 +200,6 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
                   : null
                 cacheEntry.rankLevel = result.rankLevel || null
                 cacheEntry.powerInteger = result.powerInteger ?? null
-                cacheEntry.isTheory = result.isTheory || false
               }
             }
           } catch {
@@ -223,7 +219,6 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           rankShort: cacheEntry.rankShort,
           rankLevel: cacheEntry.rankLevel,
           powerInteger: cacheEntry.powerInteger,
-          isTheory: cacheEntry.isTheory,
           text: pending.messageText,
           isUnlinked: cacheEntry.unlinked,
         }

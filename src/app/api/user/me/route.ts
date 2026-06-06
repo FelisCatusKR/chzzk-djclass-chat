@@ -37,9 +37,6 @@ export async function GET(request: NextRequest) {
       | { dj_class: string; button: number; dj_power_conversion: number | null }
       | undefined
 
-    const isTheory =
-      djClassRow?.dj_power_conversion != null &&
-      djClassRow.dj_power_conversion >= 10000
     const powerInteger = djClassRow?.dj_power_conversion
       ? Math.floor(djClassRow.dj_power_conversion)
       : null
@@ -52,7 +49,6 @@ export async function GET(request: NextRequest) {
         ? `${djClassRow.button}B ${djClassRow.dj_class}`
         : null,
       powerInteger,
-      isTheory,
     })
   } finally {
     db.close()

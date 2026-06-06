@@ -6,7 +6,6 @@ type CacheValue =
       rankName: string
       rankLevel: string | null
       powerInteger: number | null
-      isTheory: boolean
     }
   | { unlinked: true }
 
