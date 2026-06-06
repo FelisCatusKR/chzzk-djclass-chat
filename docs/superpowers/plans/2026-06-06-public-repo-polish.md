@@ -11,6 +11,7 @@
 **Reference spec:** `docs/superpowers/specs/2026-06-06-public-repo-polish-design.md`
 
 **Conventions (apply to every task):**
+
 - Prettier: no semicolons, single quotes, 2-space, `trailingComma: es5`.
 - Commit messages use the repo's prefixes: `feat:`, `fix:`, `security:`, `chore:`, `docs:`, `style:`.
 - After any code change, before committing: `npm run lint:fix && npm run format`.
@@ -43,6 +44,7 @@ Expected: `npm test` → `6 passed (6)`, `27 passed (27)`. `npm run build` succe
 ## Task 2: Bump Node 22 → 24 (engines, .nvmrc, Dockerfile, README)
 
 **Files:**
+
 - Modify: `package.json` (add `engines`)
 - Create: `.nvmrc`
 - Modify: `Dockerfile:2`, `Dockerfile:10`
@@ -89,6 +91,7 @@ git commit -m "chore: require Node 24 (latest LTS) via engines, .nvmrc, Dockerfi
 ## Task 3: Leveled logger (`src/lib/logger.ts`)
 
 **Files:**
+
 - Create: `src/lib/logger.ts`
 - Test: `tests/logger.test.ts`
 
@@ -175,6 +178,7 @@ git commit -m "feat: add leveled logger (silent debug in production)"
 ## Task 4: Session cookie expiry (H1)
 
 **Files:**
+
 - Modify: `src/lib/session.ts`
 - Test: `tests/session.test.ts` (extend)
 
@@ -189,25 +193,25 @@ import crypto from 'crypto'
 Then append these tests inside the `describe('Session', ...)` block. Reset the secret first so they're independent of the existing "different secrets" test ordering:
 
 ```ts
-  it('rejects an expired session cookie', () => {
-    process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
-    const expired = createSessionCookie(42, -10) // expired 10s ago
-    expect(verifySessionCookie(expired)).toBeNull()
-  })
+it('rejects an expired session cookie', () => {
+  process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
+  const expired = createSessionCookie(42, -10) // expired 10s ago
+  expect(verifySessionCookie(expired)).toBeNull()
+})
 
-  it('accepts a cookie within its TTL', () => {
-    process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
-    const fresh = createSessionCookie(42, 60)
-    expect(verifySessionCookie(fresh)).toBe(42)
-  })
+it('accepts a cookie within its TTL', () => {
+  process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
+  const fresh = createSessionCookie(42, 60)
+  expect(verifySessionCookie(fresh)).toBe(42)
+})
 
-  it('rejects a legacy cookie without an expiry segment', () => {
-    process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
-    const secret = process.env.SESSION_SECRET
-    const sig = crypto.createHmac('sha256', secret).update('42').digest('hex')
-    const legacy = `42.${sig}` // old userId.signature format
-    expect(verifySessionCookie(legacy)).toBeNull()
-  })
+it('rejects a legacy cookie without an expiry segment', () => {
+  process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
+  const secret = process.env.SESSION_SECRET
+  const sig = crypto.createHmac('sha256', secret).update('42').digest('hex')
+  const legacy = `42.${sig}` // old userId.signature format
+  expect(verifySessionCookie(legacy)).toBeNull()
+})
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -301,6 +305,7 @@ git commit -m "security: add server-verified expiry to session cookies"
 ## Task 5: Random per-record salt in crypto (M1)
 
 **Files:**
+
 - Modify: `src/lib/crypto.ts`
 - Test: `tests/crypto.test.ts` (extend)
 - Local data reset (one-time)
@@ -310,15 +315,15 @@ git commit -m "security: add server-verified expiry to session cookies"
 Append inside `describe('Crypto', ...)` in `tests/crypto.test.ts`:
 
 ```ts
-  it('round-trips a long token and varies salt per encryption', () => {
-    const original = 'varc_'.padEnd(120, 'x')
-    const a = encrypt(original)
-    const b = encrypt(original)
-    // First 16 base64-decoded bytes are the random salt → ciphertexts differ
-    expect(a).not.toBe(b)
-    expect(decrypt(a)).toBe(original)
-    expect(decrypt(b)).toBe(original)
-  })
+it('round-trips a long token and varies salt per encryption', () => {
+  const original = 'varc_'.padEnd(120, 'x')
+  const a = encrypt(original)
+  const b = encrypt(original)
+  // First 16 base64-decoded bytes are the random salt → ciphertexts differ
+  expect(a).not.toBe(b)
+  expect(decrypt(a)).toBe(original)
+  expect(decrypt(b)).toBe(original)
+})
 ```
 
 - [ ] **Step 2: Run to verify current code still passes (regression guard)**
@@ -404,6 +409,7 @@ git commit -m "security: use random per-record salt for token encryption"
 ## Task 6: Outbound fetch timeouts (M3)
 
 **Files:**
+
 - Modify: `src/lib/chzzk.ts`
 - Modify: `src/lib/varchive.ts`
 - Modify: `src/lib/chat-proxy.ts:36-44` and `:66-75`
@@ -419,12 +425,12 @@ const FETCH_TIMEOUT_MS = 8000
 Add `signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),` to each `fetch(...)` options object in `chzzk.ts` (`exchangeCodeForToken`, `refreshAccessToken`, `getUserInfo`). Example for `getUserInfo`:
 
 ```ts
-  const response = await fetch(`${CHZZK_API_URL}/users/me`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  })
+const response = await fetch(`${CHZZK_API_URL}/users/me`, {
+  headers: {
+    Authorization: `Bearer ${accessToken}`,
+  },
+  signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+})
 ```
 
 - [ ] **Step 2: Apply in `varchive.ts`**
@@ -459,6 +465,7 @@ git commit -m "fix: add 8s timeout to outbound Chzzk/V-ARCHIVE fetches"
 ## Task 7: Rate-limit module (`src/lib/rate-limit.ts`) (M5)
 
 **Files:**
+
 - Create: `src/lib/rate-limit.ts`
 - Test: `tests/rate-limit.test.ts`
 
@@ -584,6 +591,7 @@ git commit -m "feat: add in-memory per-IP rate limiter (lru-cache backed)"
 ## Task 8: Apply rate limiting to sensitive routes (M5)
 
 **Files:**
+
 - Modify: `src/app/api/auth/chzzk/route.ts`
 - Modify: `src/app/api/auth/chzzk/callback/route.ts`
 - Modify: `src/app/api/user/link-varchive/route.ts`
@@ -620,13 +628,13 @@ At the very start of `GET`, before reading `searchParams`:
 ```ts
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 // ...
-  const rl = rateLimit(`authcb:${getClientIp(request)}`, 10, 60_000)
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-      { status: 429 }
-    )
-  }
+const rl = rateLimit(`authcb:${getClientIp(request)}`, 10, 60_000)
+if (!rl.allowed) {
+  return NextResponse.json(
+    { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+    { status: 429 }
+  )
+}
 ```
 
 - [ ] **Step 3: Add the guard to `user/link-varchive/route.ts`**
@@ -636,13 +644,13 @@ At the start of `POST`, before reading the session cookie:
 ```ts
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 // ...
-  const rl = rateLimit(`link:${getClientIp(request)}`, 5, 60_000)
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-      { status: 429 }
-    )
-  }
+const rl = rateLimit(`link:${getClientIp(request)}`, 5, 60_000)
+if (!rl.allowed) {
+  return NextResponse.json(
+    { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+    { status: 429 }
+  )
+}
 ```
 
 - [ ] **Step 4: Add the guard to `user/sync-djclass/route.ts`**
@@ -652,13 +660,13 @@ At the start of `POST`, before reading the session cookie:
 ```ts
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 // ...
-  const rl = rateLimit(`sync:${getClientIp(request)}`, 3, 60_000)
-  if (!rl.allowed) {
-    return NextResponse.json(
-      { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
-      { status: 429 }
-    )
-  }
+const rl = rateLimit(`sync:${getClientIp(request)}`, 3, 60_000)
+if (!rl.allowed) {
+  return NextResponse.json(
+    { error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+    { status: 429 }
+  )
+}
 ```
 
 - [ ] **Step 5: Verify build + tests**
@@ -679,6 +687,7 @@ git commit -m "security: rate-limit auth, link, and sync endpoints per IP"
 ## Task 9: Security headers + CSP (M4)
 
 **Files:**
+
 - Modify: `next.config.js`
 
 - [ ] **Step 1: Rewrite `next.config.js` with a `headers()` function**
@@ -757,6 +766,7 @@ git commit -m "security: send CSP and security headers on all routes"
 ## Task 10: Route logging through the leveled logger; strip secrets (M2)
 
 **Files:**
+
 - Modify: `src/lib/chat-proxy.ts`
 - Modify: `src/lib/chzzk.ts`
 - Modify: `src/app/api/auth/chzzk/route.ts`
@@ -765,6 +775,7 @@ git commit -m "security: send CSP and security headers on all routes"
 - [ ] **Step 1: Replace secret-bearing logs in `chat-proxy.ts`**
 
 Add `import { logger } from './logger'` at the top. Then:
+
 - Delete the log that prints the session URL prefix (`[ChatProxy] Session URL response...`) and the `Full session URL` log entirely.
 - Delete the `Subscribing to chat with sessionKey ...substring(0, 15)` and `Got sessionKey ...substring` logs.
 - Convert remaining `console.log(...)` calls to `logger.debug(...)`, `console.error(...)` to `logger.error(...)`, `console.warn` to `logger.warn`. Keep connection lifecycle logs (connect/disconnect/widget counts) at `logger.debug`.
@@ -776,6 +787,7 @@ Add `import { logger } from './logger'`. Change the `console.log('[Chzzk] User i
 - [ ] **Step 3: Replace logs in the two auth routes**
 
 Add `import { logger } from '@/lib/logger'` to both.
+
 - In `auth/chzzk/route.ts`, change `console.log('[OAuth Init] Redirecting to:', url)` → `logger.debug('[OAuth Init] redirecting')` (drop the full URL, which carries clientId/state).
 - In `auth/chzzk/callback/route.ts`, change the three `console.log` lines that print `code`/`state`/`storedState` prefixes to a single `logger.debug('[OAuth Callback] received callback')` with no token material. Convert the remaining `console.log`/`console.error` to `logger.debug`/`logger.error`. Keep the `[OAuth Callback] State mismatch` as `logger.warn`.
 
@@ -797,6 +809,7 @@ git commit -m "security: route logs through leveled logger and stop logging toke
 ## Task 11: Close DB handle on the callback error path (L1)
 
 **Files:**
+
 - Modify: `src/app/api/auth/chzzk/callback/route.ts`
 
 - [ ] **Step 1: Wrap the DB lifecycle in try/finally**
@@ -834,6 +847,7 @@ git commit -m "fix: always close DB handle in OAuth callback (finally)"
 ## Task 12: Parallelize V-ARCHIVE button lookups (L2)
 
 **Files:**
+
 - Modify: `src/lib/varchive.ts` (`getHighestDjClass`)
 - Test: `tests/varchive.test.ts` (verify still green)
 
@@ -890,6 +904,7 @@ git commit -m "perf: fetch V-ARCHIVE button DJ classes concurrently"
 ## Task 13: Docker / infra cleanup (drop standalone, healthcheck, ignores)
 
 **Files:**
+
 - Modify: `Dockerfile`
 - Modify: `.dockerignore`
 - Modify: `.gitignore`
@@ -975,6 +990,7 @@ git commit -m "chore: align Docker image with tsx runtime, add healthcheck"
 ## Task 14: Community & meta files
 
 **Files:**
+
 - Create: `CONTRIBUTING.md`
 - Create: `SECURITY.md`
 - Create: `.github/ISSUE_TEMPLATE/bug_report.md`
@@ -1003,7 +1019,7 @@ trim_trailing_whitespace = false
 
 - [ ] **Step 2: Create `CONTRIBUTING.md` (Korean)**
 
-```markdown
+````markdown
 # 기여 가이드
 
 이 프로젝트에 기여해주셔서 감사합니다.
@@ -1017,9 +1033,9 @@ trim_trailing_whitespace = false
 
 \```bash
 npm install
-cp .env.example .env   # 값을 채워주세요
-npm run dev            # 웹 서버 (WebSocket 포함)
-npm run worker         # 동기화 워커 (별도 터미널)
+cp .env.example .env # 값을 채워주세요
+npm run dev # 웹 서버 (WebSocket 포함)
+npm run worker # 동기화 워커 (별도 터미널)
 \```
 
 ## 커밋 전 필수 확인
@@ -1041,7 +1057,7 @@ npm test
 
 - 하나의 PR은 하나의 목적에 집중합니다.
 - 테스트가 통과하는지 확인 후 PR을 보냅니다.
-```
+````
 
 (Replace `\``` ` with real triple backticks when creating the file.)
 
@@ -1116,7 +1132,6 @@ labels: enhancement
 ## 동기 / 배경
 
 ## 대안
-
 ```
 
 - [ ] **Step 6: Create `.github/PULL_REQUEST_TEMPLATE.md`**
@@ -1164,6 +1179,7 @@ git commit -m "docs: add community/meta files (CONTRIBUTING, SECURITY, templates
 ## Task 15: CI workflow + Dependabot
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/dependabot.yml`
 
@@ -1232,6 +1248,7 @@ git commit -m "ci: add GitHub Actions (lint, format, test, build) and Dependabot
 ## Task 16: Reconcile docs (README, AGENTS.md, .env.example)
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `AGENTS.md`
 - Modify: `.env.example` (only if a variable changed — none added by this plan)
@@ -1239,6 +1256,7 @@ git commit -m "ci: add GitHub Actions (lint, format, test, build) and Dependabot
 - [ ] **Step 1: README accuracy pass**
 
 Verify and update as needed against the post-polish code:
+
 - "기술 스택" section: Node 24, mention security headers + rate limiting in "보안" section.
 - Add a concise "프로젝트 구조" section summarizing `src/app`, `src/components`, `src/lib`, `src/worker`, `tests` (mirror the structure in `AGENTS.md` §4, condensed).
 - "보안" section: add bullets for "세션 만료(7일)", "요청 속도 제한", "보안 헤더 (CSP 포함)".
@@ -1247,6 +1265,7 @@ Verify and update as needed against the post-polish code:
 - [ ] **Step 2: AGENTS.md self-update**
 
 Per the AGENTS.md self-update rule, update it for changes this plan introduced:
+
 - §2 tech stack: add Node 24 row.
 - §5 architecture: note `src/lib/logger.ts` (leveled logging), `src/lib/rate-limit.ts` (per-IP rate limiting), session cookie expiry, random-salt crypto format, and security headers in `next.config.js`.
 - §8: note `.editorconfig`.
