@@ -6,7 +6,7 @@
 
 V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니다.
 
-![Widget Screenshot](./docs/screenshot.png)
+![Widget Screenshot](./docs/screenshot.webp)
 
 > 위 스크린샷은 OBS 위젯 화면으로, 실제 채팅 메시지에 DJ CLASS 뱃지가 표시되는 모습입니다.
 
@@ -15,7 +15,7 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 - **스트리머**: OBS Browser Source로 채팅 위젯을 추가할 수 있습니다.
 - **시청자**: Chzzk 계정과 V-ARCHIVE 조회토큰을 연동하면 채팅에 DJ CLASS 뱃지가 표시됩니다.
 - **뱃지 모드**: 짧은 이름 / 근사 파워 / 정수 파워 3가지 모드를 지원합니다.
-- **이론치 뱃지**: DJ POWER가 10000 이상이면 반짝이는 빨간색 `이론치` 뱃지가 추가로 표시됩니다.
+- **이론치 효과**: DJ POWER가 10000 이상이면 LoD 뱃지가 반짝이며(움직이는 광택) 이론치 달성을 표시합니다.
 - **자동 동기화**: 매일 새벽 3시에 모든 연동된 사용자의 DJ CLASS가 자동으로 동기화됩니다.
 - **수동 동기화**: `/link` 페이지에서 "DJ CLASS 동기화" 버튼을 눌러 즉시 갱신할 수 있습니다.
 
@@ -35,13 +35,14 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 
 1. [대시보드](https://chatoverlay.felis.kr/dashboard)에 접속합니다. 로그인이 필요하면 로그인 페이지로 이동하며, 로그인 후 자동으로 대시보드로 돌아옵니다.
 2. Chzzk 계정으로 로그인합니다.
-3. 위젯 URL을 복사합니다 (예: `https://chatoverlay.felis.kr/widget/abc123?mode=short`).
+3. 위젯 URL을 복사합니다 (예: `https://chatoverlay.felis.kr/widget/abc123?mode=short&fontSize=14`).
 4. OBS에서 `소스 추가 → 브라우저`를 선택합니다.
 5. URL에 복사한 위젯 URL을 입력하고, 너비 400, 높이 600을 설정합니다.
 6. 뱃지 모드를 URL의 `?mode=` 파라미터로 변경할 수 있습니다. 모든 모드는 V-ARCHIVE 티어 색상의 단일 뱃지를 표시합니다:
    - `?mode=short` — 짧은 이름 (예: `4B SS II`)
    - `?mode=threshold` — 근사 파워 (예: `4B 9800+`)
    - `?mode=power` — 정수 파워 (예: `4B 9843`)
+7. 채팅 글자 크기를 URL의 `?fontSize=` 파라미터(픽셀)로 조절할 수 있습니다. 범위는 12~28이며 기본값은 14입니다. 범위를 벗어난 값은 자동으로 보정됩니다.
 
 ### 시청자
 
@@ -56,6 +57,7 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 - **배경 투명**: 위젯은 투명 배경을 사용합니다. OBS의 사용자 지정 CSS로 `body { background: transparent; }`를 추가하세요.
 - **재연결**: OBS에서 위젯을 새로고침하면 자동으로 채팅 서버에 재연결됩니다.
 - **모드 변경**: 위젯 URL의 `?mode=` 파라미터만 변경하면 모든 새 메시지의 뱃지 모드가 즉시 바뀝니다.
+- **글자 크기 변경**: 위젯 URL의 `?fontSize=` 파라미터(12~28, 기본 14)로 채팅 글자 크기를 조절할 수 있습니다.
 
 ## Credit
 
