@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import SiteBackground from '@/components/SiteBackground'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -43,7 +44,7 @@ export default function DashboardPage() {
       .then(async (res) => {
         if (!res.ok) {
           if (res.status === 401) {
-            window.location.href = '/api/auth/chzzk'
+            window.location.href = '/login?next=/dashboard'
             return
           }
           throw new Error('Failed to fetch channel')
@@ -86,168 +87,176 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
-        <Alert variant="destructive" className="max-w-md">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </main>
+      <SiteBackground>
+        <main className="flex min-h-screen items-center justify-center px-4">
+          <Alert variant="destructive" className="max-w-md">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </main>
+      </SiteBackground>
     )
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-lg space-y-6">
-        <h1 className="text-center text-3xl font-bold text-gray-900">
-          채팅 위젯 설정
-        </h1>
+    <SiteBackground>
+      <main className="flex min-h-screen flex-col items-center justify-center px-4">
+        <div className="w-full max-w-lg space-y-6">
+          <h1 className="text-center text-3xl font-bold text-gray-900">
+            채팅 위젯 설정
+          </h1>
 
-        {!data ? (
-          <p className="text-center text-gray-500">로딩 중...</p>
-        ) : (
-          <>
-            <Card>
-              <CardHeader>
-                <CardTitle>위젯 URL</CardTitle>
-                <CardDescription>
-                  OBS Browser Source에 이 URL을 사용하세요.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    value={getWidgetUrl()}
-                    readOnly
-                    className="flex-1 bg-gray-100"
-                  />
-                  <Button onClick={copyUrl}>
-                    {copied ? '복사됨!' : 'URL 복사'}
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  미리보기:{' '}
-                  <a
-                    href={getWidgetUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-gray-700"
+          {!data ? (
+            <p className="text-center text-gray-500">로딩 중...</p>
+          ) : (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>위젯 URL</CardTitle>
+                  <CardDescription>
+                    OBS Browser Source에 이 URL을 사용하세요.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={getWidgetUrl()}
+                      readOnly
+                      className="flex-1 bg-gray-100"
+                    />
+                    <Button onClick={copyUrl}>
+                      {copied ? '복사됨!' : 'URL 복사'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    미리보기:{' '}
+                    <a
+                      href={getWidgetUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-gray-700"
+                    >
+                      위젯 열기
+                    </a>
+                  </p>
+
+                  <div className="space-y-2 pt-4">
+                    <h2 className="font-medium">OBS 설정 방법</h2>
+                    <ol className="list-inside list-decimal space-y-1 text-sm text-gray-600">
+                      <li>OBS에서 소스 추가 → 브라우저 선택</li>
+                      <li>위 URL을 입력하세요</li>
+                      <li>너비: 400, 높이: 600 권장</li>
+                      <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>뱃지 모드</CardTitle>
+                  <CardDescription>
+                    위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <RadioGroup
+                    value={badgeMode}
+                    onValueChange={(value) =>
+                      handleSetBadgeMode(value as BadgeMode)
+                    }
+                    className="space-y-2"
                   >
-                    위젯 열기
-                  </a>
-                </p>
+                    {(Object.keys(BADGE_MODE_LABELS) as BadgeMode[]).map(
+                      (mode) => (
+                        <BadgeModePreviewRow
+                          key={mode}
+                          mode={mode}
+                          label={BADGE_MODE_LABELS[mode]}
+                        />
+                      )
+                    )}
+                  </RadioGroup>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    현재 선택:{' '}
+                    <span className="font-semibold">
+                      {BADGE_MODE_LABELS[badgeMode]}
+                    </span>
+                  </p>
+                </CardContent>
+              </Card>
 
-                <div className="space-y-2 pt-4">
-                  <h2 className="font-medium">OBS 설정 방법</h2>
-                  <ol className="list-inside list-decimal space-y-1 text-sm text-gray-600">
-                    <li>OBS에서 소스 추가 → 브라우저 선택</li>
-                    <li>위 URL을 입력하세요</li>
-                    <li>너비: 400, 높이: 600 권장</li>
-                    <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
-                  </ol>
-                </div>
-              </CardContent>
-            </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>위젯 미리보기</CardTitle>
+                  <CardDescription>
+                    실제 위젯 화면 미리보기 (400×200)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center space-y-3">
+                  <WidgetPreview badgeMode={badgeMode} />
+                  <p className="text-center text-xs text-muted-foreground">
+                    가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
+                  </p>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>뱃지 모드</CardTitle>
-                <CardDescription>
-                  위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <RadioGroup
-                  value={badgeMode}
-                  onValueChange={(value) =>
-                    handleSetBadgeMode(value as BadgeMode)
-                  }
-                  className="space-y-2"
-                >
-                  {(Object.keys(BADGE_MODE_LABELS) as BadgeMode[]).map(
-                    (mode) => (
-                      <BadgeModePreviewRow
-                        key={mode}
-                        mode={mode}
-                        label={BADGE_MODE_LABELS[mode]}
-                      />
-                    )
+              <Card>
+                <CardHeader>
+                  <CardTitle>연결 상태</CardTitle>
+                  <CardDescription>채팅 서버 연결 상태</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Chzzk 로그인</span>
+                    <Badge variant={data.hasTokens ? 'default' : 'destructive'}>
+                      {data.hasTokens ? '완료' : '미완료'}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">
+                      채팅 서버 연결
+                    </span>
+                    <Badge variant={data.isConnected ? 'default' : 'secondary'}>
+                      {data.isConnected ? '연결됨' : '대기 중'}
+                    </Badge>
+                  </div>
+
+                  {!data.hasTokens && (
+                    <Alert variant="destructive" className="mt-2">
+                      <AlertDescription>
+                        Chzzk 로그인이 필요합니다. 위젯을 사용하려면 Chzzk
+                        계정으로 다시 로그인해주세요.
+                      </AlertDescription>
+                    </Alert>
                   )}
-                </RadioGroup>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  현재 선택:{' '}
-                  <span className="font-semibold">
-                    {BADGE_MODE_LABELS[badgeMode]}
-                  </span>
-                </p>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>위젯 미리보기</CardTitle>
-                <CardDescription>실제 위젯 화면 미리보기 (400×200)</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center space-y-3">
-                <WidgetPreview badgeMode={badgeMode} />
-                <p className="text-center text-xs text-muted-foreground">
-                  가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
-                </p>
-              </CardContent>
-            </Card>
+                  {data.hasTokens && !data.isConnected && (
+                    <Alert className="mt-2 border-yellow-200 bg-yellow-50">
+                      <AlertDescription className="text-yellow-800">
+                        위젯이 아직 연결되지 않았습니다. OBS에서 위젯을 추가하면
+                        자동으로 연결됩니다.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>연결 상태</CardTitle>
-                <CardDescription>채팅 서버 연결 상태</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Chzzk 로그인</span>
-                  <Badge variant={data.hasTokens ? 'default' : 'destructive'}>
-                    {data.hasTokens ? '완료' : '미완료'}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">채팅 서버 연결</span>
-                  <Badge variant={data.isConnected ? 'default' : 'secondary'}>
-                    {data.isConnected ? '연결됨' : '대기 중'}
-                  </Badge>
-                </div>
-
-                {!data.hasTokens && (
-                  <Alert variant="destructive" className="mt-2">
-                    <AlertDescription>
-                      Chzzk 로그인이 필요합니다. 위젯을 사용하려면 Chzzk
-                      계정으로 다시 로그인해주세요.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {data.hasTokens && !data.isConnected && (
-                  <Alert className="mt-2 border-yellow-200 bg-yellow-50">
-                    <AlertDescription className="text-yellow-800">
-                      위젯이 아직 연결되지 않았습니다. OBS에서 위젯을 추가하면
-                      자동으로 연결됩니다.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        <div className="flex flex-col gap-3">
-          <Button variant="outline" onClick={handleLogout} className="w-full">
-            로그아웃
-          </Button>
-          <Link
-            href="/"
-            className="block text-center text-gray-500 hover:text-gray-700"
-          >
-            ← 돌아가기
-          </Link>
+          <div className="flex flex-col gap-3">
+            <Button variant="outline" onClick={handleLogout} className="w-full">
+              로그아웃
+            </Button>
+            <Link
+              href="/"
+              className="block text-center text-gray-500 hover:text-gray-700"
+            >
+              ← 돌아가기
+            </Link>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </SiteBackground>
   )
 }
