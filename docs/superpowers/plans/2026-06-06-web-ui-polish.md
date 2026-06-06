@@ -320,6 +320,10 @@ export default function LandingPage() {
             >
               GitHub
             </a>
+            <p className="pt-2 text-xs text-gray-400">
+              본 프로젝트는 DJMAX RESPECT V와 공식적인 연관이 없는 비공식 팬
+              프로젝트입니다.
+            </p>
           </footer>
         </div>
       </main>
@@ -685,11 +689,19 @@ In `README.md`, update the "스트리머" steps (currently lines 34-44) and "시
 
 and the viewer step similarly for `/link`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Add the non-affiliation disclaimer to the README**
+
+In `README.md`, add a disclaimer line in the "Credit" section (after the Special Thanks paragraph, currently around lines 60-62):
+
+```markdown
+> 본 프로젝트는 DJMAX RESPECT V와 공식적인 연관이 없는 비공식 팬 프로젝트입니다.
+```
+
+- [ ] **Step 5: Commit**
 
 ```bash
 git add README.md
-git commit -m "docs: describe login-first flow in README usage steps"
+git commit -m "docs: describe login-first flow and add non-affiliation disclaimer"
 ```
 
 ---

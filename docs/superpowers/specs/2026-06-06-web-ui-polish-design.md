@@ -58,6 +58,9 @@ side-by-side boxes**:
 - Boxes are frosted cards (same style as §1). Side-by-side on desktop, stacked
   vertically on narrow/mobile screens (`flex-col md:flex-row`).
 - Keep the existing title, lead paragraph, and footer (Special Thanks / GitHub).
+- Add a small non-affiliation disclaimer to the footer: "본 프로젝트는 DJMAX
+  RESPECT V와 공식적인 연관이 없는 비공식 팬 프로젝트입니다." Mirror it in the
+  README's Credit section.
 
 ## 3. Login-first flow
 
