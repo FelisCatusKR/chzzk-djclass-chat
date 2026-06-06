@@ -33,9 +33,9 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 
 ### 스트리머
 
-1. [대시보드](http://localhost:3000/dashboard)에 접속합니다.
+1. [대시보드](https://chatoverlay.felis.kr/dashboard)에 접속합니다. 로그인이 필요하면 로그인 페이지로 이동하며, 로그인 후 자동으로 대시보드로 돌아옵니다.
 2. Chzzk 계정으로 로그인합니다.
-3. 위젯 URL을 복사합니다 (예: `http://localhost:3000/widget/abc123?mode=short`).
+3. 위젯 URL을 복사합니다 (예: `https://chatoverlay.felis.kr/widget/abc123?mode=short`).
 4. OBS에서 `소스 추가 → 브라우저`를 선택합니다.
 5. URL에 복사한 위젯 URL을 입력하고, 너비 400, 높이 600을 설정합니다.
 6. 뱃지 모드를 URL의 `?mode=` 파라미터로 변경할 수 있습니다. 모든 모드는 V-ARCHIVE 티어 색상의 단일 뱃지를 표시합니다:
@@ -45,7 +45,7 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 
 ### 시청자
 
-1. [연동 페이지](http://localhost:3000/link)에 접속합니다.
+1. [연동 페이지](https://chatoverlay.felis.kr/link)에 접속합니다. 로그인이 필요하면 로그인 페이지로 이동하며, 로그인 후 자동으로 연동 페이지로 돌아옵니다.
 2. Chzzk 계정으로 로그인합니다.
 3. [V-ARCHIVE 마이페이지](https://v-archive.net/mypage)에서 조회토큰을 발급받습니다.
 4. 토큰을 입력하고 "연동하기"를 클릭합니다.
@@ -60,6 +60,8 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 ## Credit
 
 이 프로젝트는 [**똘똘똘이**](https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9) 님의 롤 티어 인증 시스템 프로젝트 영상에서 큰 영향을 받았습니다.
+
+> 본 프로젝트는 DJMAX RESPECT V와 공식적인 연관이 없는 비공식 팬 프로젝트입니다.
 
 ## 프로젝트 구조
 
