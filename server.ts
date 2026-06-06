@@ -14,7 +14,10 @@ const handle = app.getRequestHandler()
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
     try {
-      const url = new URL(req.url || '/', `http://${req.headers.host}`)
+      const url = new URL(
+        req.url || '/',
+        `http://${req.headers.host ?? 'localhost'}`
+      )
       const parsedUrl = {
         pathname: url.pathname,
         search: url.search,

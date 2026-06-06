@@ -42,6 +42,9 @@ export default function LinkPage() {
         if (res.ok) {
           const data = await res.json()
           setUser(data)
+        } else if (res.status === 401) {
+          // Session expired after the server gate passed; re-login.
+          window.location.href = '/login?next=/link'
         }
       })
       .catch(() => {
