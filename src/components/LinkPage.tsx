@@ -21,7 +21,6 @@ interface UserInfo {
   varchiveNickname: string | null
   djClass: string | null
   powerInteger: number | null
-  isTheory: boolean
 }
 
 export default function LinkPage() {
@@ -78,7 +77,6 @@ export default function LinkPage() {
                 powerInteger: data.djPowerConversion
                   ? Math.floor(data.djPowerConversion)
                   : null,
-                isTheory: data.djPowerConversion >= 10000,
               }
             : null
         )
@@ -299,11 +297,7 @@ export default function LinkPage() {
                                 {user.powerInteger}
                               </span>
                             )}
-                            {user.isTheory && (
-                              <span className="inline-flex items-center rounded bg-red-500 px-1.5 py-0.5 text-xs font-bold text-white">
-                                이론치
-                              </span>
-                            )}
+
                           </>
                         )
                       })()}
