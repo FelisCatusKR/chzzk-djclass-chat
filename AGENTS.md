@@ -224,13 +224,14 @@ Required variables in `.env`:
 
 ## 10. Deployment
 
-- **Platform:** Dokku (or similar PaaS)
-- **Containers:** 1 web + 1 worker via `Procfile`
-- **Database:** SQLite file mounted as a Dokku volume
+- **Platform:** Dokku (or similar PaaS). Full setup steps in [`DEPLOY.md`](./DEPLOY.md).
+- **Containers:** 1 web + 1 worker — **one app, two process types** via `Procfile` (NOT two apps; they share the SQLite volume)
+- **Database:** SQLite file mounted as a Dokku volume at `/app/data`, shared by both process types
 - **Docker:** Multi-stage `Dockerfile`
-  - Base image: **Node.js 24**
+  - Base image: **Node.js 24** (`bookworm-slim`; build stage installs `python3 make g++` for `better-sqlite3`)
   - Runtime: `tsx server.ts` (no `output: 'standalone'`)
-  - Includes a **HEALTHCHECK** that fetches `http://localhost:3000/` via Node's global `fetch`
+  - Includes a **HEALTHCHECK** that fetches `http://localhost:3000/` via Node's global `fetch` (web only; the worker container reports unhealthy since it serves no HTTP — Dokku uses its own checks, so this is cosmetic)
+  - `NEXT_PUBLIC_BASE_URL` is inlined by Next at **build time** — must be passed as a Docker `--build-arg` (Dokku: `docker-options:add <app> build`)
 
 ---
 
