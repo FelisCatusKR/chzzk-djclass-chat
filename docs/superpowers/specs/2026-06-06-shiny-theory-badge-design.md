@@ -163,6 +163,27 @@ left unchanged.
 
 ---
 
+## Change 4 — Document the `fontSize` widget URL param in README
+
+### Problem
+
+The dashboard generates widget URLs with a `&fontSize=` query param (range
+12–28px, default 14), but `README.md` only documents `?mode=`. The font-size
+argument is undocumented for streamers configuring the URL by hand.
+
+### Fix
+
+In `README.md`, alongside the existing `?mode=` documentation (lines ~41–44 and
+the "모드 변경" bullet at ~58), add the `fontSize` param:
+
+- Note that `?fontSize=` sets the chat text size in pixels.
+- Range **12–28**, default **14** (values outside the range are clamped; the
+  source of truth is `src/lib/font-size.ts`).
+- Update the example URL on line ~38 to show both params, e.g.
+  `...?mode=short&fontSize=14`.
+
+Doc-only; no code change.
+
 ## Testing & docs
 
 - Adjust/add `tests/` coverage:
@@ -170,8 +191,10 @@ left unchanged.
   - Add a `getBadgeText` test: theory player in `threshold` mode → `4B 10000`.
   - Optional: a test for `isTheoryPower` boundaries (9999 → false, 10000 → true,
     null → false).
-- Update `README.md`: the "이론치 뱃지" bullet — it is no longer a separate red
-  badge; the LoD badge now shimmers when the player is theory (power ≥ 10000).
+- Update `README.md`:
+  - The "이론치 뱃지" bullet — it is no longer a separate red badge; the LoD
+    badge now shimmers when the player is theory (power ≥ 10000).
+  - Document the `fontSize` param (see Change 4).
 
 ## Out of scope
 
