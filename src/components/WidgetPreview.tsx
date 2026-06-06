@@ -8,6 +8,7 @@ import { FAKE_CHAT_MESSAGES } from '@/lib/fake-chat-messages'
 
 interface WidgetPreviewProps {
   badgeMode: BadgeMode
+  fontSize: number
 }
 
 const MAX_VISIBLE_MESSAGES = 15
@@ -16,7 +17,10 @@ function getRandomInterval(): number {
   return Math.random() * 700 + 500 // 500–1200 ms
 }
 
-export default function WidgetPreview({ badgeMode }: WidgetPreviewProps) {
+export default function WidgetPreview({
+  badgeMode,
+  fontSize,
+}: WidgetPreviewProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const indexRef = useRef(0)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -55,7 +59,10 @@ export default function WidgetPreview({ badgeMode }: WidgetPreviewProps) {
           "'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      <div className="flex h-full flex-col justify-end space-y-1 px-2 py-2">
+      <div
+        className="flex h-full flex-col justify-end space-y-1 px-2 py-2"
+        style={{ fontSize }}
+      >
         {messages.map((msg) => (
           <ChatMessageRow key={msg.id} message={msg} badgeMode={badgeMode} />
         ))}
