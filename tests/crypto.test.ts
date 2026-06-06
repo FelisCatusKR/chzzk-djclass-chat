@@ -20,4 +20,14 @@ describe('Crypto', () => {
     const encrypted2 = encrypt(original)
     expect(encrypted1).not.toBe(encrypted2)
   })
+
+  it('round-trips a long token and varies salt per encryption', () => {
+    const original = 'varc_'.padEnd(120, 'x')
+    const a = encrypt(original)
+    const b = encrypt(original)
+    // First 16 base64-decoded bytes are the random salt → ciphertexts differ
+    expect(a).not.toBe(b)
+    expect(decrypt(a)).toBe(original)
+    expect(decrypt(b)).toBe(original)
+  })
 })
