@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
   }
 
+  let db: ReturnType<typeof initDb> | null = null
   try {
     logger.debug('[OAuth Callback] Exchanging code for token...')
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       nickname: userInfo.nickname,
     })
 
-    const db = initDb()
+    db = initDb()
     const stmt = db.prepare(`
       INSERT INTO users (chzzk_id, chzzk_nickname)
       VALUES (?, ?)
@@ -134,7 +135,6 @@ export async function GET(request: NextRequest) {
     })
     response.cookies.delete('oauth_state')
 
-    db.close()
     return response
   } catch (error) {
     logger.error('[OAuth Callback] Error:', error)
@@ -142,5 +142,7 @@ export async function GET(request: NextRequest) {
       logger.error('[OAuth Callback] Error details:', error.message)
     }
     return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
+  } finally {
+    if (db) db.close()
   }
 }
