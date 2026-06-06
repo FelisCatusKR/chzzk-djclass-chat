@@ -12,6 +12,10 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { RadioGroup } from '@/components/ui/radio-group'
+import BadgeModePreviewRow from './BadgeModePreviewRow'
+import WidgetPreview from './WidgetPreview'
 
 import type { BadgeMode } from '@/lib/types'
 
@@ -25,7 +29,7 @@ interface ChannelData {
 const BADGE_MODE_LABELS: Record<BadgeMode, string> = {
   short: '짧은 이름 (4B SS II)',
   threshold: '근사 파워 (4B 9800+)',
-  power: '정수 파워 (4B 9843)',
+  power: '정수 파워 (4B 9823)',
 }
 
 export default function DashboardPage() {
@@ -151,26 +155,42 @@ export default function DashboardPage() {
                   위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
+              <CardContent className="space-y-2">
+                <RadioGroup
+                  value={badgeMode}
+                  onValueChange={(value) =>
+                    handleSetBadgeMode(value as BadgeMode)
+                  }
+                  className="space-y-2"
+                >
                   {(Object.keys(BADGE_MODE_LABELS) as BadgeMode[]).map(
                     (mode) => (
-                      <Button
+                      <BadgeModePreviewRow
                         key={mode}
-                        variant={badgeMode === mode ? 'default' : 'outline'}
-                        onClick={() => handleSetBadgeMode(mode)}
-                        className="flex-1 text-xs"
-                      >
-                        {BADGE_MODE_LABELS[mode]}
-                      </Button>
+                        mode={mode}
+                        label={BADGE_MODE_LABELS[mode]}
+                      />
                     )
                   )}
-                </div>
-                <p className="mt-2 text-xs text-gray-500">
+                </RadioGroup>
+                <p className="mt-2 text-xs text-muted-foreground">
                   현재 선택:{' '}
                   <span className="font-semibold">
                     {BADGE_MODE_LABELS[badgeMode]}
                   </span>
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>위젯 미리보기</CardTitle>
+                <CardDescription>실제 위젯 화면 미리보기 (400×200)</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center space-y-3">
+                <WidgetPreview badgeMode={badgeMode} />
+                <p className="text-center text-xs text-muted-foreground">
+                  가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
                 </p>
               </CardContent>
             </Card>
@@ -183,27 +203,15 @@ export default function DashboardPage() {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Chzzk 로그인</span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      data.hasTokens
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}
-                  >
+                  <Badge variant={data.hasTokens ? 'default' : 'destructive'}>
                     {data.hasTokens ? '완료' : '미완료'}
-                  </span>
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">채팅 서버 연결</span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      data.isConnected
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
+                  <Badge variant={data.isConnected ? 'default' : 'secondary'}>
                     {data.isConnected ? '연결됨' : '대기 중'}
-                  </span>
+                  </Badge>
                 </div>
 
                 {!data.hasTokens && (
