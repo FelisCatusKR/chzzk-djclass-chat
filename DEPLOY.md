@@ -72,7 +72,7 @@ dokku git:sync --build chatoverlay https://github.com/FelisCatusKR/chzzk-djclass
 
 The `deploy` job in [`ci.yml`](./.github/workflows/ci.yml) runs the same `git:sync`
 automatically after CI passes. The Dokku host is behind NAT with **no inbound SSH
-port**, so GitHub Actions reaches it *through the existing Cloudflare Tunnel*, gated by
+port**, so GitHub Actions reaches it _through the existing Cloudflare Tunnel_, gated by
 a Cloudflare Access **service token** in front of the normal Dokku SSH key (two
 independent auth layers; prod never runs a CI runner).
 
@@ -96,11 +96,11 @@ token authorises the tunnel → Dokku SSH key authenticates → dokku git:sync -
    DNS for `ssh.chatoverlay.felis.kr` is created automatically by the tunnel.
 
 2. **Create a service token.** Zero Trust → Access → Service Auth → Service Tokens →
-   *Create*. Set duration to non-expiring. Copy the **Client ID** and **Client Secret**
+   _Create_. Set duration to non-expiring. Copy the **Client ID** and **Client Secret**
    (secret is shown only once).
 
 3. **Protect the SSH hostname with Access.** Zero Trust → Access → Applications → add a
-   *Self-hosted* application for `ssh.chatoverlay.felis.kr`, with a policy whose action
+   _Self-hosted_ application for `ssh.chatoverlay.felis.kr`, with a policy whose action
    is **Service Auth** and whose Include is the service token from step 2. (Service Auth
    skips the interactive browser login, which is what lets CI authenticate headlessly.)
 
@@ -116,11 +116,11 @@ token authorises the tunnel → Dokku SSH key authenticates → dokku git:sync -
 
 Settings → Secrets and variables → Actions:
 
-| Secret | Value |
-| --- | --- |
-| `DOKKU_SSH_HOST` | `ssh.chatoverlay.felis.kr` |
-| `DOKKU_SSH_KEY` | private key (`ci-deploy`) from step 4 |
-| `CF_ACCESS_CLIENT_ID` | service-token Client ID from step 2 |
+| Secret                    | Value                                   |
+| ------------------------- | --------------------------------------- |
+| `DOKKU_SSH_HOST`          | `ssh.chatoverlay.felis.kr`              |
+| `DOKKU_SSH_KEY`           | private key (`ci-deploy`) from step 4   |
+| `CF_ACCESS_CLIENT_ID`     | service-token Client ID from step 2     |
 | `CF_ACCESS_CLIENT_SECRET` | service-token Client Secret from step 2 |
 
 After that, every push to `main` that passes CI redeploys automatically. The first run
