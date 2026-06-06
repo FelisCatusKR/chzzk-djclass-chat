@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { createSessionCookie, verifySessionCookie } from '../src/lib/session'
 
@@ -43,5 +44,25 @@ describe('Session', () => {
     // First cookie should fail verification with new secret
     const verified = verifySessionCookie(cookie1)
     expect(verified).toBeNull()
+  })
+
+  it('rejects an expired session cookie', () => {
+    process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
+    const expired = createSessionCookie(42, -10) // expired 10s ago
+    expect(verifySessionCookie(expired)).toBeNull()
+  })
+
+  it('accepts a cookie within its TTL', () => {
+    process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
+    const fresh = createSessionCookie(42, 60)
+    expect(verifySessionCookie(fresh)).toBe(42)
+  })
+
+  it('rejects a legacy cookie without an expiry segment', () => {
+    process.env.SESSION_SECRET = 'test-secret-32-chars-long!!!'
+    const secret = process.env.SESSION_SECRET
+    const sig = crypto.createHmac('sha256', secret).update('42').digest('hex')
+    const legacy = `42.${sig}` // old userId.signature format
+    expect(verifySessionCookie(legacy)).toBeNull()
   })
 })
