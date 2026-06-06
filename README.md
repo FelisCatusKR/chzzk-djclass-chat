@@ -28,7 +28,7 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 
 ### 요구사항
 
-- Node.js 22+
+- Node.js 24+
 - SQLite
 
 ### 환경 변수
