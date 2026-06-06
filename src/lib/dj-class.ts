@@ -86,7 +86,10 @@ const LEVEL_RE = /\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i
 // level, returning the rank name. Falls back to "BEGINNER" when absent.
 export function parseRankName(djClass: string | null): string {
   return (
-    djClass?.replace(/^\d+B\s+/, '').replace(LEVEL_RE, '').trim() || 'BEGINNER'
+    djClass
+      ?.replace(/^\d+B\s+/, '')
+      .replace(LEVEL_RE, '')
+      .trim() || 'BEGINNER'
   )
 }
 
