@@ -1,5 +1,9 @@
 # Chzzk DJ CLASS 채팅 위젯
 
+![CI](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Node](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)
+
 V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니다.
 
 ![Widget Screenshot](./docs/screenshot.png)
@@ -183,4 +187,4 @@ dokku ps:scale chzzk-djclass-overlay web=1 worker=1
 
 ## 라이선스
 
-[MIT License](./LICENSE.md)
+[MIT License](./LICENSE)
