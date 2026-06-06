@@ -7,6 +7,7 @@ import { encrypt } from '@/lib/crypto'
 import { decrypt } from '@/lib/crypto'
 import { lookupUser, getHighestDjClass } from '@/lib/varchive'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
+import { safeNextPath } from '@/lib/safe-redirect'
 
 export async function GET(request: NextRequest) {
   const rl = rateLimit(`authcb:${getClientIp(request)}`, 10, 60_000)
@@ -126,7 +127,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const response = NextResponse.redirect(new URL('/link', baseUrl))
+    const nextPath = safeNextPath(request.cookies.get('oauth_next')?.value)
+    const response = NextResponse.redirect(new URL(nextPath, baseUrl))
     response.cookies.set('session', createSessionCookie(result.id), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -134,6 +136,7 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 60 * 24 * 7, // 7 days
     })
     response.cookies.delete('oauth_state')
+    response.cookies.delete('oauth_next')
 
     return response
   } catch (error) {
