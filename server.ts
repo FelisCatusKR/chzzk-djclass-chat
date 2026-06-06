@@ -1,6 +1,6 @@
 import { createServer } from 'http'
-import { parse } from 'url'
 import next from 'next'
+import type { UrlWithParsedQuery } from 'url'
 import { WebSocketServer } from 'ws'
 import { addWidget, removeWidget } from './src/lib/chat-proxy'
 
@@ -14,7 +14,12 @@ const handle = app.getRequestHandler()
 app.prepare().then(() => {
   const server = createServer(async (req, res) => {
     try {
-      const parsedUrl = parse(req.url!, true)
+      const url = new URL(req.url || '/', `http://${req.headers.host}`)
+      const parsedUrl = {
+        pathname: url.pathname,
+        search: url.search,
+        query: Object.fromEntries(url.searchParams),
+      } as UrlWithParsedQuery
       await handle(req, res, parsedUrl)
     } catch (err) {
       console.error('Error handling request:', err)
