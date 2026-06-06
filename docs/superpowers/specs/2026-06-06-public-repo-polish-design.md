@@ -25,17 +25,17 @@ Decisions made during brainstorming:
 
 ## Out of Scope (YAGNI — noted as "future", not built)
 
-Rate limiting, CSP/security-header middleware, English/i18n docs, Postgres migration,
-metrics/observability. Recorded in a "향후 과제" section, not implemented.
+English/i18n docs, Postgres migration, metrics/observability, distributed (multi-
+instance) rate-limit storage. Recorded in a "향후 과제" section, not implemented.
+(Rate limiting and security headers are now **in scope** — see M4/M5.)
 
 ---
 
-## Section 0 — Pre-flight (blocking)
+## Section 0 — Pre-flight (baseline)
 
-1. Restore the accidentally-truncated `package.json` from HEAD
-   (`git checkout -- package.json`). Nothing builds/lints/tests until this is fixed.
-2. Establish a green baseline and record results:
-   `npm install`, `npm run lint`, `npm run format:check`, `npm test`, `npm run build`.
+`package.json` already restored by the user. Establish a green baseline and record
+results before changing anything: `npm install`, `npm run lint`,
+`npm run format:check`, `npm test`, `npm run build`.
 
 **Done when:** all five commands pass (or current failures are documented as the starting point).
 
@@ -109,6 +109,25 @@ items marked **Note** are documented but not changed unless trivial.
   **Fix:** add `AbortSignal.timeout(~8s)` to outbound fetches in `chzzk.ts`,
   `varchive.ts`, and `chat-proxy.ts` session/subscribe calls; surface timeout as a
   clean error.
+- **M4 — Security headers.** No security headers are currently sent.
+  **Fix:** add `async headers()` in `next.config.js` applying a baseline to all routes:
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `X-Frame-Options: DENY` (OBS loads widgets as a top-level page, so framing denial is
+  safe), `Permissions-Policy` (disable camera/mic/geolocation), and
+  `Strict-Transport-Security` in production only. Add a Content-Security-Policy tuned to
+  not break Next.js (allow `'self'`; `style-src` may need `'unsafe-inline'` for Next/
+  Tailwind runtime styles; `connect-src` must allow the widget's `ws:`/`wss:` WebSocket
+  origin). Validate the widget still renders in OBS after applying.
+- **M5 — Rate limiting.** Mutating/auth endpoints are unauthenticated-reachable and
+  hit external APIs, so they need throttling.
+  **Fix:** add `src/lib/rate-limit.ts` — a fixed-window limiter keyed by client IP
+  (from `x-forwarded-for`, set by Dokku/nginx; fall back to a connection identifier),
+  reusing the existing `lru-cache` dependency for the counter buckets (no new package).
+  Apply at the top of sensitive routes — `auth/chzzk` (init), `auth/chzzk/callback`,
+  `user/link-varchive`, `user/sync-djclass` — returning HTTP 429 with a Korean message.
+  Sensible per-route windows (e.g. link/sync stricter than auth init). Single-instance
+  in-memory state is acceptable for the current 1-web deployment; note that a multi-
+  instance deployment would need shared storage.
 
 ### Low
 
@@ -127,7 +146,7 @@ items marked **Note** are documented but not changed unless trivial.
 - **Note:** OAuth CSRF state validation, env-var validation in the worker, and the
   `connectingPromise` race guard are already correct — leave as-is.
 
-**Done when:** H1, M1–M3, L1–L4 implemented; existing tests still pass; new tests
+**Done when:** H1, M1–M5, L1–L4 implemented; existing tests still pass; new tests
 (Section 6) pass.
 
 ---
@@ -175,6 +194,8 @@ Add focused tests for new/changed behavior only (no broad coverage expansion):
   tampered, rejected for legacy 2-part format.
 - `crypto.test.ts` — extend: round-trip with random salt; two encryptions of the same
   plaintext produce different ciphertext (salt + IV randomness).
+- `rate-limit.test.ts` — allows requests under the window limit, returns blocked once
+  the limit is exceeded, resets after the window elapses.
 
 **Done when:** new tests pass alongside the existing 6 suites via `npm test`.
 
