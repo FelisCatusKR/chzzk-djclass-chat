@@ -29,7 +29,7 @@ interface ChannelData {
 const BADGE_MODE_LABELS: Record<BadgeMode, string> = {
   short: '짧은 이름 (4B SS II)',
   threshold: '근사 파워 (4B 9800+)',
-  power: '정수 파워 (4B 9843)',
+  power: '정수 파워 (4B 9823)',
 }
 
 export default function DashboardPage() {

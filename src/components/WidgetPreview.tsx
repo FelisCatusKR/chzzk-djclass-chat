@@ -57,11 +57,7 @@ export default function WidgetPreview({ badgeMode }: WidgetPreviewProps) {
     >
       <div className="flex h-full flex-col justify-end space-y-1 px-2 py-2">
         {messages.map((msg) => (
-          <ChatMessageRow
-            key={`${msg.id}-${badgeMode}`}
-            message={msg}
-            badgeMode={badgeMode}
-          />
+          <ChatMessageRow key={msg.id} message={msg} badgeMode={badgeMode} />
         ))}
       </div>
     </div>
