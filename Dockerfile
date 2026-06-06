@@ -33,6 +33,7 @@ COPY --from=builder /app/server.ts ./
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
 
 RUN mkdir -p /app/data
 
