@@ -116,6 +116,10 @@ Remove the `isTheory` field/computation from:
 - `src/components/WidgetPage.tsx` — `isTheory` in `CacheEntry` and all
   assignments (lines ~160, 172, 206, 226).
 - `src/lib/fake-chat-messages.ts` — `isTheory` on all 20 entries.
+- `src/components/LinkPage.tsx` — `isTheory` in the `UserInfo` interface, the
+  `isTheory` assignment in `handleSync`, **and** the red `이론치` status chip
+  (the chip is removed entirely; the power chip already shows `10000`, which
+  conveys theory status on this diagnostic row).
 
 ### Threshold-mode text change
 
