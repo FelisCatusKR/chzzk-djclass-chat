@@ -1,6 +1,5 @@
 import type { BadgeMode } from '@/lib/types'
 import DjClassBadge from './DjClassBadge'
-import TheoryBadge from './TheoryBadge'
 
 export interface ChatMessage {
   id: string
@@ -37,7 +36,7 @@ export default function ChatMessageRow({
           powerInteger={message.powerInteger}
         />
       )}
-      {message.isTheory && <TheoryBadge />}
+
       <span className="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
         {message.text}
       </span>
