@@ -52,14 +52,12 @@ DashboardPage
 │   └── ChatMessageRow (×N, fake data)
 │       ├── DjClassBadge
 │       └── TheoryBadge
-```
 
 WidgetPage (refactored)
 └── ChatMessageRow (per real message)
-├── DjClassBadge
-└── TheoryBadge
-
-````
+    ├── DjClassBadge
+    └── TheoryBadge
+```
 
 ## Component Specifications
 
@@ -77,12 +75,16 @@ interface DjClassBadgeProps {
 }
 ````
 
-**Logic:** Identical to the current inline logic in `WidgetPage` lines 350–373:
+**Logic:** Identical to the current inline logic in `WidgetPage` (the badge `<span>` content). To keep this logic testable without a DOM, it is extracted into a **pure function** `getBadgeText(mode, djClass, rankShort, rankLevel, powerInteger): string` in `src/lib/dj-class.ts`. `DjClassBadge` is then a thin presentational wrapper that calls `getBadgeText` for the text and `getDjClassColor(parseRankName(djClass))` for the background. This matches the existing node-based test suite (`tests/*.test.ts`) — no jsdom or testing-library is introduced.
+
+`getBadgeText` behavior:
 
 1. Extract button prefix (e.g., `4B`) from `djClass` via `/^(\d+B)/`.
-2. If `mode === 'short'`: render `{buttonPrefix} {rankShort}{rankLevel ? ` ${rankLevel}` : ''}`.
-3. If `mode === 'threshold'`: look up threshold via `getThreshold(rankName, rankLevel)`. Render `{buttonPrefix} {threshold}+` or fallback to rank short.
-4. If `mode === 'power'`: render `{buttonPrefix} {powerInteger ?? 0}`.
+2. If `mode === 'short'`: return `{buttonPrefix} {rankShort}{rankLevel ? ` ${rankLevel}` : ''}`.
+3. If `mode === 'threshold'`: look up threshold via `getThreshold(rankName, rankLevel)` (rankName/level parsed from `djClass`). Return `{buttonPrefix} {threshold}+` or fallback to `{buttonPrefix} {rankShort}`.
+4. If `mode === 'power'`: return `{buttonPrefix} {powerInteger ?? 0}`.
+
+`parseRankName(djClass)` strips the button prefix and trailing roman-numeral level, returning the rank name (or `'BEGINNER'` when absent). Both `getBadgeText` and the color lookup use it.
 
 **Styling:** Same inline `background` gradient (from `DJ_CLASS_COLORS`), `color: '#000'`, `textShadow`, `inline-block px-1 py-0.5 rounded text-xs font-bold mr-1 shadow-sm`.
 
@@ -232,11 +234,10 @@ Both `WidgetPage` and `DjClassBadge` import from here.
 
 ## Testing Strategy
 
-- Verify `DjClassBadge` renders correctly for all 3 modes with example data.
-- Verify `WidgetPreview` loops through all 20 messages and restarts.
-- Verify `WidgetPreview` interval is between 500–1200 ms.
-- Verify changing badge mode in `DashboardPage` updates both the preview rows and the `WidgetPreview` instantly.
-- Verify the real widget (`WidgetPage`) still works after refactoring.
+Tests run in the existing node-based Vitest setup (no jsdom/testing-library added).
+
+- **Unit (automated):** `getBadgeText` returns the correct string for all 3 modes with example data (`4B SS II`, `4B 9800+`, `4B 9823`), and `parseRankName` / `getThreshold` / `getDjClassColor` behave correctly including fallbacks.
+- **Manual:** `WidgetPreview` loops through all fake messages and restarts; the interval is between 500–1200 ms; changing badge mode in `DashboardPage` updates both the preview rows and the `WidgetPreview` instantly; the real widget (`WidgetPage`) still renders after refactoring (verified via `npm run build` + visual check).
 
 ## Rollout / Risks
 
@@ -247,7 +248,9 @@ Both `WidgetPage` and `DjClassBadge` import from here.
 
 | Action | File                                                                |
 | ------ | ------------------------------------------------------------------- |
-| Create | `src/lib/dj-class.ts`                                               |
+| Create | `src/components/ui/radio-group.tsx` (shadcn CLI)                    |
+| Create | `src/components/ui/badge.tsx` (shadcn CLI)                          |
+| Create | `src/lib/dj-class.ts` (incl. `getBadgeText`, `parseRankName`)       |
 | Create | `src/lib/fake-chat-messages.ts`                                     |
 | Create | `src/components/DjClassBadge.tsx`                                   |
 | Create | `src/components/TheoryBadge.tsx` + CSS module                       |

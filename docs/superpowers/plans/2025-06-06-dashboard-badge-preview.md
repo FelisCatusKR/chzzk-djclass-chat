@@ -24,39 +24,39 @@
 | `src/components/WidgetPreview.tsx`       | 400×200 dark container that animates fake messages using `ChatMessageRow`.                                                     |
 | `src/components/WidgetPage.tsx`          | Refactored to use `ChatMessageRow`. WebSocket logic unchanged.                                                                 |
 | `src/components/DashboardPage.tsx`       | Refactored to use shadcn/ui Card/Input/Button/Badge/RadioGroup and new preview components.                                     |
-| `tests/dj-class.test.ts`                 | Unit tests for `getThreshold` and `getDjClassColor`.                                                                           |
-| `tests/components/DjClassBadge.test.tsx` | Component tests for badge rendering in all 3 modes.                                                                            |
+| `tests/dj-class.test.ts`                 | Unit tests for `getThreshold`, `getDjClassColor`, `parseRankName`, and `getBadgeText` (all 3 modes). Node env, no DOM.        |
 
 ---
 
-### Task 1: Install shadcn/ui RadioGroup component
+### Task 1: Install shadcn/ui RadioGroup and Badge components
 
 **Files:**
 
 - Modify: `package.json` (dependencies added by CLI)
 - Create: `src/components/ui/radio-group.tsx`
+- Create: `src/components/ui/badge.tsx`
 
-- [ ] **Step 1: Install radio-group via shadcn CLI**
-
-```bash
-npx shadcn@latest add radio-group
-```
-
-Expected: installs `@radix-ui/react-radio-group` and creates `src/components/ui/radio-group.tsx`.
-
-- [ ] **Step 2: Verify the file exists**
+- [ ] **Step 1: Install radio-group and badge via shadcn CLI**
 
 ```bash
-ls src/components/ui/radio-group.tsx
+npx shadcn@latest add radio-group badge
 ```
 
-Expected: file exists.
+Expected: installs `@radix-ui/react-radio-group` and creates `src/components/ui/radio-group.tsx` and `src/components/ui/badge.tsx`. (`badge` is required by Task 10's status-badge refactor; `label` already exists.)
+
+- [ ] **Step 2: Verify the files exist**
+
+```bash
+ls src/components/ui/radio-group.tsx src/components/ui/badge.tsx
+```
+
+Expected: both files exist.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/components/ui/radio-group.tsx package.json package-lock.json
-git commit -m "chore: add shadcn/ui radio-group component"
+git add src/components/ui/radio-group.tsx src/components/ui/badge.tsx package.json package-lock.json
+git commit -m "chore: add shadcn/ui radio-group and badge components"
 ```
 
 ---
@@ -77,6 +77,8 @@ import { describe, it, expect } from 'vitest'
 import {
   getThreshold,
   getDjClassColor,
+  getBadgeText,
+  parseRankName,
   DJ_CLASS_COLORS,
   SHORT_NAMES,
 } from '../src/lib/dj-class'
@@ -108,6 +110,46 @@ describe('getDjClassColor', () => {
 describe('SHORT_NAMES', () => {
   it('has SHOWSTOPPER as SS', () => {
     expect(SHORT_NAMES['SHOWSTOPPER']).toBe('SS')
+  })
+})
+
+describe('parseRankName', () => {
+  it('strips button prefix and level', () => {
+    expect(parseRankName('4B SHOWSTOPPER II')).toBe('SHOWSTOPPER')
+  })
+
+  it('handles rank with no level', () => {
+    expect(parseRankName('4B THE LORD OF DJMAX')).toBe('THE LORD OF DJMAX')
+  })
+
+  it('falls back to BEGINNER for null', () => {
+    expect(parseRankName(null)).toBe('BEGINNER')
+  })
+})
+
+describe('getBadgeText', () => {
+  const base = ['4B SHOWSTOPPER II', 'SS', 'II', 9823] as const
+
+  it('short mode', () => {
+    expect(getBadgeText('short', ...base)).toBe('4B SS II')
+  })
+
+  it('threshold mode', () => {
+    expect(getBadgeText('threshold', ...base)).toBe('4B 9800+')
+  })
+
+  it('power mode', () => {
+    expect(getBadgeText('power', ...base)).toBe('4B 9823')
+  })
+
+  it('threshold mode falls back to rankShort when no threshold', () => {
+    expect(getBadgeText('threshold', '4B UNKNOWN II', 'SS', 'II', 9823)).toBe(
+      '4B SS'
+    )
+  })
+
+  it('power mode defaults null power to 0', () => {
+    expect(getBadgeText('power', '4B BEGINNER', 'BG', null, null)).toBe('4B 0')
   })
 })
 ```
@@ -191,7 +233,49 @@ export function getThreshold(
 export function getDjClassColor(rankName: string): string {
   return DJ_CLASS_COLORS[rankName] || DJ_CLASS_COLORS['BEGINNER']
 }
+
+const LEVEL_RE = /\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i
+
+// Strip the leading button prefix (e.g. "4B ") and a trailing roman-numeral
+// level, returning the rank name. Falls back to "BEGINNER" when absent.
+export function parseRankName(djClass: string | null): string {
+  return (
+    djClass?.replace(/^\d+B\s+/, '').replace(LEVEL_RE, '').trim() || 'BEGINNER'
+  )
+}
+
+// Pure badge-text computation, identical to the original inline WidgetPage
+// logic. Kept here so it is testable without a DOM.
+export function getBadgeText(
+  mode: BadgeMode,
+  djClass: string | null,
+  rankShort: string | null,
+  rankLevel: string | null,
+  powerInteger: number | null
+): string {
+  const buttonMatch = djClass?.match(/^(\d+B)/)
+  const buttonPrefix = buttonMatch ? buttonMatch[1] : ''
+
+  if (mode === 'threshold') {
+    const rankName = parseRankName(djClass)
+    const levelMatch = djClass?.match(LEVEL_RE)
+    const resolvedLevel = levelMatch ? levelMatch[1] : null
+    const threshold = getThreshold(rankName, resolvedLevel)
+    return threshold != null
+      ? `${buttonPrefix} ${threshold}+`
+      : `${buttonPrefix} ${rankShort}`
+  }
+
+  if (mode === 'power') {
+    return `${buttonPrefix} ${powerInteger ?? 0}`
+  }
+
+  // 'short' (and any fallback)
+  return `${buttonPrefix} ${rankShort}${rankLevel ? ` ${rankLevel}` : ''}`
+}
 ```
+
+> Add `import type { BadgeMode } from './types'` at the top of `dj-class.ts` for `getBadgeText`'s signature.
 
 - [ ] **Step 4: Run tests to verify they pass**
 
@@ -210,72 +294,21 @@ git commit -m "feat: extract shared DJ CLASS utilities and add tests"
 
 ---
 
-### Task 3: Create DjClassBadge component
+### Task 3: Create DjClassBadge component (thin wrapper over `getBadgeText`)
+
+The badge-text logic is already covered by the `getBadgeText` unit tests in Task 2.
+`DjClassBadge` is a thin presentational wrapper — no React-rendering test, so no
+jsdom/testing-library is introduced (the existing suite is node-only).
 
 **Files:**
 
 - Create: `src/components/DjClassBadge.tsx`
-- Create: `tests/components/DjClassBadge.test.tsx`
-- Modify: `package.json`
 
-- [ ] **Step 1: Install testing-library for React**
-
-```bash
-npm install -D @testing-library/react @testing-library/jest-dom
-```
-
-- [ ] **Step 2: Write failing test**
-
-Create `tests/components/DjClassBadge.test.tsx`:
-
-```typescript
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import DjClassBadge from '../../src/components/DjClassBadge'
-
-describe('DjClassBadge', () => {
-  const baseProps = {
-    djClass: '4B SHOWSTOPPER II',
-    rankShort: 'SS',
-    rankLevel: 'II',
-    powerInteger: 9823,
-  }
-
-  it('renders short mode', () => {
-    render(<DjClassBadge mode="short" {...baseProps} />)
-    expect(screen.getByText('4B SS II')).toBeInTheDocument()
-  })
-
-  it('renders threshold mode', () => {
-    render(<DjClassBadge mode="threshold" {...baseProps} />)
-    expect(screen.getByText('4B 9800+')).toBeInTheDocument()
-  })
-
-  it('renders power mode', () => {
-    render(<DjClassBadge mode="power" {...baseProps} />)
-    expect(screen.getByText('4B 9823')).toBeInTheDocument()
-  })
-
-  it('returns null when rankShort is null', () => {
-    const { container } = render(<DjClassBadge mode="short" djClass={null} rankShort={null} rankLevel={null} powerInteger={null} />)
-    expect(container.firstChild).toBeNull()
-  })
-})
-```
-
-- [ ] **Step 3: Run test to verify it fails**
-
-```bash
-npm test -- tests/components/DjClassBadge.test.tsx
-```
-
-Expected: FAIL with module not found.
-
-- [ ] **Step 4: Create `src/components/DjClassBadge.tsx`**
+- [ ] **Step 1: Create `src/components/DjClassBadge.tsx`**
 
 ```typescript
 import type { BadgeMode } from '@/lib/types'
-import { getThreshold, getDjClassColor } from '@/lib/dj-class'
+import { getBadgeText, getDjClassColor, parseRankName } from '@/lib/dj-class'
 
 interface DjClassBadgeProps {
   mode: BadgeMode
@@ -294,36 +327,13 @@ export default function DjClassBadge({
 }: DjClassBadgeProps) {
   if (!rankShort) return null
 
-  const buttonMatch = djClass?.match(/^(\d+B)/)
-  const buttonPrefix = buttonMatch ? buttonMatch[1] : ''
-
-  const rankName = djClass
-    ?.replace(/^\d+B\s+/, '')
-    .replace(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i, '')
-    .trim() || 'BEGINNER'
-
-  let badgeText: string
-
-  if (mode === 'short') {
-    badgeText = `${buttonPrefix} ${rankShort}${rankLevel ? ` ${rankLevel}` : ''}`
-  } else if (mode === 'threshold') {
-    const levelMatch = djClass?.match(/\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/i)
-    const resolvedLevel = levelMatch ? levelMatch[1] : null
-    const threshold = getThreshold(rankName, resolvedLevel)
-    badgeText = threshold != null
-      ? `${buttonPrefix} ${threshold}+`
-      : `${buttonPrefix} ${rankShort}`
-  } else if (mode === 'power') {
-    badgeText = `${buttonPrefix} ${powerInteger ?? 0}`
-  } else {
-    badgeText = `${buttonPrefix} ${rankShort}`
-  }
+  const badgeText = getBadgeText(mode, djClass, rankShort, rankLevel, powerInteger)
 
   return (
     <span
-      className="inline-block px-1 py-0.5 rounded text-xs font-bold mr-1 shadow-sm"
+      className="mr-1 inline-block rounded px-1 py-0.5 text-xs font-bold shadow-sm"
       style={{
-        background: getDjClassColor(rankName),
+        background: getDjClassColor(parseRankName(djClass)),
         color: '#000',
         textShadow: '0 0 1px rgba(255,255,255,0.5)',
       }}
@@ -334,19 +344,19 @@ export default function DjClassBadge({
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [ ] **Step 2: Verify TypeScript compiles**
 
 ```bash
-npm test -- tests/components/DjClassBadge.test.tsx
+npx tsc --noEmit
 ```
 
-Expected: PASS.
+Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add src/components/DjClassBadge.tsx tests/components/DjClassBadge.test.tsx package.json package-lock.json
-git commit -m "feat: add DjClassBadge shared component with tests"
+git add src/components/DjClassBadge.tsx
+git commit -m "feat: add DjClassBadge shared component"
 ```
 
 ---
@@ -517,6 +527,7 @@ Replace the top of `WidgetPage.tsx` (lines 1–93) with:
 
 import { useEffect, useRef, useState } from 'react'
 import type { BadgeMode } from '@/lib/types'
+import { SHORT_NAMES } from '@/lib/dj-class'
 import ChatMessageRow, { type ChatMessage } from './ChatMessageRow'
 
 interface PendingMessage {
@@ -534,11 +545,13 @@ interface WidgetPageProps {
 Remove the following from `WidgetPage.tsx`:
 
 - `DJ_CLASS_COLORS` constant
-- `SHORT_NAMES` constant
+- `SHORT_NAMES` constant (now imported from `@/lib/dj-class` — still used in `processQueue`)
 - `RANK_THRESHOLDS` constant
 - `getThreshold` function
 - `getDjClassColor` function
 - The inline `ChatMessage` interface (now imported from `ChatMessageRow`)
+
+> Keep `SHORT_NAMES` imported: `processQueue` still maps `result.rankName` through it. `DJ_CLASS_COLORS`, `RANK_THRESHOLDS`, `getThreshold`, and `getDjClassColor` are now only used inside `DjClassBadge`, so they can be dropped from `WidgetPage`.
 
 - [ ] **Step 2: Replace inline badge rendering**
 
@@ -656,7 +669,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankShort: 'PRO',
     rankLevel: 'II',
     powerInteger: 8800,
-    isTheory: true,
+    isTheory: false,
     text: '스코어 인증 완료했습니다',
     isUnlinked: false,
   },
@@ -766,7 +779,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankShort: 'SS',
     rankLevel: 'III',
     powerInteger: 9750,
-    isTheory: true,
+    isTheory: false,
     text: '퍼펙 ㅊㅊㅊㅊㅊ',
     isUnlinked: false,
   },
