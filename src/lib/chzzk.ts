@@ -11,7 +11,10 @@ export function getOAuthUrl(state: string): string {
   return `${CHZZK_AUTH_URL}?${params.toString()}`
 }
 
-export async function exchangeCodeForToken(code: string, state: string): Promise<{
+export async function exchangeCodeForToken(
+  code: string,
+  state: string
+): Promise<{
   accessToken: string
   refreshToken: string
   expiresIn: number

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getHighestDjClass, getDjClass } from '../src/lib/varchive'
+import { getHighestDjClass } from '../src/lib/varchive'
 
 // Mock global fetch
 global.fetch = vi.fn()
@@ -11,7 +11,7 @@ describe('V-ARCHIVE API', () => {
 
   it('should return the button with the highest DJ POWER (djPowerConversion)', async () => {
     const mockFetch = vi.mocked(fetch)
-    
+
     // 4-button: lower DJ POWER
     mockFetch.mockResolvedValueOnce({
       ok: true,

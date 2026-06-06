@@ -15,13 +15,19 @@ export async function GET(request: NextRequest) {
   // Get or create channel
   const getStmt = db.prepare('SELECT * FROM channels WHERE user_id = ?')
   let channel = getStmt.get(Number(userId)) as
-    | { id: number; chzzk_channel_id: string; chzzk_access_token_encrypted: string | null }
+    | {
+        id: number
+        chzzk_channel_id: string
+        chzzk_access_token_encrypted: string | null
+      }
     | undefined
 
   if (!channel) {
     // Get user's chzzk_id to use as channel_id
     const userStmt = db.prepare('SELECT chzzk_id FROM users WHERE id = ?')
-    const user = userStmt.get(Number(userId)) as { chzzk_id: string } | undefined
+    const user = userStmt.get(Number(userId)) as
+      | { chzzk_id: string }
+      | undefined
 
     if (!user) {
       db.close()

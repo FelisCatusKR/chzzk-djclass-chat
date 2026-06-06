@@ -114,22 +114,22 @@ npm run screenshot
 
 ## DJ CLASS 랭크
 
-| 랭크 | 짧은 이름 | IV | III | II | I |
-|------|---------|----|-----|----|---|
-| THE LORD OF DJMAX | LoD | — | — | — | 9980 |
-| BEAT MAESTRO | BM | 9900 | 9930 | 9950 | 9970 |
-| SHOWSTOPPER | SS | 9700 | 9750 | 9800 | 9850 |
-| HEADLINER | HL | 9400 | 9500 | 9600 | 9650 |
-| TREND SETTER | TS | 9000 | 9100 | 9200 | 9300 |
-| PROFESSIONAL | PRO | 8600 | 8700 | 8800 | 8900 |
-| HIGH CLASS | HC | 7800 | 8000 | 8200 | 8400 |
-| PRO DJ | PD | 7000 | 7200 | 7400 | 7600 |
-| MIDDLEMAN | MM | 6200 | 6400 | 6600 | 6800 |
-| STREET DJ | SD | 5200 | 5500 | 5800 | 6000 |
-| ROOKIE | RK | 4000 | 4300 | 4600 | 4900 |
-| AMATEUR | AM | 2400 | 2800 | 3200 | 3600 |
-| TRAINEE | TR | 500 | 1000 | 1500 | 2000 |
-| BEGINNER | BG | — | — | — | 0 |
+| 랭크              | 짧은 이름 | IV   | III  | II   | I    |
+| ----------------- | --------- | ---- | ---- | ---- | ---- |
+| THE LORD OF DJMAX | LoD       | 9980 | —    | —    | —    |
+| BEAT MAESTRO      | BM        | 9900 | 9930 | 9950 | 9970 |
+| SHOWSTOPPER       | SS        | 9700 | 9750 | 9800 | 9850 |
+| HEADLINER         | HL        | 9400 | 9500 | 9600 | 9650 |
+| TREND SETTER      | TS        | 9000 | 9100 | 9200 | 9300 |
+| PROFESSIONAL      | PRO       | 8600 | 8700 | 8800 | 8900 |
+| HIGH CLASS        | HC        | 7800 | 8000 | 8200 | 8400 |
+| PRO DJ            | PD        | 7000 | 7200 | 7400 | 7600 |
+| MIDDLEMAN         | MM        | 6200 | 6400 | 6600 | 6800 |
+| STREET DJ         | SD        | 5200 | 5500 | 5800 | 6000 |
+| ROOKIE            | RK        | 4000 | 4300 | 4600 | 4900 |
+| AMATEUR           | AM        | 2400 | 2800 | 3200 | 3600 |
+| TRAINEE           | TR        | 500  | 1000 | 1500 | 2000 |
+| BEGINNER          | BG        | —    | —    | —    | 0    |
 
 ## 배포 (Dokku)
 
@@ -158,17 +158,17 @@ dokku ps:scale chzzk-djclass-overlay web=1 worker=1
 
 ## API
 
-| 메서드 | 경로 | 설명 |
-|--------|------|------|
-| GET | `/api/auth/chzzk` | Chzzk OAuth 시작 |
-| GET | `/api/auth/chzzk/callback` | OAuth 콜백 |
-| POST | `/api/auth/logout` | 로그아웃 |
-| POST | `/api/user/link-varchive` | V-ARCHIVE 토큰 연동 |
-| POST | `/api/user/sync-djclass` | DJ CLASS 수동 동기화 |
-| GET | `/api/user/me` | 현재 사용자 정보 |
-| GET | `/api/channel` | 채널 정보 및 위젯 URL |
-| GET | `/api/widget/dj-class` | 특정 사용자의 DJ CLASS 조회 |
-| WS | `/ws/chat?channelId=xxx` | 채팅 WebSocket (위젯용) |
+| 메서드 | 경로                       | 설명                        |
+| ------ | -------------------------- | --------------------------- |
+| GET    | `/api/auth/chzzk`          | Chzzk OAuth 시작            |
+| GET    | `/api/auth/chzzk/callback` | OAuth 콜백                  |
+| POST   | `/api/auth/logout`         | 로그아웃                    |
+| POST   | `/api/user/link-varchive`  | V-ARCHIVE 토큰 연동         |
+| POST   | `/api/user/sync-djclass`   | DJ CLASS 수동 동기화        |
+| GET    | `/api/user/me`             | 현재 사용자 정보            |
+| GET    | `/api/channel`             | 채널 정보 및 위젯 URL       |
+| GET    | `/api/widget/dj-class`     | 특정 사용자의 DJ CLASS 조회 |
+| WS     | `/ws/chat?channelId=xxx`   | 채팅 WebSocket (위젯용)     |
 
 ## 보안
 

@@ -7,7 +7,8 @@ const AUTH_TAG_LENGTH = 16
 
 function getKey(): Buffer {
   const key = process.env.VARCHIVE_TOKEN_KEY
-  if (!key) throw new Error('VARCHIVE_TOKEN_KEY environment variable is required')
+  if (!key)
+    throw new Error('VARCHIVE_TOKEN_KEY environment variable is required')
   return crypto.scryptSync(key, 'salt', KEY_LENGTH)
 }
 
@@ -29,6 +30,9 @@ export function decrypt(encryptedText: string): string {
   const encrypted = data.subarray(IV_LENGTH + AUTH_TAG_LENGTH)
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
   decipher.setAuthTag(authTag)
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
+  const decrypted = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ])
   return decrypted.toString('utf8')
 }

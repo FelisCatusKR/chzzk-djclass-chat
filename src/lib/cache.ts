@@ -1,7 +1,13 @@
 import { LRUCache } from 'lru-cache'
 
 type CacheValue =
-  | { djClass: string; rankName: string; rankLevel: string | null; powerInteger: number | null; isTheory: boolean }
+  | {
+      djClass: string
+      rankName: string
+      rankLevel: string | null
+      powerInteger: number | null
+      isTheory: boolean
+    }
   | { unlinked: true }
 
 const cache = new LRUCache<string, CacheValue>({
@@ -14,7 +20,11 @@ export function getDjClassFromCache(key: string): CacheValue | undefined {
   return cache.get(key)
 }
 
-export function setDjClassCache(key: string, value: CacheValue, ttlMinutes?: number): void {
+export function setDjClassCache(
+  key: string,
+  value: CacheValue,
+  ttlMinutes?: number
+): void {
   if (ttlMinutes) {
     cache.set(key, value, { ttl: ttlMinutes * 60 * 1000 })
   } else {
@@ -30,7 +40,10 @@ export function invalidateNicknameCache(nickname: string): void {
   cache.delete(`nick:${nickname}`)
 }
 
-export function invalidateAllUserCaches(chzzkId: string, chzzkNickname?: string): void {
+export function invalidateAllUserCaches(
+  chzzkId: string,
+  chzzkNickname?: string
+): void {
   invalidateUserCache(chzzkId)
   if (chzzkNickname) {
     invalidateNicknameCache(chzzkNickname)

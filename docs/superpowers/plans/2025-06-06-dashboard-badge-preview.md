@@ -12,26 +12,27 @@
 
 ## File Map
 
-| File | Responsibility |
-|------|----------------|
-| `src/lib/dj-class.ts` | Shared constants (`DJ_CLASS_COLORS`, `SHORT_NAMES`, `RANK_THRESHOLDS`) and pure functions (`getThreshold`, `getDjClassColor`). |
-| `src/lib/fake-chat-messages.ts` | Flat array of 20 fake `ChatMessage` objects. User-editable. No imports from app code. |
-| `src/components/DjClassBadge.tsx` | Renders the colored DJ CLASS badge text for any mode. |
-| `src/components/TheoryBadge.tsx` | Renders the glittering red `이론치` badge. Imports shared CSS module. |
-| `src/components/theory-badge.module.css` | `@keyframes glitter` and `.theory-badge` styles. |
-| `src/components/ChatMessageRow.tsx` | Combines `DjClassBadge` + `TheoryBadge` + message text. Used by both widget and preview. |
-| `src/components/BadgeModePreviewRow.tsx` | shadcn/ui selectable row with label + real badge preview + sample text. |
-| `src/components/WidgetPreview.tsx` | 400×200 dark container that animates fake messages using `ChatMessageRow`. |
-| `src/components/WidgetPage.tsx` | Refactored to use `ChatMessageRow`. WebSocket logic unchanged. |
-| `src/components/DashboardPage.tsx` | Refactored to use shadcn/ui Card/Input/Button/Badge/RadioGroup and new preview components. |
-| `tests/dj-class.test.ts` | Unit tests for `getThreshold` and `getDjClassColor`. |
-| `tests/components/DjClassBadge.test.tsx` | Component tests for badge rendering in all 3 modes. |
+| File                                     | Responsibility                                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `src/lib/dj-class.ts`                    | Shared constants (`DJ_CLASS_COLORS`, `SHORT_NAMES`, `RANK_THRESHOLDS`) and pure functions (`getThreshold`, `getDjClassColor`). |
+| `src/lib/fake-chat-messages.ts`          | Flat array of 20 fake `ChatMessage` objects. User-editable. No imports from app code.                                          |
+| `src/components/DjClassBadge.tsx`        | Renders the colored DJ CLASS badge text for any mode.                                                                          |
+| `src/components/TheoryBadge.tsx`         | Renders the glittering red `이론치` badge. Imports shared CSS module.                                                          |
+| `src/components/theory-badge.module.css` | `@keyframes glitter` and `.theory-badge` styles.                                                                               |
+| `src/components/ChatMessageRow.tsx`      | Combines `DjClassBadge` + `TheoryBadge` + message text. Used by both widget and preview.                                       |
+| `src/components/BadgeModePreviewRow.tsx` | shadcn/ui selectable row with label + real badge preview + sample text.                                                        |
+| `src/components/WidgetPreview.tsx`       | 400×200 dark container that animates fake messages using `ChatMessageRow`.                                                     |
+| `src/components/WidgetPage.tsx`          | Refactored to use `ChatMessageRow`. WebSocket logic unchanged.                                                                 |
+| `src/components/DashboardPage.tsx`       | Refactored to use shadcn/ui Card/Input/Button/Badge/RadioGroup and new preview components.                                     |
+| `tests/dj-class.test.ts`                 | Unit tests for `getThreshold` and `getDjClassColor`.                                                                           |
+| `tests/components/DjClassBadge.test.tsx` | Component tests for badge rendering in all 3 modes.                                                                            |
 
 ---
 
 ### Task 1: Install shadcn/ui RadioGroup component
 
 **Files:**
+
 - Modify: `package.json` (dependencies added by CLI)
 - Create: `src/components/ui/radio-group.tsx`
 
@@ -63,6 +64,7 @@ git commit -m "chore: add shadcn/ui radio-group component"
 ### Task 2: Create shared DJ CLASS utilities
 
 **Files:**
+
 - Create: `src/lib/dj-class.ts`
 - Create: `tests/dj-class.test.ts`
 
@@ -72,7 +74,12 @@ Create `tests/dj-class.test.ts`:
 
 ```typescript
 import { describe, it, expect } from 'vitest'
-import { getThreshold, getDjClassColor, DJ_CLASS_COLORS, SHORT_NAMES } from '../src/lib/dj-class'
+import {
+  getThreshold,
+  getDjClassColor,
+  DJ_CLASS_COLORS,
+  SHORT_NAMES,
+} from '../src/lib/dj-class'
 
 describe('getThreshold', () => {
   it('returns default threshold for THE LORD OF DJMAX', () => {
@@ -120,57 +127,60 @@ Expected: FAIL with module not found or function not defined errors.
 export const DJ_CLASS_COLORS: Record<string, string> = {
   'THE LORD OF DJMAX': 'linear-gradient(to right, #f2b2f7, #acebff)',
   'BEAT MAESTRO': 'linear-gradient(135deg, #ff7183, #ff8a9a)',
-  'SHOWSTOPPER': 'linear-gradient(135deg, #ff856f, #ff9a87)',
-  'HEADLINER': 'linear-gradient(135deg, #ff9758, #ffaa75)',
+  SHOWSTOPPER: 'linear-gradient(135deg, #ff856f, #ff9a87)',
+  HEADLINER: 'linear-gradient(135deg, #ff9758, #ffaa75)',
   'TREND SETTER': 'linear-gradient(135deg, #ffaf51, #ffbf70)',
-  'PROFESSIONAL': 'linear-gradient(135deg, #ffd352, #ffdd70)',
+  PROFESSIONAL: 'linear-gradient(135deg, #ffd352, #ffdd70)',
   'HIGH CLASS': 'linear-gradient(135deg, #feff63, #feff85)',
   'PRO DJ': 'linear-gradient(135deg, #c7e644, #d1eb60)',
-  'MIDDLEMAN': 'linear-gradient(135deg, #9ae28a, #a8e89c)',
+  MIDDLEMAN: 'linear-gradient(135deg, #9ae28a, #a8e89c)',
   'STREET DJ': 'linear-gradient(135deg, #92eaca, #a2edd2)',
-  'ROOKIE': 'linear-gradient(135deg, #78e3da, #8ee8e0)',
-  'AMATEUR': 'linear-gradient(135deg, #8eccdb, #a2d6e2)',
-  'TRAINEE': 'linear-gradient(135deg, #a9d0ee, #bdd8f0)',
-  'BEGINNER': 'linear-gradient(135deg, #c0c0c0, #d0d0d0)',
+  ROOKIE: 'linear-gradient(135deg, #78e3da, #8ee8e0)',
+  AMATEUR: 'linear-gradient(135deg, #8eccdb, #a2d6e2)',
+  TRAINEE: 'linear-gradient(135deg, #a9d0ee, #bdd8f0)',
+  BEGINNER: 'linear-gradient(135deg, #c0c0c0, #d0d0d0)',
 }
 
 // Short display names for DJ CLASS ranks
 export const SHORT_NAMES: Record<string, string> = {
   'THE LORD OF DJMAX': 'LoD',
   'BEAT MAESTRO': 'BM',
-  'SHOWSTOPPER': 'SS',
-  'HEADLINER': 'HL',
+  SHOWSTOPPER: 'SS',
+  HEADLINER: 'HL',
   'TREND SETTER': 'TS',
-  'PROFESSIONAL': 'PRO',
+  PROFESSIONAL: 'PRO',
   'HIGH CLASS': 'HC',
   'PRO DJ': 'PD',
-  'MIDDLEMAN': 'MM',
+  MIDDLEMAN: 'MM',
   'STREET DJ': 'SD',
-  'ROOKIE': 'RK',
-  'AMATEUR': 'AM',
-  'TRAINEE': 'TR',
-  'BEGINNER': 'BG',
+  ROOKIE: 'RK',
+  AMATEUR: 'AM',
+  TRAINEE: 'TR',
+  BEGINNER: 'BG',
 }
 
 // Minimum power thresholds for each rank and level (from V-ARCHIVE wiki)
 export const RANK_THRESHOLDS: Record<string, Record<string, number>> = {
   'THE LORD OF DJMAX': { default: 9980 },
-  'BEAT MAESTRO': { 'IV': 9900, 'III': 9930, 'II': 9950, 'I': 9970 },
-  'SHOWSTOPPER': { 'IV': 9700, 'III': 9750, 'II': 9800, 'I': 9850 },
-  'HEADLINER': { 'IV': 9400, 'III': 9500, 'II': 9600, 'I': 9650 },
-  'TREND SETTER': { 'IV': 9000, 'III': 9100, 'II': 9200, 'I': 9300 },
-  'PROFESSIONAL': { 'IV': 8600, 'III': 8700, 'II': 8800, 'I': 8900 },
-  'HIGH CLASS': { 'IV': 7800, 'III': 8000, 'II': 8200, 'I': 8400 },
-  'PRO DJ': { 'IV': 7000, 'III': 7200, 'II': 7400, 'I': 7600 },
-  'MIDDLEMAN': { 'IV': 6200, 'III': 6400, 'II': 6600, 'I': 6800 },
-  'STREET DJ': { 'IV': 5200, 'III': 5500, 'II': 5800, 'I': 6000 },
-  'ROOKIE': { 'IV': 4000, 'III': 4300, 'II': 4600, 'I': 4900 },
-  'AMATEUR': { 'IV': 2400, 'III': 2800, 'II': 3200, 'I': 3600 },
-  'TRAINEE': { 'IV': 500, 'III': 1000, 'II': 1500, 'I': 2000 },
-  'BEGINNER': { default: 0 },
+  'BEAT MAESTRO': { IV: 9900, III: 9930, II: 9950, I: 9970 },
+  SHOWSTOPPER: { IV: 9700, III: 9750, II: 9800, I: 9850 },
+  HEADLINER: { IV: 9400, III: 9500, II: 9600, I: 9650 },
+  'TREND SETTER': { IV: 9000, III: 9100, II: 9200, I: 9300 },
+  PROFESSIONAL: { IV: 8600, III: 8700, II: 8800, I: 8900 },
+  'HIGH CLASS': { IV: 7800, III: 8000, II: 8200, I: 8400 },
+  'PRO DJ': { IV: 7000, III: 7200, II: 7400, I: 7600 },
+  MIDDLEMAN: { IV: 6200, III: 6400, II: 6600, I: 6800 },
+  'STREET DJ': { IV: 5200, III: 5500, II: 5800, I: 6000 },
+  ROOKIE: { IV: 4000, III: 4300, II: 4600, I: 4900 },
+  AMATEUR: { IV: 2400, III: 2800, II: 3200, I: 3600 },
+  TRAINEE: { IV: 500, III: 1000, II: 1500, I: 2000 },
+  BEGINNER: { default: 0 },
 }
 
-export function getThreshold(rankName: string, rankLevel: string | null): number | null {
+export function getThreshold(
+  rankName: string,
+  rankLevel: string | null
+): number | null {
   const thresholds = RANK_THRESHOLDS[rankName]
   if (!thresholds) return null
   if (thresholds.default != null) return thresholds.default
@@ -203,6 +213,7 @@ git commit -m "feat: extract shared DJ CLASS utilities and add tests"
 ### Task 3: Create DjClassBadge component
 
 **Files:**
+
 - Create: `src/components/DjClassBadge.tsx`
 - Create: `tests/components/DjClassBadge.test.tsx`
 - Modify: `package.json`
@@ -343,6 +354,7 @@ git commit -m "feat: add DjClassBadge shared component with tests"
 ### Task 4: Create TheoryBadge component with CSS module
 
 **Files:**
+
 - Create: `src/components/theory-badge.module.css`
 - Create: `src/components/TheoryBadge.tsx`
 
@@ -364,7 +376,14 @@ Create `src/components/theory-badge.module.css`:
 }
 
 .theory-badge {
-  background: linear-gradient(90deg, #ff0000, #ff6600, #ffcc00, #ff6600, #ff0000);
+  background: linear-gradient(
+    90deg,
+    #ff0000,
+    #ff6600,
+    #ffcc00,
+    #ff6600,
+    #ff0000
+  );
   background-size: 300% 300%;
   animation: glitter 2s ease infinite;
   color: #fff;
@@ -421,6 +440,7 @@ git commit -m "feat: add TheoryBadge component with CSS module"
 ### Task 5: Create ChatMessageRow component
 
 **Files:**
+
 - Create: `src/components/ChatMessageRow.tsx`
 
 - [ ] **Step 1: Create ChatMessageRow component**
@@ -485,6 +505,7 @@ git commit -m "feat: add ChatMessageRow shared component"
 ### Task 6: Refactor WidgetPage to use shared components
 
 **Files:**
+
 - Modify: `src/components/WidgetPage.tsx`
 
 - [ ] **Step 1: Update imports and remove extracted code**
@@ -511,6 +532,7 @@ interface WidgetPageProps {
 ```
 
 Remove the following from `WidgetPage.tsx`:
+
 - `DJ_CLASS_COLORS` constant
 - `SHORT_NAMES` constant
 - `RANK_THRESHOLDS` constant
@@ -523,7 +545,7 @@ Remove the following from `WidgetPage.tsx`:
 Find the message map block (around lines 333–388 in the original) and replace it with:
 
 ```tsx
-<div className="flex flex-col justify-end h-full px-2 py-2 space-y-1">
+<div className="flex h-full flex-col justify-end space-y-1 px-2 py-2">
   {messages.map((msg) => (
     <ChatMessageRow
       key={msg.id}
@@ -557,6 +579,7 @@ git commit -m "refactor: WidgetPage uses shared ChatMessageRow and extracted uti
 ### Task 7: Create fake chat messages file
 
 **Files:**
+
 - Create: `src/lib/fake-chat-messages.ts`
 
 - [ ] **Step 1: Create the file with user-modifiable array**
@@ -790,6 +813,7 @@ git commit -m "feat: add fake chat messages for widget preview"
 ### Task 8: Create BadgeModePreviewRow component
 
 **Files:**
+
 - Create: `src/components/BadgeModePreviewRow.tsx`
 
 - [ ] **Step 1: Create component using shadcn/ui**
@@ -871,6 +895,7 @@ git commit -m "feat: add BadgeModePreviewRow component with shadcn/ui styling"
 ### Task 9: Create WidgetPreview component
 
 **Files:**
+
 - Create: `src/components/WidgetPreview.tsx`
 
 - [ ] **Step 1: Create WidgetPreview component**
@@ -968,6 +993,7 @@ git commit -m "feat: add WidgetPreview component with looping fake chat"
 ### Task 10: Refactor DashboardPage with shadcn/ui and previews
 
 **Files:**
+
 - Modify: `src/components/DashboardPage.tsx`
 
 - [ ] **Step 1: Update imports**
@@ -989,7 +1015,9 @@ Find the current badge mode card (lines 139–161) and replace with:
 <Card>
   <CardHeader>
     <CardTitle>뱃지 모드</CardTitle>
-    <CardDescription>위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.</CardDescription>
+    <CardDescription>
+      위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.
+    </CardDescription>
   </CardHeader>
   <CardContent className="space-y-2">
     <RadioGroup
@@ -1006,7 +1034,8 @@ Find the current badge mode card (lines 139–161) and replace with:
       ))}
     </RadioGroup>
     <p className="mt-2 text-xs text-muted-foreground">
-      현재 선택: <span className="font-semibold">{BADGE_MODE_LABELS[badgeMode]}</span>
+      현재 선택:{' '}
+      <span className="font-semibold">{BADGE_MODE_LABELS[badgeMode]}</span>
     </p>
   </CardContent>
 </Card>
@@ -1024,7 +1053,7 @@ After the badge mode card (before the connection status card), insert:
   </CardHeader>
   <CardContent className="flex flex-col items-center space-y-3">
     <WidgetPreview badgeMode={badgeMode} />
-    <p className="text-xs text-muted-foreground text-center">
+    <p className="text-center text-xs text-muted-foreground">
       가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
     </p>
   </CardContent>
@@ -1069,6 +1098,7 @@ git commit -m "feat: dashboard badge mode previews and widget preview"
 ### Task 11: Run full test suite and verify build
 
 **Files:**
+
 - Run: all tests
 
 - [ ] **Step 1: Run all tests**
@@ -1100,15 +1130,15 @@ git commit -m "fix: address test and build issues from preview feature"
 
 ## Spec Coverage Check
 
-| Spec Requirement | Plan Task |
-|---|---|
+| Spec Requirement                            | Plan Task                                                      |
+| ------------------------------------------- | -------------------------------------------------------------- |
 | Show real badge preview for each of 3 modes | Task 8 (BadgeModePreviewRow) + Task 10 (Dashboard integration) |
-| Live 400×200 widget preview with fake chat | Task 9 (WidgetPreview) + Task 10 (Dashboard integration) |
-| Preview never drifts from real widget | Task 3-6 (shared DjClassBadge, TheoryBadge, ChatMessageRow) |
-| All dashboard UI with shadcn/ui | Task 1 (install radio-group primitives), Task 8, Task 10 |
-| Easily modifiable fake chat list | Task 7 (flat array in dedicated file) |
-| Do not modify real widget behavior | Task 6 (only mechanical extraction, no logic changes) |
-| No connection status in preview | Task 9 (WidgetPreview has no status indicator) |
+| Live 400×200 widget preview with fake chat  | Task 9 (WidgetPreview) + Task 10 (Dashboard integration)       |
+| Preview never drifts from real widget       | Task 3-6 (shared DjClassBadge, TheoryBadge, ChatMessageRow)    |
+| All dashboard UI with shadcn/ui             | Task 1 (install radio-group primitives), Task 8, Task 10       |
+| Easily modifiable fake chat list            | Task 7 (flat array in dedicated file)                          |
+| Do not modify real widget behavior          | Task 6 (only mechanical extraction, no logic changes)          |
+| No connection status in preview             | Task 9 (WidgetPreview has no status indicator)                 |
 
 ## Placeholder Scan
 

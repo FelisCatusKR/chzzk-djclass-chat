@@ -1,41 +1,45 @@
-const { chromium } = require('playwright');
+const { chromium } = require('playwright')
 
-(async () => {
+;(async () => {
   // Check if dev server is running
   try {
-    const res = await fetch('http://localhost:3000', { signal: AbortSignal.timeout(2000) });
-    if (!res.ok) throw new Error('Server not ready');
+    const res = await fetch('http://localhost:3000', {
+      signal: AbortSignal.timeout(2000),
+    })
+    if (!res.ok) throw new Error('Server not ready')
   } catch {
-    console.error('❌ Development server is not running on http://localhost:3000');
-    console.error('   Please run "npm run dev" in another terminal first.');
-    process.exit(1);
+    console.error(
+      '❌ Development server is not running on http://localhost:3000'
+    )
+    console.error('   Please run "npm run dev" in another terminal first.')
+    process.exit(1)
   }
 
   // Launch Playwright's built-in Chromium (not Lightpanda — it has no graphics engine)
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const browser = await chromium.launch({ headless: true })
+  const context = await browser.newContext()
+  const page = await context.newPage()
 
   // Set viewport to OBS widget size
-  await page.setViewportSize({ width: 400, height: 600 });
+  await page.setViewportSize({ width: 400, height: 600 })
 
   // Navigate to widget page and wait for fonts
   await page.goto('http://localhost:3000/widget/test-channel?mode=short', {
     waitUntil: 'networkidle',
     timeout: 30000,
-  });
+  })
 
   // Wait for web fonts (Pretendard) to fully load
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(500);
+  await page.evaluate(() => document.fonts.ready)
+  await page.waitForTimeout(500)
 
   // Inject demo chat messages into the widget
   await page.evaluate(() => {
-    const container = document.querySelector('.flex-col.justify-end');
-    if (!container) return;
+    const container = document.querySelector('.flex-col.justify-end')
+    if (!container) return
 
     // Clear connection status messages
-    container.innerHTML = '';
+    container.innerHTML = ''
 
     const messages = [
       {
@@ -87,46 +91,46 @@ const { chromium } = require('playwright');
         theory: false,
         unlinked: false,
       },
-    ];
+    ]
 
     messages.forEach((msg, i) => {
-      const div = document.createElement('div');
-      div.className = `text-sm break-words ${msg.unlinked ? 'opacity-75' : 'opacity-100'}`;
-      div.id = `msg-${i}`;
+      const div = document.createElement('div')
+      div.className = `text-sm break-words ${msg.unlinked ? 'opacity-75' : 'opacity-100'}`
+      div.id = `msg-${i}`
 
-      let html = '';
+      let html = ''
 
       if (msg.badge) {
-        html += `<span class="inline-block px-1 py-0.5 rounded text-xs font-bold mr-1 shadow-sm" style="background: ${msg.color}; color: #000; text-shadow: 0 0 1px rgba(255,255,255,0.5);">${msg.badge}</span>`;
+        html += `<span class="inline-block px-1 py-0.5 rounded text-xs font-bold mr-1 shadow-sm" style="background: ${msg.color}; color: #000; text-shadow: 0 0 1px rgba(255,255,255,0.5);">${msg.badge}</span>`
       }
 
       if (msg.theory) {
-        html += `<span class="inline-block px-1 py-0.5 rounded text-xs font-bold mr-1 shadow-sm theory-badge" style="background: linear-gradient(90deg, #ff0000, #ff6600, #ffcc00, #ff6600, #ff0000); background-size: 300% 300%; animation: glitter 2s ease infinite; color: #fff; text-shadow: 0 0 2px rgba(0,0,0,0.8);">이론치</span>`;
+        html += `<span class="inline-block px-1 py-0.5 rounded text-xs font-bold mr-1 shadow-sm theory-badge" style="background: linear-gradient(90deg, #ff0000, #ff6600, #ffcc00, #ff6600, #ff0000); background-size: 300% 300%; animation: glitter 2s ease infinite; color: #fff; text-shadow: 0 0 2px rgba(0,0,0,0.8);">이론치</span>`
       }
 
-      html += `<span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">${msg.text}</span>`;
+      html += `<span class="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">${msg.text}</span>`
 
-      div.innerHTML = html;
-      container.appendChild(div);
-    });
+      div.innerHTML = html
+      container.appendChild(div)
+    })
 
     // Add the scroll anchor
-    const anchor = document.createElement('div');
-    container.appendChild(anchor);
-  });
+    const anchor = document.createElement('div')
+    container.appendChild(anchor)
+  })
 
   // Wait for injected content to render and fonts to settle
   // document.fonts.ready resolves before rasterization; give extra time for CJK glyphs
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(5000);
+  await page.evaluate(() => document.fonts.ready)
+  await page.waitForTimeout(5000)
 
   // Take screenshot
   await page.screenshot({
     path: 'docs/screenshot.png',
     fullPage: false,
-  });
+  })
 
-  console.log('✅ Screenshot saved to docs/screenshot.png');
+  console.log('✅ Screenshot saved to docs/screenshot.png')
 
-  await browser.close();
-})();
+  await browser.close()
+})()

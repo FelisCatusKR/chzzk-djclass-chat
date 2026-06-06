@@ -32,7 +32,10 @@ export async function lookupUser(token: string): Promise<VarchiveUser> {
   return response.json()
 }
 
-export async function getDjClass(nickname: string, button: number): Promise<VarchiveDjClass> {
+export async function getDjClass(
+  nickname: string,
+  button: number
+): Promise<VarchiveDjClass> {
   const encodedNickname = encodeURIComponent(nickname)
   const response = await fetch(
     `${VARCHIVE_BASE_URL}/api/v2/archive/${encodedNickname}/djClass/${button}`,
@@ -50,7 +53,9 @@ export async function getDjClass(nickname: string, button: number): Promise<Varc
   return response.json()
 }
 
-export async function getHighestDjClass(nickname: string): Promise<(VarchiveDjClass & { button: number }) | null> {
+export async function getHighestDjClass(
+  nickname: string
+): Promise<(VarchiveDjClass & { button: number }) | null> {
   const buttons = [4, 5, 6, 8]
   const results: Array<VarchiveDjClass & { button: number }> = []
 

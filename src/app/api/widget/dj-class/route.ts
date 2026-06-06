@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
   const chzzkNickname = searchParams.get('chzzkNickname')
 
   if (!chzzkId && !chzzkNickname) {
-    return NextResponse.json({ error: 'chzzkId or chzzkNickname required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'chzzkId or chzzkNickname required' },
+      { status: 400 }
+    )
   }
 
   const cacheKey = chzzkId ? `id:${chzzkId}` : `nick:${chzzkNickname}`
@@ -56,7 +59,9 @@ export async function GET(request: NextRequest) {
   }
 
   // Check if user has linked V-ARCHIVE
-  const tokenStmt = db.prepare('SELECT id FROM varchive_tokens WHERE user_id = ? AND is_active = true')
+  const tokenStmt = db.prepare(
+    'SELECT id FROM varchive_tokens WHERE user_id = ? AND is_active = true'
+  )
   const tokenResult = tokenStmt.get(userId) as { id: number } | undefined
   hasToken = !!tokenResult
 
@@ -67,21 +72,31 @@ export async function GET(request: NextRequest) {
   }
 
   // Look up DJ CLASS
-  const djStmt = db.prepare('SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?')
-  const djResult = djStmt.get(userId) as { dj_class: string; button: number; dj_power_conversion: number | null } | undefined
+  const djStmt = db.prepare(
+    'SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?'
+  )
+  const djResult = djStmt.get(userId) as
+    | { dj_class: string; button: number; dj_power_conversion: number | null }
+    | undefined
 
   db.close()
 
   if (djResult) {
     const formattedClass = `${djResult.button}B ${djResult.dj_class}`
-    const isTheory = djResult.dj_power_conversion !== null && djResult.dj_power_conversion >= 10000
-    const powerInteger = djResult.dj_power_conversion ? Math.floor(djResult.dj_power_conversion) : null
-    
+    const isTheory =
+      djResult.dj_power_conversion !== null &&
+      djResult.dj_power_conversion >= 10000
+    const powerInteger = djResult.dj_power_conversion
+      ? Math.floor(djResult.dj_power_conversion)
+      : null
+
     // Parse rank name and level
-    const rankMatch = djResult.dj_class.match(/^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/)
+    const rankMatch = djResult.dj_class.match(
+      /^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/
+    )
     const rankName = rankMatch ? rankMatch[1].trim() : djResult.dj_class
     const rankLevel = rankMatch ? rankMatch[2] : null
-    
+
     setDjClassCache(cacheKey, {
       djClass: formattedClass,
       rankName,

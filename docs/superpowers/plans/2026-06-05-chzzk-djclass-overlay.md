@@ -9,6 +9,7 @@
 **Tech Stack:** Next.js 15, TypeScript, better-sqlite3, node-cron, socket.io-client v2.0.3, ws, shadcn/ui, Tailwind CSS, Docker, Dokku
 
 **Key Implementation Notes:**
+
 - Chzzk chat requires **Socket.IO-client v2.0.3** (not v4.x). Server proxies chat via raw WebSocket to widgets.
 - DJ CLASS badges are **configurable** via URL query parameter: `?mode=short|threshold|power`.
 - Badge mode set via widget URL query parameter (`?mode=short|threshold|power`). Not stored in database.
@@ -99,6 +100,7 @@
 ## Task 1: Project Setup
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`
 - Create: `next.config.js`
@@ -233,68 +235,68 @@ Create `components.json`:
 Create `tailwind.config.ts`:
 
 ```typescript
-import type { Config } from "tailwindcss"
+import type { Config } from 'tailwindcss'
 
 const config = {
-  darkMode: ["class"],
+  darkMode: ['class'],
   content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './src/**/*.{ts,tsx}',
   ],
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: '2rem',
       screens: {
-        "2xl": "1400px",
+        '2xl': '1400px',
       },
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require('tailwindcss-animate')],
 } satisfies Config
 
 export default config
@@ -356,8 +358,8 @@ Create `src/app/globals.css`:
 Create `src/lib/utils.ts`:
 
 ```typescript
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -382,6 +384,7 @@ git commit -m "chore: initial project setup with Next.js 15 and shadcn/ui"
 ## Task 2: Database Layer
 
 **Files:**
+
 - Create: `src/lib/db.ts`
 - Create: `tests/db.test.ts`
 
@@ -413,10 +416,14 @@ export function getDb(): Database.Database {
   return db
 }
 
-function columnExists(db: Database.Database, table: string, column: string): boolean {
-  const result = db.prepare(
-    `SELECT 1 FROM pragma_table_info(?) WHERE name = ?`
-  ).get(table, column)
+function columnExists(
+  db: Database.Database,
+  table: string,
+  column: string
+): boolean {
+  const result = db
+    .prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ?`)
+    .get(table, column)
   return !!result
 }
 
@@ -514,8 +521,10 @@ describe('Database', () => {
 
   it('should initialize schema correctly', () => {
     const db = initDb()
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[]
-    const tableNames = tables.map(t => t.name)
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+      .all() as { name: string }[]
+    const tableNames = tables.map((t) => t.name)
     expect(tableNames).toContain('users')
     expect(tableNames).toContain('channels')
     expect(tableNames).toContain('varchive_tokens')
@@ -543,6 +552,7 @@ git commit -m "feat: add SQLite database layer with schema"
 ## Task 3: Token Encryption
 
 **Files:**
+
 - Create: `src/lib/crypto.ts`
 - Create: `tests/crypto.test.ts`
 
@@ -561,7 +571,8 @@ const AUTH_TAG_LENGTH = 16
 
 function getKey(): Buffer {
   const key = process.env.VARCHIVE_TOKEN_KEY
-  if (!key) throw new Error('VARCHIVE_TOKEN_KEY environment variable is required')
+  if (!key)
+    throw new Error('VARCHIVE_TOKEN_KEY environment variable is required')
   return crypto.scryptSync(key, 'salt', KEY_LENGTH)
 }
 
@@ -583,7 +594,10 @@ export function decrypt(encryptedText: string): string {
   const encrypted = data.subarray(IV_LENGTH + AUTH_TAG_LENGTH)
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
   decipher.setAuthTag(authTag)
-  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()])
+  const decrypted = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ])
   return decrypted.toString('utf8')
 }
 ```
@@ -635,6 +649,7 @@ git commit -m "feat: add AES-256-GCM token encryption"
 ## Task 4: V-ARCHIVE API Client
 
 **Files:**
+
 - Create: `src/lib/varchive.ts`
 - Create: `tests/varchive.test.ts`
 
@@ -679,7 +694,10 @@ export async function lookupUser(token: string): Promise<VarchiveUser> {
   return response.json()
 }
 
-export async function getDjClass(nickname: string, button: number): Promise<VarchiveDjClass> {
+export async function getDjClass(
+  nickname: string,
+  button: number
+): Promise<VarchiveDjClass> {
   const encodedNickname = encodeURIComponent(nickname)
   const response = await fetch(
     `${VARCHIVE_BASE_URL}/api/v2/archive/${encodedNickname}/djClass/${button}`,
@@ -697,7 +715,9 @@ export async function getDjClass(nickname: string, button: number): Promise<Varc
   return response.json()
 }
 
-export async function getHighestDjClass(nickname: string): Promise<(VarchiveDjClass & { button: number }) | null> {
+export async function getHighestDjClass(
+  nickname: string
+): Promise<(VarchiveDjClass & { button: number }) | null> {
   const buttons = [4, 5, 6, 8]
   const results: Array<VarchiveDjClass & { button: number }> = []
 
@@ -734,7 +754,7 @@ global.fetch = vi.fn()
 describe('V-ARCHIVE API', () => {
   it('should return the button with the highest DJ POWER (djPowerConversion)', async () => {
     const mockFetch = vi.mocked(fetch)
-    
+
     // 4-button: lower DJ POWER
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -807,6 +827,7 @@ git commit -m "feat: add V-ARCHIVE API client with button selection"
 ## Task 5: In-Memory Cache for Widget
 
 **Files:**
+
 - Create: `src/lib/cache.ts`
 
 **Goal:** Implement LRU cache for widget DJ CLASS lookups to avoid frequent DB queries.
@@ -818,7 +839,13 @@ git commit -m "feat: add V-ARCHIVE API client with button selection"
 import { LRUCache } from 'lru-cache'
 
 type CacheValue =
-  | { djClass: string; rankName: string; rankLevel: string | null; powerInteger: number | null; isTheory: boolean }
+  | {
+      djClass: string
+      rankName: string
+      rankLevel: string | null
+      powerInteger: number | null
+      isTheory: boolean
+    }
   | { unlinked: true }
 
 const cache = new LRUCache<string, CacheValue>({
@@ -831,7 +858,11 @@ export function getDjClassFromCache(key: string): CacheValue | undefined {
   return cache.get(key)
 }
 
-export function setDjClassCache(key: string, value: CacheValue, ttlMinutes?: number): void {
+export function setDjClassCache(
+  key: string,
+  value: CacheValue,
+  ttlMinutes?: number
+): void {
   if (ttlMinutes) {
     cache.set(key, value, { ttl: ttlMinutes * 60 * 1000 })
   } else {
@@ -847,7 +878,10 @@ export function invalidateNicknameCache(nickname: string): void {
   cache.delete(`nick:${nickname}`)
 }
 
-export function invalidateAllUserCaches(chzzkId: string, chzzkNickname?: string): void {
+export function invalidateAllUserCaches(
+  chzzkId: string,
+  chzzkNickname?: string
+): void {
   invalidateUserCache(chzzkId)
   if (chzzkNickname) {
     invalidateNicknameCache(chzzkNickname)
@@ -873,6 +907,7 @@ git commit -m "feat: add LRU cache for widget DJ CLASS lookups"
 ## Task 6: Chzzk OAuth
 
 **Files:**
+
 - Create: `src/lib/chzzk.ts`
 - Create: `src/app/api/auth/chzzk/route.ts`
 - Create: `src/app/api/auth/chzzk/callback/route.ts`
@@ -897,7 +932,10 @@ export function getOAuthUrl(state: string): string {
   return `${CHZZK_AUTH_URL}?${params.toString()}`
 }
 
-export async function exchangeCodeForToken(code: string, state: string): Promise<{
+export async function exchangeCodeForToken(
+  code: string,
+  state: string
+): Promise<{
   accessToken: string
   refreshToken: string
   expiresIn: number
@@ -988,7 +1026,7 @@ import { randomBytes } from 'crypto'
 export async function GET(request: NextRequest) {
   const state = randomBytes(32).toString('hex')
   const url = getOAuthUrl(state)
-  
+
   const response = NextResponse.redirect(url)
   response.cookies.set('oauth_state', state, {
     httpOnly: true,
@@ -996,7 +1034,7 @@ export async function GET(request: NextRequest) {
     sameSite: 'lax',
     maxAge: 600, // 10 minutes
   })
-  
+
   return response
 }
 ```
@@ -1024,7 +1062,10 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(code, state)
+    const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(
+      code,
+      state
+    )
     const userInfo = await getUserInfo(accessToken)
 
     const db = initDb()
@@ -1034,23 +1075,39 @@ export async function GET(request: NextRequest) {
       ON CONFLICT(chzzk_id) DO UPDATE SET chzzk_nickname = excluded.chzzk_nickname
       RETURNING id
     `)
-    const result = stmt.get(userInfo.userId, userInfo.nickname) as { id: number }
+    const result = stmt.get(userInfo.userId, userInfo.nickname) as {
+      id: number
+    }
 
     // Store encrypted Chzzk tokens in channels table for chat proxy
-    const expiresAt = new Date(Date.now() + (expiresIn || 86400) * 1000).toISOString()
-    db.prepare(`
+    const expiresAt = new Date(
+      Date.now() + (expiresIn || 86400) * 1000
+    ).toISOString()
+    db.prepare(
+      `
       INSERT INTO channels (user_id, chzzk_channel_id, chzzk_access_token_encrypted, chzzk_refresh_token_encrypted, token_expires_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         chzzk_access_token_encrypted = excluded.chzzk_access_token_encrypted,
         chzzk_refresh_token_encrypted = excluded.chzzk_refresh_token_encrypted,
         token_expires_at = excluded.token_expires_at
-    `).run(result.id, userInfo.userId, encrypt(accessToken), encrypt(refreshToken), expiresAt)
+    `
+    ).run(
+      result.id,
+      userInfo.userId,
+      encrypt(accessToken),
+      encrypt(refreshToken),
+      expiresAt
+    )
 
     // Auto-sync DJ CLASS if V-ARCHIVE already linked
-    const tokenRow = db.prepare(
-      'SELECT token_encrypted, varchive_nickname FROM varchive_tokens WHERE user_id = ? AND is_active = true'
-    ).get(result.id) as { token_encrypted: string; varchive_nickname: string } | undefined
+    const tokenRow = db
+      .prepare(
+        'SELECT token_encrypted, varchive_nickname FROM varchive_tokens WHERE user_id = ? AND is_active = true'
+      )
+      .get(result.id) as
+      | { token_encrypted: string; varchive_nickname: string }
+      | undefined
 
     if (tokenRow) {
       try {
@@ -1059,7 +1116,8 @@ export async function GET(request: NextRequest) {
         if (vuser.success) {
           const djData = await getHighestDjClass(vuser.nickname)
           if (djData) {
-            db.prepare(`
+            db.prepare(
+              `
               INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
               ON CONFLICT(user_id) DO UPDATE SET
@@ -1069,11 +1127,22 @@ export async function GET(request: NextRequest) {
                 max_dj_power = excluded.max_dj_power,
                 dj_power_conversion = excluded.dj_power_conversion,
                 synced_at = excluded.synced_at
-            `).run(result.id, djData.button, djData.djClass, djData.djPowerSum, djData.maxDjPower, djData.djPowerConversion)
+            `
+            ).run(
+              result.id,
+              djData.button,
+              djData.djClass,
+              djData.djPowerSum,
+              djData.maxDjPower,
+              djData.djPowerConversion
+            )
           }
         }
       } catch (syncErr) {
-        console.error(`[OAuth Callback] Auto-sync failed for user ${result.id}:`, syncErr)
+        console.error(
+          `[OAuth Callback] Auto-sync failed for user ${result.id}:`,
+          syncErr
+        )
       }
     }
 
@@ -1107,6 +1176,7 @@ git commit -m "feat: implement Chzzk OAuth flow"
 ## Task 7: Viewer Linking API
 
 **Files:**
+
 - Create: `src/app/api/user/link-varchive/route.ts`
 
 **Goal:** API endpoint for viewers to link their V-ARCHIVE token.
@@ -1160,7 +1230,9 @@ export async function POST(request: NextRequest) {
     stmt.run(Number(userId), encryptedToken, userInfo.nickname)
 
     // Get user's chzzk info for cache invalidation
-    const userRow = db.prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?').get(Number(userId)) as
+    const userRow = db
+      .prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?')
+      .get(Number(userId)) as
       | { chzzk_id: string; chzzk_nickname: string }
       | undefined
 
@@ -1171,11 +1243,17 @@ export async function POST(request: NextRequest) {
       invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
     }
 
-    return NextResponse.json({ success: true, message: '연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.' })
+    return NextResponse.json({
+      success: true,
+      message: '연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.',
+    })
   } catch (error) {
     console.error('Link V-ARCHIVE error:', error)
     return NextResponse.json(
-      { error: '조회토큰이 유효하지 않습니다. 다시 확인해주세요.', code: 'VALIDATION_ERROR' },
+      {
+        error: '조회토큰이 유효하지 않습니다. 다시 확인해주세요.',
+        code: 'VALIDATION_ERROR',
+      },
       { status: 400 }
     )
   }
@@ -1194,6 +1272,7 @@ git commit -m "feat: add V-ARCHIVE token linking API"
 ## Task 8: Channel/Widget API
 
 **Files:**
+
 - Create: `src/app/api/channel/route.ts`
 - Create: `src/app/api/widget/dj-class/route.ts`
 
@@ -1219,12 +1298,18 @@ export async function GET(request: NextRequest) {
 
   const getStmt = db.prepare('SELECT * FROM channels WHERE user_id = ?')
   let channel = getStmt.get(Number(userId)) as
-    | { id: number; chzzk_channel_id: string; chzzk_access_token_encrypted: string | null }
+    | {
+        id: number
+        chzzk_channel_id: string
+        chzzk_access_token_encrypted: string | null
+      }
     | undefined
 
   if (!channel) {
     const userStmt = db.prepare('SELECT chzzk_id FROM users WHERE id = ?')
-    const user = userStmt.get(Number(userId)) as { chzzk_id: string } | undefined
+    const user = userStmt.get(Number(userId)) as
+      | { chzzk_id: string }
+      | undefined
 
     if (!user) {
       db.close()
@@ -1274,7 +1359,10 @@ export async function GET(request: NextRequest) {
   const chzzkNickname = searchParams.get('chzzkNickname')
 
   if (!chzzkId && !chzzkNickname) {
-    return NextResponse.json({ error: 'chzzkId or chzzkNickname required' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'chzzkId or chzzkNickname required' },
+      { status: 400 }
+    )
   }
 
   const cacheKey = chzzkId ? `id:${chzzkId}` : `nick:${chzzkNickname}`
@@ -1319,7 +1407,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ unlinked: true, source: 'db' })
   }
 
-  const tokenStmt = db.prepare('SELECT id FROM varchive_tokens WHERE user_id = ? AND is_active = true')
+  const tokenStmt = db.prepare(
+    'SELECT id FROM varchive_tokens WHERE user_id = ? AND is_active = true'
+  )
   const tokenResult = tokenStmt.get(userId) as { id: number } | undefined
   if (!tokenResult) {
     setDjClassCache(cacheKey, { unlinked: true }, 0.15)
@@ -1327,26 +1417,55 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ unlinked: true, source: 'db' })
   }
 
-  const djStmt = db.prepare('SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?')
-  const djResult = djStmt.get(userId) as { dj_class: string; button: number; dj_power_conversion: number | null } | undefined
+  const djStmt = db.prepare(
+    'SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?'
+  )
+  const djResult = djStmt.get(userId) as
+    | { dj_class: string; button: number; dj_power_conversion: number | null }
+    | undefined
 
   db.close()
 
   if (djResult) {
     const formattedClass = `${djResult.button}B ${djResult.dj_class}`
-    const isTheory = djResult.dj_power_conversion !== null && djResult.dj_power_conversion >= 10000
-    const powerInteger = djResult.dj_power_conversion ? Math.floor(djResult.dj_power_conversion) : null
+    const isTheory =
+      djResult.dj_power_conversion !== null &&
+      djResult.dj_power_conversion >= 10000
+    const powerInteger = djResult.dj_power_conversion
+      ? Math.floor(djResult.dj_power_conversion)
+      : null
 
-    const rankMatch = djResult.dj_class.match(/^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/)
+    const rankMatch = djResult.dj_class.match(
+      /^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/
+    )
     const rankName = rankMatch ? rankMatch[1].trim() : djResult.dj_class
     const rankLevel = rankMatch ? rankMatch[2] : null
 
-    setDjClassCache(cacheKey, { djClass: formattedClass, rankName, rankLevel, powerInteger, isTheory })
-    return NextResponse.json({ djClass: formattedClass, rankName, rankLevel, powerInteger, isTheory, source: 'db' })
+    setDjClassCache(cacheKey, {
+      djClass: formattedClass,
+      rankName,
+      rankLevel,
+      powerInteger,
+      isTheory,
+    })
+    return NextResponse.json({
+      djClass: formattedClass,
+      rankName,
+      rankLevel,
+      powerInteger,
+      isTheory,
+      source: 'db',
+    })
   }
 
   // Linked but no DJ CLASS data → fallback BEGINNER
-  const fallbackData = { djClass: '4B BEGINNER', rankName: 'BEGINNER', rankLevel: null, powerInteger: 0, isTheory: false }
+  const fallbackData = {
+    djClass: '4B BEGINNER',
+    rankName: 'BEGINNER',
+    rankLevel: null,
+    powerInteger: 0,
+    isTheory: false,
+  }
   setDjClassCache(cacheKey, fallbackData, 0.25)
   return NextResponse.json({ ...fallbackData, source: 'db' })
 }
@@ -1364,6 +1483,7 @@ git commit -m "feat: add channel and widget DJ CLASS lookup APIs"
 ## Task 9: Landing Page
 
 **Files:**
+
 - Create: `src/app/page.tsx`
 - Create: `src/components/LandingPage.tsx`
 
@@ -1379,8 +1499,8 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function LandingPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-2xl w-full text-center space-y-8">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-2xl space-y-8 text-center">
         <h1 className="text-4xl font-bold text-gray-900">
           Chzzk DJ CLASS 채팅 위젯
         </h1>
@@ -1388,7 +1508,7 @@ export default function LandingPage() {
           V-ARCHIVE의 DJ CLASS를 채팅에 표시하는 OBS 위젯 서비스입니다.
         </p>
 
-        <Card className="border-0 shadow-none bg-transparent">
+        <Card className="border-0 bg-transparent shadow-none">
           <CardContent className="space-y-4 pt-8">
             <Link href="/link" className="block w-full">
               <Button size="lg" className="w-full py-6 text-lg">
@@ -1396,7 +1516,11 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link href="/dashboard" className="block w-full">
-              <Button size="lg" variant="secondary" className="w-full py-6 text-lg">
+              <Button
+                size="lg"
+                variant="secondary"
+                className="w-full py-6 text-lg"
+              >
                 스트리머이신가요? - 채팅 위젯 얻기
               </Button>
             </Link>
@@ -1442,6 +1566,7 @@ git commit -m "feat: add Korean landing page"
 ## Task 10: Viewer Linking Page
 
 **Files:**
+
 - Create: `src/app/link/page.tsx`
 - Create: `src/components/LinkPage.tsx`
 
@@ -1456,7 +1581,13 @@ git commit -m "feat: add Korean landing page"
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -1472,8 +1603,12 @@ interface UserInfo {
 
 export default function LinkPage() {
   const [token, setToken] = useState('')
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle')
+  const [syncStatus, setSyncStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle')
   const [syncMessage, setSyncMessage] = useState('')
   const [message, setMessage] = useState('')
   const [user, setUser] = useState<UserInfo | null>(null)
@@ -1487,7 +1622,9 @@ export default function LinkPage() {
           setUser(data)
         }
       })
-      .catch(() => { /* ignore */ })
+      .catch(() => {
+        /* ignore */
+      })
       .finally(() => setLoadingUser(false))
   }, [])
 
@@ -1504,7 +1641,18 @@ export default function LinkPage() {
       if (response.ok) {
         setSyncStatus('success')
         setSyncMessage(`DJ CLASS 동기화 완료: ${data.djClass}`)
-        setUser((prev) => prev ? { ...prev, djClass: data.djClass, powerInteger: data.djPowerConversion ? Math.floor(data.djPowerConversion) : null, isTheory: data.djPowerConversion >= 10000 } : null)
+        setUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                djClass: data.djClass,
+                powerInteger: data.djPowerConversion
+                  ? Math.floor(data.djPowerConversion)
+                  : null,
+                isTheory: data.djPowerConversion >= 10000,
+              }
+            : null
+        )
       } else {
         setSyncStatus('error')
         setSyncMessage(data.error || '동기화에 실패했습니다.')
@@ -1528,7 +1676,7 @@ export default function LinkPage() {
       if (response.ok) {
         setStatus('success')
         setMessage(data.message)
-        setUser((prev) => prev ? { ...prev, varchiveLinked: true } : null)
+        setUser((prev) => (prev ? { ...prev, varchiveLinked: true } : null))
       } else {
         setStatus('error')
         setMessage(data.error || '연동에 실패했습니다.')
@@ -1567,6 +1715,7 @@ git commit -m "feat: add viewer V-ARCHIVE linking page"
 ## Task 11: Streamer Dashboard
 
 **Files:**
+
 - Create: `src/app/dashboard/page.tsx`
 - Create: `src/components/DashboardPage.tsx`
 
@@ -1581,7 +1730,13 @@ git commit -m "feat: add viewer V-ARCHIVE linking page"
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { BadgeMode } from '@/lib/types'
@@ -1665,6 +1820,7 @@ git commit -m "feat: add streamer dashboard with widget URL"
 ## Task 12: OBS Widget Page
 
 **Files:**
+
 - Create: `src/app/widget/[channelId]/page.tsx`
 - Create: `src/components/WidgetPage.tsx`
 
@@ -1752,6 +1908,7 @@ git commit -m "feat: add OBS widget page with Chzzk chat and DJ CLASS display"
 ## Task 13: Cron Worker
 
 **Files:**
+
 - Create: `src/worker/index.ts`
 - Create: `src/worker/sync-djclass.ts`
 
@@ -1777,11 +1934,15 @@ export async function syncDjClasses(): Promise<{
   const errors: string[] = []
 
   try {
-    const tokens = db.prepare(`
+    const tokens = db
+      .prepare(
+        `
       SELECT vt.id, vt.user_id, vt.token_encrypted, vt.varchive_nickname
       FROM varchive_tokens vt
       WHERE vt.is_active = true
-    `).all() as Array<{
+    `
+      )
+      .all() as Array<{
       id: number
       user_id: number
       token_encrypted: string
@@ -1802,15 +1963,17 @@ export async function syncDjClasses(): Promise<{
 
         // Update nickname if changed
         if (userInfo.nickname !== token.varchive_nickname) {
-          db.prepare('UPDATE varchive_tokens SET varchive_nickname = ? WHERE id = ?')
-            .run(userInfo.nickname, token.id)
+          db.prepare(
+            'UPDATE varchive_tokens SET varchive_nickname = ? WHERE id = ?'
+          ).run(userInfo.nickname, token.id)
         }
 
         // Fetch highest DJ CLASS
         const djClassData = await getHighestDjClass(userInfo.nickname)
 
         if (djClassData) {
-          db.prepare(`
+          db.prepare(
+            `
             INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
             VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id) DO UPDATE SET
@@ -1820,7 +1983,8 @@ export async function syncDjClasses(): Promise<{
               max_dj_power = excluded.max_dj_power,
               dj_power_conversion = excluded.dj_power_conversion,
               synced_at = excluded.synced_at
-          `).run(
+          `
+          ).run(
             token.user_id,
             djClassData.button,
             djClassData.djClass,
@@ -1830,12 +1994,16 @@ export async function syncDjClasses(): Promise<{
           )
           success++
         } else {
-          db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(token.user_id)
+          db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(
+            token.user_id
+          )
           success++
         }
 
         // Invalidate cache so widgets show updated data immediately
-        const userRow = db.prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?').get(token.user_id) as
+        const userRow = db
+          .prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?')
+          .get(token.user_id) as
           | { chzzk_id: string; chzzk_nickname: string }
           | undefined
         if (userRow) {
@@ -1843,7 +2011,9 @@ export async function syncDjClasses(): Promise<{
         }
       } catch (error) {
         failed++
-        errors.push(`User ${token.user_id}: ${error instanceof Error ? error.message : String(error)}`)
+        errors.push(
+          `User ${token.user_id}: ${error instanceof Error ? error.message : String(error)}`
+        )
       }
     }
   } finally {
@@ -1878,7 +2048,9 @@ console.log('Worker started. Scheduling daily DJ CLASS sync at 03:00 KST.')
 cron.schedule('0 18 * * *', async () => {
   console.log(`[${new Date().toISOString()}] Starting DJ CLASS sync...`)
   const result = await syncDjClasses()
-  console.log(`[${new Date().toISOString()}] Sync complete: ${result.success} success, ${result.failed} failed`)
+  console.log(
+    `[${new Date().toISOString()}] Sync complete: ${result.success} success, ${result.failed} failed`
+  )
   if (result.errors.length > 0) {
     console.log('Errors:', result.errors)
   }
@@ -1906,6 +2078,7 @@ git commit -m "feat: add daily DJ CLASS sync worker"
 ## Task 14: Docker & Dokku Configuration
 
 **Files:**
+
 - Create: `Dockerfile`
 - Create: `Procfile`
 - Create: `.dockerignore`
@@ -1990,6 +2163,7 @@ git commit -m "chore: add Docker and Dokku deployment config"
 ## Task 15: Environment Configuration
 
 **Files:**
+
 - Create: `.env.example`
 
 **Goal:** Document required environment variables.
@@ -2018,27 +2192,27 @@ git commit -m "chore: add environment configuration example"
 
 ### Spec Coverage Check
 
-| Spec Section | Plan Task | Status |
-|-------------|-----------|--------|
-| Next.js 15 web server | Task 1 (Setup) | Covered |
-| SQLite schema | Task 2 (DB) | Covered |
-| Token encryption | Task 3 (Crypto) | Covered |
-| V-ARCHIVE API client | Task 4 (Varchive) | Covered |
-| In-memory cache | Task 5 (Cache) | Covered |
-| Chzzk OAuth | Task 6 (Auth) | Covered |
-| Viewer linking | Task 7 (Link API) | Covered |
-| Channel/Widget API | Task 8 (APIs) | Covered |
-| Landing page | Task 9 (Landing) | Covered |
-| Linking page | Task 10 (Link page) | Covered |
-| Dashboard | Task 11 (Dashboard) | Covered |
-| OBS widget | Task 12 (Widget) | Covered |
-| Cron worker | Task 13 (Worker) | Covered |
-| Docker/Dokku | Task 14 (Docker) | Covered |
-| Korean UI | Tasks 9-12 | Covered |
-| No nickname in widget | Task 12 | Covered |
-| 25% opacity for unlinked | Task 12 | Covered |
-| BEGINNER fallback | Tasks 8, 12 | Covered |
-| Cache for widget | Tasks 5, 8 | Covered |
+| Spec Section             | Plan Task           | Status  |
+| ------------------------ | ------------------- | ------- |
+| Next.js 15 web server    | Task 1 (Setup)      | Covered |
+| SQLite schema            | Task 2 (DB)         | Covered |
+| Token encryption         | Task 3 (Crypto)     | Covered |
+| V-ARCHIVE API client     | Task 4 (Varchive)   | Covered |
+| In-memory cache          | Task 5 (Cache)      | Covered |
+| Chzzk OAuth              | Task 6 (Auth)       | Covered |
+| Viewer linking           | Task 7 (Link API)   | Covered |
+| Channel/Widget API       | Task 8 (APIs)       | Covered |
+| Landing page             | Task 9 (Landing)    | Covered |
+| Linking page             | Task 10 (Link page) | Covered |
+| Dashboard                | Task 11 (Dashboard) | Covered |
+| OBS widget               | Task 12 (Widget)    | Covered |
+| Cron worker              | Task 13 (Worker)    | Covered |
+| Docker/Dokku             | Task 14 (Docker)    | Covered |
+| Korean UI                | Tasks 9-12          | Covered |
+| No nickname in widget    | Task 12             | Covered |
+| 25% opacity for unlinked | Task 12             | Covered |
+| BEGINNER fallback        | Tasks 8, 12         | Covered |
+| Cache for widget         | Tasks 5, 8          | Covered |
 
 ### Placeholder Scan
 
@@ -2064,4 +2238,4 @@ git commit -m "chore: add environment configuration example"
 
 ---
 
-*Plan complete. Ready for execution.*
+_Plan complete. Ready for execution._

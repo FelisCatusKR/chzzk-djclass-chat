@@ -21,7 +21,10 @@ describe('Chzzk OAuth', () => {
     const url = getOAuthUrl('test-state-123')
     expect(url).toContain('https://chzzk.naver.com/account-interlock')
     expect(url).toContain('clientId=test-client-id')
-    expect(url).toContain('redirectUri=' + encodeURIComponent('https://test.example.com/api/auth/chzzk/callback'))
+    expect(url).toContain(
+      'redirectUri=' +
+        encodeURIComponent('https://test.example.com/api/auth/chzzk/callback')
+    )
     expect(url).toContain('state=test-state-123')
   })
 
@@ -76,7 +79,9 @@ describe('Chzzk OAuth', () => {
       text: async () => 'Invalid code',
     } as Response)
 
-    await expect(exchangeCodeForToken('bad-code', 'state')).rejects.toThrow('Token exchange failed')
+    await expect(exchangeCodeForToken('bad-code', 'state')).rejects.toThrow(
+      'Token exchange failed'
+    )
   })
 
   it('should refresh access token', async () => {
@@ -109,7 +114,9 @@ describe('Chzzk OAuth', () => {
       text: async () => 'Invalid refresh token',
     } as Response)
 
-    await expect(refreshAccessToken('bad-token')).rejects.toThrow('Token refresh failed')
+    await expect(refreshAccessToken('bad-token')).rejects.toThrow(
+      'Token refresh failed'
+    )
   })
 
   it('should fetch user info with wrapped response', async () => {
@@ -130,7 +137,9 @@ describe('Chzzk OAuth', () => {
     expect(result.nickname).toBe('TestStreamer')
 
     const callArgs = mockFetch.mock.calls[0]
-    expect(callArgs[1]?.headers).toEqual({ Authorization: 'Bearer test-access-token' })
+    expect(callArgs[1]?.headers).toEqual({
+      Authorization: 'Bearer test-access-token',
+    })
   })
 
   it('should fetch user info with unwrapped response', async () => {
@@ -156,6 +165,8 @@ describe('Chzzk OAuth', () => {
       text: async () => 'Forbidden',
     } as Response)
 
-    await expect(getUserInfo('bad-token')).rejects.toThrow('User info fetch failed')
+    await expect(getUserInfo('bad-token')).rejects.toThrow(
+      'User info fetch failed'
+    )
   })
 })

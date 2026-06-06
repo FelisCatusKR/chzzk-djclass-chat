@@ -2,7 +2,7 @@ import { createServer } from 'http'
 import { parse } from 'url'
 import next from 'next'
 import { WebSocketServer } from 'ws'
-import { connectToChat, addWidget, removeWidget } from './src/lib/chat-proxy'
+import { addWidget, removeWidget } from './src/lib/chat-proxy'
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = '0.0.0.0'
@@ -63,7 +63,7 @@ app.prepare().then(() => {
     })
     // Close existing connections to prevent hanging
     if ('closeAllConnections' in server) {
-      ;(server as any).closeAllConnections()
+      ;(server as { closeAllConnections(): void }).closeAllConnections()
     }
     // Force exit after 10s if still hanging
     setTimeout(() => {

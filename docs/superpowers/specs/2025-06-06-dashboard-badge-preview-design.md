@@ -34,13 +34,13 @@ The widget page (`src/components/WidgetPage.tsx`) already renders badges with V-
 
 Refactor `WidgetPage.tsx` to extract rendering logic into shared components so both `WidgetPage` and `DashboardPage` use the same code.
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `DjClassBadge` | `src/components/DjClassBadge.tsx` | Renders the colored badge text. Props: `mode`, `djClass`, `rankShort`, `rankLevel`, `powerInteger`. |
-| `TheoryBadge` | `src/components/TheoryBadge.tsx` | Renders the glittering red `이론치` badge. No props. |
-| `ChatMessageRow` | `src/components/ChatMessageRow.tsx` | Combines `DjClassBadge` + `TheoryBadge` + message text. Props match `ChatMessage` interface. |
-| `BadgeModePreviewRow` | `src/components/BadgeModePreviewRow.tsx` | Dashboard-only. A selectable row with label + real `DjClassBadge` preview + sample text. |
-| `WidgetPreview` | `src/components/WidgetPreview.tsx` | Dashboard-only. 400×200 container that renders `ChatMessageRow` items with fake data, dark background, auto-scrolling. |
+| Component             | File                                     | Purpose                                                                                                                |
+| --------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `DjClassBadge`        | `src/components/DjClassBadge.tsx`        | Renders the colored badge text. Props: `mode`, `djClass`, `rankShort`, `rankLevel`, `powerInteger`.                    |
+| `TheoryBadge`         | `src/components/TheoryBadge.tsx`         | Renders the glittering red `이론치` badge. No props.                                                                   |
+| `ChatMessageRow`      | `src/components/ChatMessageRow.tsx`      | Combines `DjClassBadge` + `TheoryBadge` + message text. Props match `ChatMessage` interface.                           |
+| `BadgeModePreviewRow` | `src/components/BadgeModePreviewRow.tsx` | Dashboard-only. A selectable row with label + real `DjClassBadge` preview + sample text.                               |
+| `WidgetPreview`       | `src/components/WidgetPreview.tsx`       | Dashboard-only. 400×200 container that renders `ChatMessageRow` items with fake data, dark background, auto-scrolling. |
 
 ### Data Flow
 
@@ -56,9 +56,10 @@ DashboardPage
 
 WidgetPage (refactored)
 └── ChatMessageRow (per real message)
-    ├── DjClassBadge
-    └── TheoryBadge
-```
+├── DjClassBadge
+└── TheoryBadge
+
+````
 
 ## Component Specifications
 
@@ -74,7 +75,7 @@ interface DjClassBadgeProps {
   rankLevel: string | null
   powerInteger: number | null
 }
-```
+````
 
 **Logic:** Identical to the current inline logic in `WidgetPage` lines 350–373:
 
@@ -107,6 +108,7 @@ interface ChatMessageRowProps {
 Where `ChatMessage` is the existing interface from `WidgetPage`.
 
 **Rendering:**
+
 - Conditionally render `DjClassBadge` if `message.rankShort` exists.
 - Conditionally render `TheoryBadge` if `message.isTheory` is true.
 - Render message text with `text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]`.
@@ -126,6 +128,7 @@ interface BadgeModePreviewRowProps {
 ```
 
 **Rendering:**
+
 - Built on shadcn/ui `RadioGroup` / `RadioGroupItem` primitives (or custom row that matches the same accessibility/keyboard behavior). Do not use raw styled `<div>` radio indicators.
 - Label text above the preview line using shadcn/ui `Label`.
 - Preview line: `DjClassBadge` with fixed example data + the Korean text "안녕하세요".
@@ -150,6 +153,7 @@ interface WidgetPreviewProps {
 **Message list:** Flex column, justify-end, 8px padding. Messages appear from the bottom and scroll up.
 
 **Fake messages:** 20 hardcoded `ChatMessage` objects. The list cycles: after the last message, start from the first again. Messages include a mix of:
+
 - Various ranks (BEGINNER, TRAINEE, AMATEUR, ROOKIE, STREET DJ, MIDDLEMAN, PRO DJ, HIGH CLASS, PROFESSIONAL, TREND SETTER, HEADLINER, SHOWSTOPPER, BEAT MAESTRO)
 - Different button counts (4B, 5B, 6B, 8B)
 - At least one `이론치` message
@@ -160,28 +164,28 @@ interface WidgetPreviewProps {
 
 **Message content (20 fake messages):**
 
-| # | Text | Rank | Level | Power | Button | Theory | Unlinked |
-|---|------|------|-------|-------|--------|--------|----------|
-| 1 | 안녕하세요 | SHOWSTOPPER | II | 9823 | 4B | No | No |
-| 2 | 이거 쉽던데 | SHOWSTOPPER | I | 9888 | 6B | No | No |
-| 3 | 처음 왔어요 잘 부탁드려요 | STREET DJ | IV | 5342 | 5B | No | No |
-| 4 | 신청곡 넣어도 되나요? | PRO DJ | III | 7337 | 8B | No | No |
-| 5 | 망이조아 | HEADLINER | II | 9600 | 6B | No | No |
-| 6 | ㅎㅇ | THE LORD OF DJMAX | — | 10000 | 4B | Yes | No |
-| 7 | 스코어 인증 완료했습니다 | PROFESSIONAL | II | 8800 | 5B | Yes | No |
-| 8 | 로페바이럴 | AMATEUR | III | 2800 | 6B | No | No |
-| 9 | 잘 좀 해봐요 | MIDDLEMAN | I | 6999 | 8B | No | No |
-| 10 | 키보드 혹시 뭔가요? | ROOKIE | II | 4600 | 4B | No | No |
-| 11 | 이거 좀 어렵... | BEGINNER | — | 652 | 5B | No | No |
-| 12 | 오늘도 래더 하시나요? | HIGH CLASS | I | 8400 | 6B | No | No |
-| 13 | 지린다 ㄷㄷ | BEAT MAESTRO | IV | 9900 | 8B | No | No |
-| 14 | 반가워요 | TRAINEE | I | 2000 | 4B | No | No |
-| 15 | 연타를 변기에 넣고 내려 | PROFESSIONAL | I | 8900 | 5B | No | No |
-| 16 | ㅁㅁㅁㅁㄷㄴㅅ | — | — | — | — | No | Yes |
-| 17 | 방금 어케 친거임 | STREET DJ | III | 5704 | 4B | No | No |
-| 18 | 퍼펙 ㅊㅊㅊㅊㅊ | SHOWSTOPPER | III | 9750 | 8B | Yes | No |
-| 19 | 탭소닉은다시돌아온다 | — | — | — | — | No | Yes |
-| 20 | 혹시 제가 연타를 잘 못하는데 이거 방법 있을까요? ㅠㅠ | ROOKIE | I | 4943 | 6B | No | No |
+| #   | Text                                                  | Rank              | Level | Power | Button | Theory | Unlinked |
+| --- | ----------------------------------------------------- | ----------------- | ----- | ----- | ------ | ------ | -------- |
+| 1   | 안녕하세요                                            | SHOWSTOPPER       | II    | 9823  | 4B     | No     | No       |
+| 2   | 이거 쉽던데                                           | SHOWSTOPPER       | I     | 9888  | 6B     | No     | No       |
+| 3   | 처음 왔어요 잘 부탁드려요                             | STREET DJ         | IV    | 5342  | 5B     | No     | No       |
+| 4   | 신청곡 넣어도 되나요?                                 | PRO DJ            | III   | 7337  | 8B     | No     | No       |
+| 5   | 망이조아                                              | HEADLINER         | II    | 9600  | 6B     | No     | No       |
+| 6   | ㅎㅇ                                                  | THE LORD OF DJMAX | —     | 10000 | 4B     | Yes    | No       |
+| 7   | 스코어 인증 완료했습니다                              | PROFESSIONAL      | II    | 8800  | 5B     | No     | No       |
+| 8   | 로페바이럴                                            | AMATEUR           | III   | 2800  | 6B     | No     | No       |
+| 9   | 잘 좀 해봐요                                          | MIDDLEMAN         | I     | 6999  | 8B     | No     | No       |
+| 10  | 키보드 혹시 뭔가요?                                   | ROOKIE            | II    | 4600  | 4B     | No     | No       |
+| 11  | 이거 좀 어렵...                                       | BEGINNER          | —     | 652   | 5B     | No     | No       |
+| 12  | 오늘도 래더 하시나요?                                 | HIGH CLASS        | I     | 8400  | 6B     | No     | No       |
+| 13  | 지린다 ㄷㄷ                                           | BEAT MAESTRO      | IV    | 9900  | 8B     | No     | No       |
+| 14  | 반가워요                                              | TRAINEE           | I     | 2000  | 4B     | No     | No       |
+| 15  | 연타를 변기에 넣고 내려                               | PROFESSIONAL      | I     | 8900  | 5B     | No     | No       |
+| 16  | ㅁㅁㅁㅁㄷㄴㅅ                                        | —                 | —     | —     | —      | No     | Yes      |
+| 17  | 방금 어케 친거임                                      | STREET DJ         | III   | 5704  | 4B     | No     | No       |
+| 18  | 퍼펙 ㅊㅊㅊㅊㅊ                                       | SHOWSTOPPER       | III   | 9750  | 8B     | No     | No       |
+| 19  | 탭소닉은다시돌아온다                                  | —                 | —     | —     | —      | No     | Yes      |
+| 20  | 혹시 제가 연타를 잘 못하는데 이거 방법 있을까요? ㅠㅠ | ROOKIE            | I     | 4943  | 6B     | No     | No       |
 
 > Note: The user will modify these messages later. The list should be defined in a separate file (`src/lib/fake-chat-messages.ts`) so it's easy to edit without touching component logic.
 
@@ -194,6 +198,7 @@ Add a new Card below the badge mode card containing the `WidgetPreview`.
 ### State Management
 
 `badgeMode` state (`'short' | 'threshold' | 'power'`) remains in `DashboardPage`. It is passed to:
+
 - `getWidgetUrl()` (already done)
 - `WidgetPreview` (new)
 - Each `BadgeModePreviewRow` via `isSelected`
@@ -208,6 +213,7 @@ Add a new Card below the badge mode card containing the `WidgetPreview`.
 ## Shared Utilities
 
 Create `src/lib/dj-class.ts` containing:
+
 - `DJ_CLASS_COLORS`
 - `SHORT_NAMES`
 - `RANK_THRESHOLDS`
@@ -239,15 +245,15 @@ Both `WidgetPage` and `DjClassBadge` import from here.
 
 ## Files to Create / Modify
 
-| Action | File |
-|--------|------|
-| Create | `src/lib/dj-class.ts` |
-| Create | `src/lib/fake-chat-messages.ts` |
-| Create | `src/components/DjClassBadge.tsx` |
-| Create | `src/components/TheoryBadge.tsx` + CSS module |
-| Create | `src/components/ChatMessageRow.tsx` |
-| Create | `src/components/BadgeModePreviewRow.tsx` |
-| Create | `src/components/WidgetPreview.tsx` |
+| Action | File                                                                |
+| ------ | ------------------------------------------------------------------- |
+| Create | `src/lib/dj-class.ts`                                               |
+| Create | `src/lib/fake-chat-messages.ts`                                     |
+| Create | `src/components/DjClassBadge.tsx`                                   |
+| Create | `src/components/TheoryBadge.tsx` + CSS module                       |
+| Create | `src/components/ChatMessageRow.tsx`                                 |
+| Create | `src/components/BadgeModePreviewRow.tsx`                            |
+| Create | `src/components/WidgetPreview.tsx`                                  |
 | Modify | `src/components/WidgetPage.tsx` (refactor to use shared components) |
-| Modify | `src/components/DashboardPage.tsx` (add previews) |
-| Create | `src/components/theory-badge.module.css` |
+| Modify | `src/components/DashboardPage.tsx` (add previews)                   |
+| Create | `src/components/theory-badge.module.css`                            |

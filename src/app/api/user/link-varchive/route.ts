@@ -43,7 +43,9 @@ export async function POST(request: NextRequest) {
     stmt.run(Number(userId), encryptedToken, userInfo.nickname)
 
     // Get user's chzzk info for cache invalidation
-    const userRow = db.prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?').get(Number(userId)) as
+    const userRow = db
+      .prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?')
+      .get(Number(userId)) as
       | { chzzk_id: string; chzzk_nickname: string }
       | undefined
 
@@ -54,12 +56,21 @@ export async function POST(request: NextRequest) {
       invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
     }
 
-    return NextResponse.json({ success: true, message: '연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.' })
+    return NextResponse.json({
+      success: true,
+      message: '연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.',
+    })
   } catch (error) {
     console.error('Link V-ARCHIVE error:', error)
-    const errorCode = error instanceof Error && error.message.includes('fetch') ? 'NETWORK_ERROR' : 'VALIDATION_ERROR'
+    const errorCode =
+      error instanceof Error && error.message.includes('fetch')
+        ? 'NETWORK_ERROR'
+        : 'VALIDATION_ERROR'
     return NextResponse.json(
-      { error: '조회토큰이 유효하지 않습니다. 다시 확인해주세요.', code: errorCode },
+      {
+        error: '조회토큰이 유효하지 않습니다. 다시 확인해주세요.',
+        code: errorCode,
+      },
       { status: 400 }
     )
   }

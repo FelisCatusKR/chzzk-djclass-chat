@@ -18,7 +18,9 @@ console.log('Worker started. Scheduling daily DJ CLASS sync at 03:00 KST.')
 cron.schedule('0 18 * * *', async () => {
   console.log(`[${new Date().toISOString()}] Starting DJ CLASS sync...`)
   const result = await syncDjClasses()
-  console.log(`[${new Date().toISOString()}] Sync complete: ${result.success} success, ${result.failed} failed`)
+  console.log(
+    `[${new Date().toISOString()}] Sync complete: ${result.success} success, ${result.failed} failed`
+  )
   if (result.errors.length > 0) {
     console.log('Errors:', result.errors)
   }

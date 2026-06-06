@@ -20,10 +20,14 @@ export function getDb(): Database.Database {
   return db
 }
 
-function columnExists(db: Database.Database, table: string, column: string): boolean {
-  const result = db.prepare(
-    `SELECT 1 FROM pragma_table_info(?) WHERE name = ?`
-  ).get(table, column)
+function columnExists(
+  db: Database.Database,
+  table: string,
+  column: string
+): boolean {
+  const result = db
+    .prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ?`)
+    .get(table, column)
   return !!result
 }
 
@@ -34,8 +38,12 @@ function runMigrations(db: Database.Database): void {
     console.log('[DB Migration] Added chzzk_access_token_encrypted to channels')
   }
   if (!columnExists(db, 'channels', 'chzzk_refresh_token_encrypted')) {
-    db.exec(`ALTER TABLE channels ADD COLUMN chzzk_refresh_token_encrypted TEXT`)
-    console.log('[DB Migration] Added chzzk_refresh_token_encrypted to channels')
+    db.exec(
+      `ALTER TABLE channels ADD COLUMN chzzk_refresh_token_encrypted TEXT`
+    )
+    console.log(
+      '[DB Migration] Added chzzk_refresh_token_encrypted to channels'
+    )
   }
   if (!columnExists(db, 'channels', 'token_expires_at')) {
     db.exec(`ALTER TABLE channels ADD COLUMN token_expires_at DATETIME`)

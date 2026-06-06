@@ -12,9 +12,18 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get('state')
   const storedState = request.cookies.get('oauth_state')?.value
 
-  console.log('[OAuth Callback] code:', code ? code.substring(0, 10) + '...' : 'missing')
-  console.log('[OAuth Callback] state:', state ? state.substring(0, 10) + '...' : 'missing')
-  console.log('[OAuth Callback] storedState:', storedState ? storedState.substring(0, 10) + '...' : 'missing')
+  console.log(
+    '[OAuth Callback] code:',
+    code ? code.substring(0, 10) + '...' : 'missing'
+  )
+  console.log(
+    '[OAuth Callback] state:',
+    state ? state.substring(0, 10) + '...' : 'missing'
+  )
+  console.log(
+    '[OAuth Callback] storedState:',
+    storedState ? storedState.substring(0, 10) + '...' : 'missing'
+  )
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.url
 
@@ -25,11 +34,17 @@ export async function GET(request: NextRequest) {
 
   try {
     console.log('[OAuth Callback] Exchanging code for token...')
-    const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(code, state)
+    const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(
+      code,
+      state
+    )
     console.log('[OAuth Callback] Token received')
 
     const userInfo = await getUserInfo(accessToken)
-    console.log('[OAuth Callback] User info:', { userId: userInfo.userId, nickname: userInfo.nickname })
+    console.log('[OAuth Callback] User info:', {
+      userId: userInfo.userId,
+      nickname: userInfo.nickname,
+    })
 
     const db = initDb()
     const stmt = db.prepare(`
@@ -38,18 +53,24 @@ export async function GET(request: NextRequest) {
       ON CONFLICT(chzzk_id) DO UPDATE SET chzzk_nickname = excluded.chzzk_nickname
       RETURNING id
     `)
-    const result = stmt.get(userInfo.userId, userInfo.nickname) as { id: number }
+    const result = stmt.get(userInfo.userId, userInfo.nickname) as {
+      id: number
+    }
 
     // Store encrypted Chzzk tokens in channels table for chat proxy
-    const expiresAt = new Date(Date.now() + (expiresIn || 86400) * 1000).toISOString()
-    db.prepare(`
+    const expiresAt = new Date(
+      Date.now() + (expiresIn || 86400) * 1000
+    ).toISOString()
+    db.prepare(
+      `
       INSERT INTO channels (user_id, chzzk_channel_id, chzzk_access_token_encrypted, chzzk_refresh_token_encrypted, token_expires_at)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         chzzk_access_token_encrypted = excluded.chzzk_access_token_encrypted,
         chzzk_refresh_token_encrypted = excluded.chzzk_refresh_token_encrypted,
         token_expires_at = excluded.token_expires_at
-    `).run(
+    `
+    ).run(
       result.id,
       userInfo.userId,
       encrypt(accessToken),
@@ -58,9 +79,13 @@ export async function GET(request: NextRequest) {
     )
 
     // Auto-sync DJ CLASS if V-ARCHIVE is already linked
-    const tokenRow = db.prepare(
-      'SELECT token_encrypted, varchive_nickname FROM varchive_tokens WHERE user_id = ? AND is_active = true'
-    ).get(result.id) as { token_encrypted: string; varchive_nickname: string } | undefined
+    const tokenRow = db
+      .prepare(
+        'SELECT token_encrypted, varchive_nickname FROM varchive_tokens WHERE user_id = ? AND is_active = true'
+      )
+      .get(result.id) as
+      | { token_encrypted: string; varchive_nickname: string }
+      | undefined
 
     if (tokenRow) {
       try {
@@ -69,7 +94,8 @@ export async function GET(request: NextRequest) {
         if (vuser.success) {
           const djData = await getHighestDjClass(vuser.nickname)
           if (djData) {
-            db.prepare(`
+            db.prepare(
+              `
               INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
               VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
               ON CONFLICT(user_id) DO UPDATE SET
@@ -79,7 +105,8 @@ export async function GET(request: NextRequest) {
                 max_dj_power = excluded.max_dj_power,
                 dj_power_conversion = excluded.dj_power_conversion,
                 synced_at = excluded.synced_at
-            `).run(
+            `
+            ).run(
               result.id,
               djData.button,
               djData.djClass,
@@ -87,11 +114,16 @@ export async function GET(request: NextRequest) {
               djData.maxDjPower,
               djData.djPowerConversion
             )
-            console.log(`[OAuth Callback] Auto-synced DJ CLASS for user ${result.id}`)
+            console.log(
+              `[OAuth Callback] Auto-synced DJ CLASS for user ${result.id}`
+            )
           }
         }
       } catch (syncErr) {
-        console.error(`[OAuth Callback] Auto-sync failed for user ${result.id}:`, syncErr)
+        console.error(
+          `[OAuth Callback] Auto-sync failed for user ${result.id}:`,
+          syncErr
+        )
       }
     }
 
