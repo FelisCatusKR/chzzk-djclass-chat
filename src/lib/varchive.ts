@@ -60,22 +60,26 @@ export async function getHighestDjClass(
   nickname: string
 ): Promise<(VarchiveDjClass & { button: number }) | null> {
   const buttons = [4, 5, 6, 8]
-  const results: Array<VarchiveDjClass & { button: number }> = []
 
-  for (const button of buttons) {
-    try {
-      const result = await getDjClass(nickname, button)
-      if (result.success && result.djClass) {
-        results.push({ ...result, button })
+  const settled = await Promise.all(
+    buttons.map(async (button) => {
+      try {
+        const result = await getDjClass(nickname, button)
+        if (result.success && result.djClass) {
+          return { ...result, button }
+        }
+      } catch {
+        // Skip failed buttons
       }
-    } catch {
-      // Skip failed buttons
-    }
-  }
+      return null
+    })
+  )
 
+  const results = settled.filter(
+    (r): r is VarchiveDjClass & { button: number } => r !== null
+  )
   if (results.length === 0) return null
 
-  // Return the button with the highest DJ POWER (djPowerConversion)
   return results.reduce((best, current) =>
     current.djPowerConversion > best.djPowerConversion ? current : best
   )
