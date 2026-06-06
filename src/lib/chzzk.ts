@@ -1,6 +1,7 @@
 const CHZZK_AUTH_URL = 'https://chzzk.naver.com/account-interlock'
 const CHZZK_TOKEN_URL = 'https://openapi.chzzk.naver.com/auth/v1/token'
 const CHZZK_API_URL = 'https://openapi.chzzk.naver.com/open/v1'
+const FETCH_TIMEOUT_MS = 8000
 
 export function getOAuthUrl(state: string): string {
   const params = new URLSearchParams({
@@ -29,6 +30,7 @@ export async function exchangeCodeForToken(
       code,
       state,
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -59,6 +61,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
       clientSecret: process.env.CHZZK_CLIENT_SECRET,
       refreshToken,
     }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -83,6 +86,7 @@ export async function getUserInfo(accessToken: string): Promise<{
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
 
   if (!response.ok) {

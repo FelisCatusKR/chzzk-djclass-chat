@@ -31,6 +31,7 @@ interface ChannelConnection {
 }
 
 const connections = new Map<string, ChannelConnection>()
+const FETCH_TIMEOUT_MS = 8000
 
 async function getSessionUrl(accessToken: string): Promise<string> {
   const response = await fetch(
@@ -40,6 +41,7 @@ async function getSessionUrl(accessToken: string): Promise<string> {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
   )
 
@@ -71,6 +73,7 @@ async function subscribeToChat(
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
   )
 

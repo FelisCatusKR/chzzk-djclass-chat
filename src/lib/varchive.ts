@@ -1,4 +1,5 @@
 const VARCHIVE_BASE_URL = 'https://v-archive.net'
+const FETCH_TIMEOUT_MS = 8000
 
 export interface VarchiveUser {
   success: boolean
@@ -20,6 +21,7 @@ export async function lookupUser(token: string): Promise<VarchiveUser> {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
 
   if (!response.ok) {
@@ -43,6 +45,7 @@ export async function getDjClass(
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }
   )
 
