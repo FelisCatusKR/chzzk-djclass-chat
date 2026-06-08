@@ -54,17 +54,26 @@ Pick the button with the greatest **class**, ordered by this key (first differen
 
 | Priority | Key | Order (best → worst) |
 |---|---|---|
-| 1 | **Theory** — DJ class is `THE LORD OF DJMAX` AND `djPowerConversion >= THEORY_POWER_THRESHOLD` (10000) | theory beats non-theory |
-| 2 | **Rank** | LoD > BM > SS > HL > TS > PRO > HC > PD > MM > SD > RK > AM > TR > BG |
-| 3 | **Level** within a rank | I > II > III > IV (null for LoD / BEGINNER) |
-| 4 | **Button** (only on exact rank+level tie) | 8 > 5 > 6 > 4 |
+| 1 | **Rank** | LoD > BM > SS > HL > TS > PRO > HC > PD > MM > SD > RK > AM > TR > BG |
+| 2 | **Level** within a rank | Theory > I > II > III > IV |
+| 3 | **Button** (only on exact rank+level tie) | 8 > 5 > 6 > 4 |
+
+**Theory is modeled as the top level of LoD**, not a separate dimension. "Theory"
+means DJ class is `THE LORD OF DJMAX` AND `djPowerConversion >= THEORY_POWER_THRESHOLD`
+(10000). A theory LoD outranks a normal LoD by level; both still outrank BM by rank
+(rank is compared first). This is sound because theory can only occur at LoD, so a
+separate top-level flag would only ever be decisive within LoD anyway — folding it into
+the level term gives identical ordering with one less dimension. Normal LoD and
+BEGINNER have no roman level (treated as the base level).
 
 "Same DJ class" for the button tie-break means **same rank AND same level** (e.g.
-`SHOWSTOPPER II`). Different levels of the same rank are still ordered by level — only
-an exact rank+level match falls through to the button order.
+`SHOWSTOPPER II`, or two theory-LoD buttons). Different levels of the same rank are
+still ordered by level — only an exact rank+level match falls through to the button
+order. In particular, when **all four buttons are theory** they tie on rank and level,
+so the winner is decided purely by 8 > 5 > 6 > 4.
 
-Power is used **only** to compute the theory flag. Two buttons at the same rank+level
-are separated by button order, not by power.
+Power is used **only** to detect Theory (the top level of LoD). Two buttons at the same
+rank+level are separated by button order, not by power.
 
 ## Where the code goes
 
@@ -84,14 +93,16 @@ here:
     djClass: string,
     djPowerConversion: number | null | undefined,
     button: number
-  ): [theory: number, rankOrdinal: number, levelOrdinal: number, buttonPref: number]
+  ): [rankOrdinal: number, levelOrdinal: number, buttonPref: number]
   ```
 
-  - `theory`: 1 if `parseRankName(djClass) === 'THE LORD OF DJMAX'` and
-    `isTheoryPower(djPowerConversion)`, else 0.
   - `rankOrdinal`: higher is better, derived from `RANK_ORDER` (unknown rank sorts
     lowest, alongside BEGINNER).
-  - `levelOrdinal`: I=4, II=3, III=2, IV=1, none=0. Parsed via existing `LEVEL_RE`.
+  - `levelOrdinal`: Theory=5, I=4, II=3, III=2, IV=1, none=0. Theory applies only when
+    `parseRankName(djClass) === 'THE LORD OF DJMAX'` and `isTheoryPower(djPowerConversion)`;
+    otherwise the roman level is parsed via existing `LEVEL_RE` (absent → 0). The
+    numeric overlap between LoD's Theory/base and other ranks' levels is harmless
+    because `rankOrdinal` is compared first.
   - `buttonPref`: higher is better for the order 8 > 5 > 6 > 4 (so a larger number
     means "preferred"; e.g. map 8→3, 5→2, 6→1, 4→0).
 
@@ -112,9 +123,11 @@ a class is unchanged (`return null`).
   `HL I` @ high power).
 - Same rank, different level: `SS I` beats `SS IV`.
 - Exact rank+level tie resolves by button order: 8 > 5 > 6 > 4.
-- Theory (`THE LORD OF DJMAX` @ ≥10000) beats plain `THE LORD OF DJMAX` @ <10000.
-- Theory beats every non-LoD rank.
-- LoD / BEGINNER (no level) compare correctly (levelOrdinal 0) without throwing.
+- Theory (`THE LORD OF DJMAX` @ ≥10000) beats plain `THE LORD OF DJMAX` @ <10000
+  (theory is LoD's top level).
+- Theory still loses to nothing and beats every non-LoD rank.
+- All four buttons theory → resolves purely by button order (8 wins).
+- LoD / BEGINNER (no roman level) compare correctly (levelOrdinal 0) without throwing.
 - Unknown / unexpected class string sorts to the bottom rather than crashing.
 
 A reducer-level test over a representative set of four button results confirms the
