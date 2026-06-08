@@ -58,9 +58,9 @@ export async function getDjClass(
   return response.json()
 }
 
-export async function getHighestDjClass(
+export async function getAllDjClasses(
   nickname: string
-): Promise<(VarchiveDjClass & { button: number }) | null> {
+): Promise<Array<VarchiveDjClass & { button: number }>> {
   const buttons = [4, 5, 6, 8]
 
   const settled = await Promise.all(
@@ -77,9 +77,15 @@ export async function getHighestDjClass(
     })
   )
 
-  const results = settled.filter(
+  return settled.filter(
     (r): r is VarchiveDjClass & { button: number } => r !== null
   )
+}
+
+export async function getHighestDjClass(
+  nickname: string
+): Promise<(VarchiveDjClass & { button: number }) | null> {
+  const results = await getAllDjClasses(nickname)
   if (results.length === 0) return null
 
   return results.reduce((best, current) =>

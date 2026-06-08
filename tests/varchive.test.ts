@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { getHighestDjClass } from '../src/lib/varchive'
+import { getHighestDjClass, getAllDjClasses } from '../src/lib/varchive'
 
 // Mock global fetch
 global.fetch = vi.fn()
@@ -80,5 +80,29 @@ describe('getHighestDjClass', () => {
     const result = await getHighestDjClass('testuser')
     expect(result).toBeNull()
     expect(mockFetch).toHaveBeenCalledTimes(4)
+  })
+})
+
+describe('getAllDjClasses', () => {
+  beforeEach(() => {
+    vi.mocked(fetch).mockClear()
+  })
+
+  it('returns one entry per button that has a record', async () => {
+    const mockFetch = vi.mocked(fetch)
+    mockFetch.mockResolvedValueOnce(mockButton('SHOWSTOPPER II', 9800)) // 4B
+    mockFetch.mockResolvedValueOnce(mockButton('HIGH CLASS I', 8400)) // 5B
+    mockFetch.mockRejectedValueOnce(new Error('Not found')) // 6B
+    mockFetch.mockResolvedValueOnce(mockButton('HEADLINER IV', 9400)) // 8B
+
+    const result = await getAllDjClasses('testuser')
+    expect(result.map((r) => r.button).sort((a, b) => a - b)).toEqual([4, 5, 8])
+    expect(mockFetch).toHaveBeenCalledTimes(4)
+  })
+
+  it('returns an empty array when all buttons fail', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('Not found'))
+    const result = await getAllDjClasses('testuser')
+    expect(result).toEqual([])
   })
 })
