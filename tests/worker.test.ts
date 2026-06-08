@@ -136,7 +136,9 @@ describe('Daily DJ CLASS Sync Worker', () => {
     db2.close()
 
     expect(djRow).toBeDefined()
-    expect(djRow!.button).toBe(8) // 8B wins: HIGH CLASS I beats HIGH CLASS II (I > II); 8B beats 5B by button preference
+    // 8B wins: among buttons, HIGH CLASS I (level I) outranks HIGH CLASS II (level II) — level is the deciding axis.
+    // Of the two HIGH CLASS I buttons (4B and 8B), 8B wins the tie by button preference (8 > 4).
+    expect(djRow!.button).toBe(8)
     expect(djRow!.dj_class).toBe('HIGH CLASS I')
     expect(djRow!.dj_power_conversion).toBe(6000)
   })
