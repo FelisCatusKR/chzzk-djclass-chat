@@ -1,3 +1,5 @@
+import { getClassSortKey, compareClassSortKeys } from './dj-class'
+
 const VARCHIVE_BASE_URL = 'https://v-archive.net'
 const FETCH_TIMEOUT_MS = 8000
 
@@ -81,6 +83,15 @@ export async function getHighestDjClass(
   if (results.length === 0) return null
 
   return results.reduce((best, current) =>
-    current.djPowerConversion > best.djPowerConversion ? current : best
+    compareClassSortKeys(
+      getClassSortKey(
+        current.djClass,
+        current.djPowerConversion,
+        current.button
+      ),
+      getClassSortKey(best.djClass, best.djPowerConversion, best.button)
+    ) > 0
+      ? current
+      : best
   )
 }

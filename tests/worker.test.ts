@@ -136,9 +136,9 @@ describe('Daily DJ CLASS Sync Worker', () => {
     db2.close()
 
     expect(djRow).toBeDefined()
-    expect(djRow!.button).toBe(4) // 4B has highest djPowerConversion (8385.9)
-    expect(djRow!.dj_class).toBe('HIGH CLASS II')
-    expect(djRow!.dj_power_conversion).toBe(8385.9)
+    expect(djRow!.button).toBe(8) // 8B wins: HIGH CLASS I beats HIGH CLASS II (I > II); 8B beats 5B by button preference
+    expect(djRow!.dj_class).toBe('HIGH CLASS I')
+    expect(djRow!.dj_power_conversion).toBe(6000)
   })
 
   it('should update V-ARCHIVE nickname if changed', async () => {
