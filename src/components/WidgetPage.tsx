@@ -62,7 +62,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   const badgeModeRef = useRef<BadgeMode>('short')
   const selRef = useRef<'auto' | 'viewer'>('auto')
   const [fontSize, setFontSize] = useState<number>(FONT_SIZE_DEFAULT)
-  const [_fadeoutSec, setFadeoutSec] = useState<number>(0)
+  const [fadeoutSec, setFadeoutSec] = useState<number>(0)
 
   // Read badge mode and font size from URL query parameters on mount
   useEffect(() => {
@@ -228,6 +228,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           powerInteger: cacheEntry.powerInteger,
           text: pending.messageText,
           isUnlinked: cacheEntry.unlinked,
+          createdAt: Date.now(),
         }
 
         setMessages((prev) => [...prev.slice(-99), newMessage])
@@ -252,6 +253,35 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Per-message fadeout: when enabled, mark aged messages as fading (CSS
+  // transitions them out), then drop them once the transition has finished.
+  useEffect(() => {
+    if (fadeoutSec <= 0) return
+    const FADE_MS = 500
+    const interval = setInterval(() => {
+      const now = Date.now()
+      setMessages((prev) => {
+        let changed = false
+        const next: ChatMessage[] = []
+        for (const m of prev) {
+          const age = m.createdAt ? now - m.createdAt : 0
+          if (m.createdAt && age >= fadeoutSec * 1000 + FADE_MS) {
+            changed = true
+            continue // remove fully-faded message
+          }
+          if (m.createdAt && age >= fadeoutSec * 1000 && !m.fading) {
+            changed = true
+            next.push({ ...m, fading: true })
+          } else {
+            next.push(m)
+          }
+        }
+        return changed ? next : prev
+      })
+    }, 250)
+    return () => clearInterval(interval)
+  }, [fadeoutSec])
 
   return (
     <div

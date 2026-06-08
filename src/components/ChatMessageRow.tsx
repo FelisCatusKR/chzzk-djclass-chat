@@ -9,6 +9,8 @@ export interface ChatMessage {
   powerInteger: number | null
   text: string
   isUnlinked: boolean
+  createdAt?: number
+  fading?: boolean
 }
 
 interface ChatMessageRowProps {
@@ -22,8 +24,12 @@ export default function ChatMessageRow({
 }: ChatMessageRowProps) {
   return (
     <div
-      className={`break-words ${
-        message.isUnlinked ? 'opacity-75' : 'opacity-100'
+      className={`break-words transition-opacity duration-500 ${
+        message.fading
+          ? 'opacity-0'
+          : message.isUnlinked
+            ? 'opacity-75'
+            : 'opacity-100'
       }`}
     >
       {message.rankShort && (
