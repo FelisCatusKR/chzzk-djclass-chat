@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import LinkClassBadge from '@/components/LinkClassBadge'
 
 interface UserInfo {
   chzzkNickname: string
@@ -22,8 +23,8 @@ interface UserInfo {
   varchiveNickname: string | null
   djClass: string | null
   powerInteger: number | null
-  availableButtons: number[]
   preferredButton: number | null
+  buttons: { button: number; djClass: string; powerInteger: number | null }[]
 }
 
 export default function LinkPage() {
@@ -195,115 +196,6 @@ export default function LinkPage() {
                       ? '동기화 중...'
                       : 'DJ CLASS 동기화'}
                   </Button>
-                  {user?.djClass && (
-                    <div className="flex flex-wrap items-center justify-center gap-1">
-                      <span className="text-sm text-gray-600">
-                        현재 DJ CLASS:
-                      </span>
-                      {(() => {
-                        const rankMatch = user.djClass.match(
-                          /^\d+B\s+(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/
-                        )
-                        const rankName = rankMatch
-                          ? rankMatch[1]
-                          : user.djClass.replace(/^\d+B\s+/, '')
-                        const rankLevel = rankMatch ? rankMatch[2] : null
-                        const shortNames: Record<string, string> = {
-                          'THE LORD OF DJMAX': 'LoD',
-                          'BEAT MAESTRO': 'BM',
-                          SHOWSTOPPER: 'SS',
-                          HEADLINER: 'HL',
-                          'TREND SETTER': 'TS',
-                          PROFESSIONAL: 'PRO',
-                          'HIGH CLASS': 'HC',
-                          'PRO DJ': 'PD',
-                          MIDDLEMAN: 'MM',
-                          'STREET DJ': 'SD',
-                          ROOKIE: 'RK',
-                          AMATEUR: 'AM',
-                          TRAINEE: 'TR',
-                          BEGINNER: 'BG',
-                        }
-                        const thresholds: Record<
-                          string,
-                          Record<string, number>
-                        > = {
-                          'THE LORD OF DJMAX': { default: 9980 },
-                          'BEAT MAESTRO': {
-                            IV: 9900,
-                            III: 9930,
-                            II: 9950,
-                            I: 9970,
-                          },
-                          SHOWSTOPPER: {
-                            IV: 9700,
-                            III: 9750,
-                            II: 9800,
-                            I: 9850,
-                          },
-                          HEADLINER: { IV: 9400, III: 9500, II: 9600, I: 9650 },
-                          'TREND SETTER': {
-                            IV: 9000,
-                            III: 9100,
-                            II: 9200,
-                            I: 9300,
-                          },
-                          PROFESSIONAL: {
-                            IV: 8600,
-                            III: 8700,
-                            II: 8800,
-                            I: 8900,
-                          },
-                          'HIGH CLASS': {
-                            IV: 7800,
-                            III: 8000,
-                            II: 8200,
-                            I: 8400,
-                          },
-                          'PRO DJ': { IV: 7000, III: 7200, II: 7400, I: 7600 },
-                          MIDDLEMAN: { IV: 6200, III: 6400, II: 6600, I: 6800 },
-                          'STREET DJ': {
-                            IV: 5200,
-                            III: 5500,
-                            II: 5800,
-                            I: 6000,
-                          },
-                          ROOKIE: { IV: 4000, III: 4300, II: 4600, I: 4900 },
-                          AMATEUR: { IV: 2400, III: 2800, II: 3200, I: 3600 },
-                          TRAINEE: { IV: 500, III: 1000, II: 1500, I: 2000 },
-                          BEGINNER: { default: 0 },
-                        }
-                        const shortName = shortNames[rankName] || rankName
-                        const rankThresholds = thresholds[rankName]
-                        const threshold = rankThresholds
-                          ? rankThresholds.default != null
-                            ? rankThresholds.default
-                            : rankLevel && rankThresholds[rankLevel] != null
-                              ? rankThresholds[rankLevel]
-                              : null
-                          : null
-                        return (
-                          <>
-                            <span className="inline-flex items-center rounded bg-gray-200 px-1.5 py-0.5 text-xs font-bold text-gray-800">
-                              {shortName}
-                              {rankLevel ? ` ${rankLevel}` : ''}
-                            </span>
-                            {threshold != null && (
-                              <span className="inline-flex items-center rounded bg-gray-700 px-1.5 py-0.5 text-xs font-bold text-white">
-                                {threshold}+
-                              </span>
-                            )}
-                            {user.powerInteger != null && (
-                              <span className="inline-flex items-center rounded bg-black px-1.5 py-0.5 text-xs font-bold text-white">
-                                {user.powerInteger}
-                              </span>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </div>
-                  )}
-
                   {syncStatus === 'success' && (
                     <Alert className="border-green-200 bg-green-50">
                       <AlertDescription className="text-green-800">
@@ -355,49 +247,65 @@ export default function LinkPage() {
             </CardContent>
           </Card>
 
-          {user?.varchiveLinked &&
-            (user?.availableButtons?.length ?? 0) > 1 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">버튼 선택</CardTitle>
-                  <CardDescription>
-                    위젯에 표시할 버튼을 선택하세요. 스트리머가 &lsquo;시청자
-                    선택 우선&rsquo;을 켰을 때 적용됩니다.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RadioGroup
-                    value={
-                      user.preferredButton == null
-                        ? 'auto'
-                        : String(user.preferredButton)
-                    }
-                    onValueChange={handlePreferredButton}
-                    className="space-y-2"
+          {user?.varchiveLinked && (user?.buttons?.length ?? 0) >= 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">버튼 선택</CardTitle>
+                <CardDescription>
+                  위젯에 표시할 버튼을 선택하세요. 스트리머가 &lsquo;시청자 선택
+                  우선&rsquo;을 켰을 때 적용됩니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RadioGroup
+                  value={
+                    user.preferredButton == null
+                      ? 'auto'
+                      : String(user.preferredButton)
+                  }
+                  onValueChange={handlePreferredButton}
+                  className="space-y-2"
+                >
+                  <Label
+                    htmlFor="pref-auto"
+                    className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border p-3"
                   >
-                    <Label
-                      htmlFor="pref-auto"
-                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
-                    >
+                    <span className="flex items-center gap-2">
                       <span className="text-sm font-medium">
                         자동 (최고 클래스)
                       </span>
-                      <RadioGroupItem id="pref-auto" value="auto" />
+                      <LinkClassBadge
+                        djClass={user.djClass}
+                        powerInteger={user.powerInteger}
+                      />
+                    </span>
+                    <RadioGroupItem id="pref-auto" value="auto" />
+                  </Label>
+                  {user.buttons.map((b) => (
+                    <Label
+                      key={b.button}
+                      htmlFor={`pref-${b.button}`}
+                      className="flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg border p-3"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {b.button}버튼
+                        </span>
+                        <LinkClassBadge
+                          djClass={b.djClass}
+                          powerInteger={b.powerInteger}
+                        />
+                      </span>
+                      <RadioGroupItem
+                        id={`pref-${b.button}`}
+                        value={String(b.button)}
+                      />
                     </Label>
-                    {user.availableButtons.map((b) => (
-                      <Label
-                        key={b}
-                        htmlFor={`pref-${b}`}
-                        className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
-                      >
-                        <span className="text-sm font-medium">{b}버튼</span>
-                        <RadioGroupItem id={`pref-${b}`} value={String(b)} />
-                      </Label>
-                    ))}
-                  </RadioGroup>
-                </CardContent>
-              </Card>
-            )}
+                  ))}
+                </RadioGroup>
+              </CardContent>
+            </Card>
+          )}
 
           <Link
             href="/"
