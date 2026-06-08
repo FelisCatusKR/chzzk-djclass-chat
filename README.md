@@ -19,15 +19,18 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 - **자동 동기화**: 매일 새벽 3시에 모든 연동된 사용자의 DJ CLASS가 자동으로 동기화됩니다.
 - **수동 동기화**: `/link` 페이지에서 "DJ CLASS 동기화" 버튼을 눌러 즉시 갱신할 수 있습니다.
 
-## 기술 스택
+## DJ CLASS 선택 우선순위
 
-- Node.js 24
-- Next.js 15 (App Router)
-- TypeScript
-- SQLite (better-sqlite3)
-- Socket.IO-client v2.0.3 (Chzzk 채팅 연동)
-- Tailwind CSS + shadcn/ui
-- Docker + Dokku (배포)
+V-ARCHIVE는 버튼별(4B / 5B / 6B / 8B)로 DJ CLASS를 따로 집계합니다. 위젯은 이 중 **가장 높은 DJ CLASS** 하나를 골라 뱃지로 표시하며, 아래 우선순위(위에서부터)로 결정합니다.
+
+1. **등급 (Rank)** — 더 높은 등급이 우선합니다.
+
+   `LoD > BM > SS > HL > TS > PRO > HC > PD > MM > SD > RK > AM > TR > BG`
+
+2. **단계 (Level)** — 등급이 같으면 `이론치 > I > II > III > IV` 순으로 우선합니다. 이론치(LoD이면서 DJ POWER 10000)는 일반 LoD보다 높은, LoD의 최상위 단계로 취급됩니다.
+3. **버튼 (Button)** — 등급과 단계까지 같으면 `8 > 5 > 6 > 4` 순으로 선택합니다.
+
+> DJ POWER는 더 이상 선택 기준으로 사용되지 않으며, 오직 이론치 여부를 판단하는 데에만 쓰입니다. 예를 들어 `8B SS II`(파워 9810)와 `4B SS II`(파워 9990)가 함께 있으면, 파워가 낮더라도 버튼 우선순위에 따라 `8B SS II`가 선택됩니다.
 
 ## 사용 방법
 
@@ -64,6 +67,16 @@ V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니
 이 프로젝트는 [**똘똘똘이**](https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9) 님의 롤 티어 인증 시스템 프로젝트 영상에서 큰 영향을 받았습니다.
 
 > 본 프로젝트는 DJMAX RESPECT V와 공식적인 연관이 없는 비공식 팬 프로젝트입니다.
+
+## 기술 스택
+
+- Node.js 24
+- Next.js 15 (App Router)
+- TypeScript
+- SQLite (better-sqlite3)
+- Socket.IO-client v2.0.3 (Chzzk 채팅 연동)
+- Tailwind CSS + shadcn/ui
+- Docker + Dokku (배포)
 
 ## 프로젝트 구조
 
