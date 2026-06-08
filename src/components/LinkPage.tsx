@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import SiteBackground from '@/components/SiteBackground'
 import { Button } from '@/components/ui/button'
@@ -38,21 +38,23 @@ export default function LinkPage() {
   const [message, setMessage] = useState('')
   const [user, setUser] = useState<UserInfo | null>(null)
 
-  useEffect(() => {
-    fetch('/api/user/me')
-      .then(async (res) => {
-        if (res.ok) {
-          const data = await res.json()
-          setUser(data)
-        } else if (res.status === 401) {
-          // Session expired after the server gate passed; re-login.
-          window.location.href = '/login?next=/link'
-        }
-      })
-      .catch(() => {
-        // ignore
-      })
+  const loadUser = useCallback(async () => {
+    try {
+      const res = await fetch('/api/user/me')
+      if (res.ok) {
+        setUser(await res.json())
+      } else if (res.status === 401) {
+        // Session expired after the server gate passed; re-login.
+        window.location.href = '/login?next=/link'
+      }
+    } catch {
+      // ignore
+    }
   }, [])
+
+  useEffect(() => {
+    loadUser()
+  }, [loadUser])
 
   const handleLogout = async () => {
     try {
@@ -72,17 +74,7 @@ export default function LinkPage() {
       if (response.ok) {
         setSyncStatus('success')
         setSyncMessage(`DJ CLASS 동기화 완료: ${data.djClass}`)
-        setUser((prev) =>
-          prev
-            ? {
-                ...prev,
-                djClass: data.djClass,
-                powerInteger: data.djPowerConversion
-                  ? Math.floor(data.djPowerConversion)
-                  : null,
-              }
-            : null
-        )
+        await loadUser()
       } else {
         setSyncStatus('error')
         setSyncMessage(data.error || '동기화에 실패했습니다.')
@@ -124,16 +116,7 @@ export default function LinkPage() {
       if (response.ok) {
         setStatus('success')
         setMessage(data.message)
-        setUser((prev) =>
-          prev
-            ? {
-                ...prev,
-                varchiveLinked: true,
-                varchiveNickname:
-                  data.varchiveNickname || prev.varchiveNickname,
-              }
-            : null
-        )
+        await loadUser()
       } else {
         setStatus('error')
         setMessage(data.error || '연동에 실패했습니다.')
