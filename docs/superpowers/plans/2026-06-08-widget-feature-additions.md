@@ -911,6 +911,83 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
+## Task 6b: Fix immediate-sync dj_classes upserts (link + auth callback)
+
+**Discovered during Task 3 review.** Two more code paths upsert into `dj_classes` with `ON CONFLICT(user_id)`, which is invalid after the migration (the single-column unique is gone). Both do an "immediate first sync" so a freshly-linked/logged-in user gets badges without waiting for the cron. Update both to store all buttons like Task 6.
+
+**Files:**
+- Modify: `src/app/api/user/link-varchive/route.ts` (the `getHighestDjClass` + `INSERT … ON CONFLICT(user_id)` block, ~lines 58-80)
+- Modify: `src/app/api/auth/chzzk/callback/route.ts` (the `getHighestDjClass` + `INSERT … ON CONFLICT(user_id)` block, ~lines 95-115)
+
+Note: other `ON CONFLICT(user_id)` upserts in these files target `varchive_tokens`/`channels`/`users` (whose unique keys are unchanged) — leave those alone. Only the `INSERT INTO dj_classes … ON CONFLICT(user_id)` blocks change.
+
+- [ ] **Step 1: Update link-varchive**
+
+In `src/app/api/user/link-varchive/route.ts`, change the import of `getHighestDjClass` to `getAllDjClasses` and add the store import:
+
+```ts
+import { lookupUser, getAllDjClasses } from '@/lib/varchive'
+import { persistUserDjClasses } from '@/lib/dj-class-store'
+```
+
+(Keep `lookupUser` if it's already imported from `@/lib/varchive`; adjust the existing import line so it pulls `getAllDjClasses` instead of `getHighestDjClass`.)
+
+Replace the immediate-sync block (the `const djData = await getHighestDjClass(...)` through its `if (djData) { db.prepare(INSERT INTO dj_classes … ON CONFLICT(user_id) …).run(...) }`) with:
+
+```ts
+      const all = await getAllDjClasses(userInfo.nickname)
+      persistUserDjClasses(
+        db,
+        Number(userId),
+        all.map((c) => ({
+          button: c.button,
+          djClass: c.djClass,
+          djPowerSum: c.djPowerSum,
+          maxDjPower: c.maxDjPower,
+          djPowerConversion: c.djPowerConversion,
+        }))
+      )
+```
+
+Use the same user id expression the surrounding code already uses for this insert (it is `Number(userId)` in this route). Keep the existing surrounding `try/catch` that guards the immediate sync.
+
+- [ ] **Step 2: Update auth callback**
+
+In `src/app/api/auth/chzzk/callback/route.ts`, similarly change the varchive import to `getAllDjClasses` and add `persistUserDjClasses`. Replace the immediate-sync block (`const djData = await getHighestDjClass(vuser.nickname)` through its `if (djData) { db.prepare(INSERT INTO dj_classes … ON CONFLICT(user_id) …).run(result.id, …) }`) with:
+
+```ts
+          const all = await getAllDjClasses(vuser.nickname)
+          persistUserDjClasses(
+            db,
+            result.id,
+            all.map((c) => ({
+              button: c.button,
+              djClass: c.djClass,
+              djPowerSum: c.djPowerSum,
+              maxDjPower: c.maxDjPower,
+              djPowerConversion: c.djPowerConversion,
+            }))
+          )
+```
+
+Use the same user id expression this route already uses for the insert (it is `result.id`). Keep the existing surrounding `try/catch`.
+
+- [ ] **Step 3: Verify compile + full suite**
+
+Run: `npx tsc --noEmit && npx vitest run`
+Expected: no type errors; full suite green (worker tests already fixed in Task 6).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/app/api/user/link-varchive/route.ts src/app/api/auth/chzzk/callback/route.ts
+git commit -m "fix: store all buttons on immediate link/login sync
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+```
+
+---
+
 ## Task 7: Cache invalidation clears both selection variants
 
 **Files:**
