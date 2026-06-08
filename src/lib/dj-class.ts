@@ -157,6 +157,43 @@ export function compareClassSortKeys(
   return 0
 }
 
+// One stored button's DJ CLASS, in the shape the display resolver needs.
+export interface DjClassRow {
+  button: number
+  djClass: string
+  djPowerConversion: number | null
+}
+
+// Choose which button's DJ CLASS to display.
+// - 'auto' (and every fallback) returns the highest CLASS via the sort key.
+// - 'viewer' returns the row matching `preferredButton` when present,
+//   otherwise falls back to the highest CLASS.
+export function resolveDisplayedClass(
+  rows: DjClassRow[],
+  preferredButton: number | null,
+  sel: 'auto' | 'viewer'
+): DjClassRow | null {
+  if (rows.length === 0) return null
+
+  if (sel === 'viewer' && preferredButton != null) {
+    const match = rows.find((r) => r.button === preferredButton)
+    if (match) return match
+  }
+
+  return rows.reduce((best, current) =>
+    compareClassSortKeys(
+      getClassSortKey(
+        current.djClass,
+        current.djPowerConversion,
+        current.button
+      ),
+      getClassSortKey(best.djClass, best.djPowerConversion, best.button)
+    ) > 0
+      ? current
+      : best
+  )
+}
+
 // Pure badge-text computation, identical to the original inline WidgetPage
 // logic. Kept here so it is testable without a DOM.
 export function getBadgeText(
