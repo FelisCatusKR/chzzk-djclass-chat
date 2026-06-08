@@ -53,9 +53,10 @@ export async function GET(request: NextRequest) {
       null,
       'auto'
     )
-    const powerInteger = highest?.djPowerConversion
-      ? Math.floor(highest.djPowerConversion)
-      : null
+    const powerInteger =
+      highest?.djPowerConversion != null
+        ? Math.floor(highest.djPowerConversion)
+        : null
 
     return NextResponse.json({
       chzzkNickname: user.chzzk_nickname,
@@ -67,9 +68,10 @@ export async function GET(request: NextRequest) {
       buttons: buttonRows.map((r) => ({
         button: r.button,
         djClass: `${r.button}B ${r.dj_class}`,
-        powerInteger: r.dj_power_conversion
-          ? Math.floor(r.dj_power_conversion)
-          : null,
+        powerInteger:
+          r.dj_power_conversion != null
+            ? Math.floor(r.dj_power_conversion)
+            : null,
       })),
     })
   } finally {

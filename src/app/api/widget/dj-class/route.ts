@@ -99,9 +99,10 @@ export async function GET(request: NextRequest) {
 
     if (chosen) {
       const formattedClass = `${chosen.button}B ${chosen.djClass}`
-      const powerInteger = chosen.djPowerConversion
-        ? Math.floor(chosen.djPowerConversion)
-        : null
+      const powerInteger =
+        chosen.djPowerConversion != null
+          ? Math.floor(chosen.djPowerConversion)
+          : null
       const rankMatch = chosen.djClass.match(
         /^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/
       )
