@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDisplayedClass, type DjClassRow } from '../src/lib/dj-class'
+import { resolveDisplayedClass, validatePreferredButton, type DjClassRow } from '../src/lib/dj-class'
 
 const rows: DjClassRow[] = [
   { button: 4, djClass: 'SHOWSTOPPER II', djPowerConversion: 9800 },
@@ -30,5 +30,23 @@ describe('resolveDisplayedClass', () => {
 
   it('returns null for an empty row set', () => {
     expect(resolveDisplayedClass([], 8, 'viewer')).toBeNull()
+  })
+})
+
+describe('validatePreferredButton', () => {
+  it('returns the button when it is available', () => {
+    expect(validatePreferredButton(8, [4, 8])).toBe(8)
+  })
+
+  it('returns null when clearing (null input)', () => {
+    expect(validatePreferredButton(null, [4, 8])).toBeNull()
+  })
+
+  it('throws when the button is not available', () => {
+    expect(() => validatePreferredButton(6, [4, 8])).toThrow()
+  })
+
+  it('throws for non-numeric input', () => {
+    expect(() => validatePreferredButton('8', [4, 8])).toThrow()
   })
 })

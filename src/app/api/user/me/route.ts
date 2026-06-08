@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionCookie } from '@/lib/session'
 import { initDb } from '@/lib/db'
+import { resolveDisplayedClass } from '@/lib/dj-class'
 
 export async function GET(request: NextRequest) {
   const sessionCookie = request.cookies.get('session')?.value
@@ -29,26 +30,41 @@ export async function GET(request: NextRequest) {
       )
       .get(userId) as { varchive_nickname: string } | undefined
 
-    const djClassRow = db
+    const buttonRows = db
       .prepare(
-        'SELECT dj_class, button, dj_power_conversion FROM dj_classes WHERE user_id = ?'
+        'SELECT button, dj_class, dj_power_conversion FROM dj_classes WHERE user_id = ? ORDER BY button'
       )
-      .get(userId) as
-      | { dj_class: string; button: number; dj_power_conversion: number | null }
-      | undefined
+      .all(userId) as Array<{
+      button: number
+      dj_class: string
+      dj_power_conversion: number | null
+    }>
 
-    const powerInteger = djClassRow?.dj_power_conversion
-      ? Math.floor(djClassRow.dj_power_conversion)
+    const prefRow = db
+      .prepare('SELECT preferred_button FROM users WHERE id = ?')
+      .get(userId) as { preferred_button: number | null } | undefined
+
+    const highest = resolveDisplayedClass(
+      buttonRows.map((r) => ({
+        button: r.button,
+        djClass: r.dj_class,
+        djPowerConversion: r.dj_power_conversion,
+      })),
+      null,
+      'auto'
+    )
+    const powerInteger = highest?.djPowerConversion
+      ? Math.floor(highest.djPowerConversion)
       : null
 
     return NextResponse.json({
       chzzkNickname: user.chzzk_nickname,
       varchiveLinked: !!token,
       varchiveNickname: token?.varchive_nickname || null,
-      djClass: djClassRow
-        ? `${djClassRow.button}B ${djClassRow.dj_class}`
-        : null,
+      djClass: highest ? `${highest.button}B ${highest.djClass}` : null,
       powerInteger,
+      availableButtons: buttonRows.map((r) => r.button),
+      preferredButton: prefRow?.preferred_button ?? null,
     })
   } finally {
     db.close()

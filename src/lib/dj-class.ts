@@ -194,6 +194,20 @@ export function resolveDisplayedClass(
   )
 }
 
+// Validate a requested preferred button against the buttons a viewer actually
+// has. Returns the button (to set) or null (to clear). Throws on an invalid or
+// unavailable button so callers can answer 400.
+export function validatePreferredButton(
+  button: unknown,
+  availableButtons: number[]
+): number | null {
+  if (button === null) return null
+  if (typeof button === 'number' && availableButtons.includes(button)) {
+    return button
+  }
+  throw new Error('Invalid preferred button')
+}
+
 // Pure badge-text computation, identical to the original inline WidgetPage
 // logic. Kept here so it is testable without a DOM.
 export function getBadgeText(
