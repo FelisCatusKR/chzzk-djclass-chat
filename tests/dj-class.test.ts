@@ -182,6 +182,11 @@ describe('getClassSortKey', () => {
   it('sorts an unknown class to the bottom', () => {
     expect(getClassSortKey('NONSENSE', 0, 4)).toEqual([-1, 0, 0])
   })
+
+  it('handles a button-prefixed class string (the caller format)', () => {
+    // parseRankName strips the "4B " prefix; LEVEL_RE still matches the level
+    expect(getClassSortKey('4B SHOWSTOPPER IV', 9700, 4)).toEqual([11, 1, 0])
+  })
 })
 
 describe('compareClassSortKeys', () => {

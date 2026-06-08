@@ -135,7 +135,7 @@ export function getClassSortKey(
   if (rankName === 'THE LORD OF DJMAX' && isTheoryPower(djPowerConversion)) {
     levelOrdinal = 5
   } else {
-    const levelMatch = djClass?.match(LEVEL_RE)
+    const levelMatch = djClass.match(LEVEL_RE)
     const level = levelMatch ? levelMatch[1].toUpperCase() : null
     levelOrdinal = level ? (LEVEL_VALUES[level] ?? 0) : 0
   }
