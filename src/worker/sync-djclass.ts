@@ -1,6 +1,7 @@
 import { initDb } from '../lib/db'
 import { decrypt } from '../lib/crypto'
-import { lookupUser, getHighestDjClass } from '../lib/varchive'
+import { lookupUser, getAllDjClasses } from '../lib/varchive'
+import { persistUserDjClasses } from '../lib/dj-class-store'
 import { invalidateAllUserCaches } from '../lib/cache'
 
 export async function syncDjClasses(): Promise<{
@@ -48,38 +49,20 @@ export async function syncDjClasses(): Promise<{
           ).run(userInfo.nickname, token.id)
         }
 
-        // Fetch highest DJ CLASS
-        const djClassData = await getHighestDjClass(userInfo.nickname)
-
-        if (djClassData) {
-          db.prepare(
-            `
-            INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(user_id) DO UPDATE SET
-              button = excluded.button,
-              dj_class = excluded.dj_class,
-              dj_power_sum = excluded.dj_power_sum,
-              max_dj_power = excluded.max_dj_power,
-              dj_power_conversion = excluded.dj_power_conversion,
-              synced_at = excluded.synced_at
-          `
-          ).run(
-            token.user_id,
-            djClassData.button,
-            djClassData.djClass,
-            djClassData.djPowerSum,
-            djClassData.maxDjPower,
-            djClassData.djPowerConversion
-          )
-          success++
-        } else {
-          // No DJ CLASS found → delete existing row so widget shows BEGINNER
-          db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(
-            token.user_id
-          )
-          success++
-        }
+        // Fetch all buttons that have a record and persist them.
+        const all = await getAllDjClasses(userInfo.nickname)
+        persistUserDjClasses(
+          db,
+          token.user_id,
+          all.map((c) => ({
+            button: c.button,
+            djClass: c.djClass,
+            djPowerSum: c.djPowerSum,
+            maxDjPower: c.maxDjPower,
+            djPowerConversion: c.djPowerConversion,
+          }))
+        )
+        success++
 
         // Invalidate cache so widgets show updated data immediately
         const userRow = db

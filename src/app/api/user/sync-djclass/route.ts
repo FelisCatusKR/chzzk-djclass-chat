@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionCookie } from '@/lib/session'
 import { initDb } from '@/lib/db'
 import { decrypt } from '@/lib/crypto'
-import { lookupUser, getHighestDjClass } from '@/lib/varchive'
+import { lookupUser, getAllDjClasses } from '@/lib/varchive'
+import { persistUserDjClasses } from '@/lib/dj-class-store'
+import { resolveDisplayedClass } from '@/lib/dj-class'
 import { invalidateAllUserCaches } from '@/lib/cache'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
@@ -61,34 +63,19 @@ export async function POST(request: NextRequest) {
       ).run(userInfo.nickname, userId)
     }
 
-    // Fetch highest DJ CLASS
-    const djClassData = await getHighestDjClass(userInfo.nickname)
-
-    if (djClassData) {
-      db.prepare(
-        `
-        INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
-        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id) DO UPDATE SET
-          button = excluded.button,
-          dj_class = excluded.dj_class,
-          dj_power_sum = excluded.dj_power_sum,
-          max_dj_power = excluded.max_dj_power,
-          dj_power_conversion = excluded.dj_power_conversion,
-          synced_at = excluded.synced_at
-      `
-      ).run(
-        userId,
-        djClassData.button,
-        djClassData.djClass,
-        djClassData.djPowerSum,
-        djClassData.maxDjPower,
-        djClassData.djPowerConversion
-      )
-    } else {
-      // No DJ CLASS found — delete existing row so widget shows BEGINNER
-      db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(userId)
-    }
+    // Fetch all buttons that have a record and persist them.
+    const all = await getAllDjClasses(userInfo.nickname)
+    persistUserDjClasses(
+      db,
+      userId,
+      all.map((c) => ({
+        button: c.button,
+        djClass: c.djClass,
+        djPowerSum: c.djPowerSum,
+        maxDjPower: c.maxDjPower,
+        djPowerConversion: c.djPowerConversion,
+      }))
+    )
 
     // Get user's chzzk info for cache invalidation
     const userRow = db
@@ -99,15 +86,25 @@ export async function POST(request: NextRequest) {
       invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
     }
 
-    const djClass = djClassData
-      ? `${djClassData.button}B ${djClassData.djClass}`
+    // Report the highest CLASS for the link-page status row.
+    const highest = resolveDisplayedClass(
+      all.map((c) => ({
+        button: c.button,
+        djClass: c.djClass,
+        djPowerConversion: c.djPowerConversion,
+      })),
+      null,
+      'auto'
+    )
+    const djClass = highest
+      ? `${highest.button}B ${highest.djClass}`
       : '4B BEGINNER'
     return NextResponse.json({
       success: true,
       djClass,
-      button: djClassData?.button ?? 4,
-      rawClass: djClassData?.djClass ?? 'BEGINNER',
-      djPowerConversion: djClassData?.djPowerConversion ?? 0,
+      button: highest?.button ?? 4,
+      rawClass: highest?.djClass ?? 'BEGINNER',
+      djPowerConversion: highest?.djPowerConversion ?? 0,
     })
   } catch (error) {
     logger.error('Manual sync error:', error)

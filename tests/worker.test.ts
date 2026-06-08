@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { syncDjClasses } from '../src/worker/sync-djclass'
-import { getDb } from '../src/lib/db'
+import { getDb, initDb } from '../src/lib/db'
 import { encrypt } from '../src/lib/crypto'
 import fs from 'fs'
 import path from 'path'
@@ -20,35 +20,8 @@ describe('Daily DJ CLASS Sync Worker', () => {
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH)
 
-    // Initialize schema
-    const db = getDb()
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chzzk_id TEXT UNIQUE NOT NULL,
-        chzzk_nickname TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS varchive_tokens (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
-        token_encrypted TEXT NOT NULL,
-        varchive_nickname TEXT NOT NULL,
-        is_active BOOLEAN DEFAULT true,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS dj_classes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
-        button INTEGER NOT NULL CHECK (button IN (4, 5, 6, 8)),
-        dj_class TEXT NOT NULL,
-        dj_power_sum REAL,
-        max_dj_power REAL,
-        dj_power_conversion REAL,
-        synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-    `)
+    // Initialize schema (new multi-button shape)
+    const db = initDb()
     db.close()
   })
 
@@ -122,25 +95,19 @@ describe('Daily DJ CLASS Sync Worker', () => {
     expect(result.failed).toBe(0)
     expect(result.errors).toEqual([])
 
-    // Verify DB state
+    // Verify DB state: all three successful buttons are stored
     const db2 = getDb()
-    const djRow = db2
-      .prepare('SELECT * FROM dj_classes WHERE user_id = ?')
-      .get(user.id) as
-      | {
-          button: number
-          dj_class: string
-          dj_power_conversion: number
-        }
-      | undefined
+    const rows = db2
+      .prepare('SELECT button FROM dj_classes WHERE user_id = ? ORDER BY button')
+      .all(user.id) as { button: number }[]
+    const eight = db2
+      .prepare('SELECT dj_class, dj_power_conversion FROM dj_classes WHERE user_id = ? AND button = 8')
+      .get(user.id) as { dj_class: string; dj_power_conversion: number }
     db2.close()
 
-    expect(djRow).toBeDefined()
-    // 8B wins: among buttons, HIGH CLASS I (level I) outranks HIGH CLASS II (level II) — level is the deciding axis.
-    // Of the two HIGH CLASS I buttons (4B and 8B), 8B wins the tie by button preference (8 > 4).
-    expect(djRow!.button).toBe(8)
-    expect(djRow!.dj_class).toBe('HIGH CLASS I')
-    expect(djRow!.dj_power_conversion).toBe(6000)
+    expect(rows.map((r) => r.button)).toEqual([4, 5, 8])
+    expect(eight.dj_class).toBe('HIGH CLASS I')
+    expect(eight.dj_power_conversion).toBe(6000)
   })
 
   it('should update V-ARCHIVE nickname if changed', async () => {
