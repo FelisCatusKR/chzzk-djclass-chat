@@ -5,7 +5,8 @@ import { initDb } from '@/lib/db'
 import { createSessionCookie } from '@/lib/session'
 import { encrypt } from '@/lib/crypto'
 import { decrypt } from '@/lib/crypto'
-import { lookupUser, getHighestDjClass } from '@/lib/varchive'
+import { lookupUser, getAllDjClasses } from '@/lib/varchive'
+import { persistUserDjClasses } from '@/lib/dj-class-store'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import { safeNextPath } from '@/lib/safe-redirect'
 
@@ -92,32 +93,21 @@ export async function GET(request: NextRequest) {
         const vtoken = decrypt(tokenRow.token_encrypted)
         const vuser = await lookupUser(vtoken)
         if (vuser.success) {
-          const djData = await getHighestDjClass(vuser.nickname)
-          if (djData) {
-            db.prepare(
-              `
-              INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
-              VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-              ON CONFLICT(user_id) DO UPDATE SET
-                button = excluded.button,
-                dj_class = excluded.dj_class,
-                dj_power_sum = excluded.dj_power_sum,
-                max_dj_power = excluded.max_dj_power,
-                dj_power_conversion = excluded.dj_power_conversion,
-                synced_at = excluded.synced_at
-            `
-            ).run(
-              result.id,
-              djData.button,
-              djData.djClass,
-              djData.djPowerSum,
-              djData.maxDjPower,
-              djData.djPowerConversion
-            )
-            logger.debug(
-              `[OAuth Callback] Auto-synced DJ CLASS for user ${result.id}`
-            )
-          }
+          const all = await getAllDjClasses(vuser.nickname)
+          persistUserDjClasses(
+            db,
+            result.id,
+            all.map((c) => ({
+              button: c.button,
+              djClass: c.djClass,
+              djPowerSum: c.djPowerSum,
+              maxDjPower: c.maxDjPower,
+              djPowerConversion: c.djPowerConversion,
+            }))
+          )
+          logger.debug(
+            `[OAuth Callback] Auto-synced DJ CLASS for user ${result.id}`
+          )
         }
       } catch (syncErr) {
         logger.error(

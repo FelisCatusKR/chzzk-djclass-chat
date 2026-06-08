@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initDb } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
-import { lookupUser, getHighestDjClass } from '@/lib/varchive'
+import { lookupUser, getAllDjClasses } from '@/lib/varchive'
+import { persistUserDjClasses } from '@/lib/dj-class-store'
 import { verifySessionCookie } from '@/lib/session'
 import { invalidateAllUserCaches } from '@/lib/cache'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
@@ -55,34 +56,18 @@ export async function POST(request: NextRequest) {
     // Immediately sync DJ CLASS / DJ POWER now that the token is linked,
     // so the user doesn't have to manually sync or wait for the daily cron.
     try {
-      const djData = await getHighestDjClass(userInfo.nickname)
-      if (djData) {
-        db.prepare(
-          `
-          INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
-          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-          ON CONFLICT(user_id) DO UPDATE SET
-            button = excluded.button,
-            dj_class = excluded.dj_class,
-            dj_power_sum = excluded.dj_power_sum,
-            max_dj_power = excluded.max_dj_power,
-            dj_power_conversion = excluded.dj_power_conversion,
-            synced_at = excluded.synced_at
-        `
-        ).run(
-          Number(userId),
-          djData.button,
-          djData.djClass,
-          djData.djPowerSum,
-          djData.maxDjPower,
-          djData.djPowerConversion
-        )
-      } else {
-        // No DJ CLASS found — clear any stale row so the widget shows BEGINNER
-        db.prepare('DELETE FROM dj_classes WHERE user_id = ?').run(
-          Number(userId)
-        )
-      }
+      const all = await getAllDjClasses(userInfo.nickname)
+      persistUserDjClasses(
+        db,
+        Number(userId),
+        all.map((c) => ({
+          button: c.button,
+          djClass: c.djClass,
+          djPowerSum: c.djPowerSum,
+          maxDjPower: c.maxDjPower,
+          djPowerConversion: c.djPowerConversion,
+        }))
+      )
     } catch (syncErr) {
       // Don't fail the link if the sync hiccups; cron / manual sync will catch up.
       logger.error(
