@@ -44,8 +44,20 @@ describe('persistUserDjClasses', () => {
     const userId = makeUser()
     const db = initDb()
     persistUserDjClasses(db, userId, [
-      { button: 4, djClass: 'SHOWSTOPPER II', djPowerSum: 1, maxDjPower: 2, djPowerConversion: 9800 },
-      { button: 8, djClass: 'HEADLINER IV', djPowerSum: 1, maxDjPower: 2, djPowerConversion: 9400 },
+      {
+        button: 4,
+        djClass: 'SHOWSTOPPER II',
+        djPowerSum: 1,
+        maxDjPower: 2,
+        djPowerConversion: 9800,
+      },
+      {
+        button: 8,
+        djClass: 'HEADLINER IV',
+        djPowerSum: 1,
+        maxDjPower: 2,
+        djPowerConversion: 9400,
+      },
     ])
     db.close()
     expect(buttons(userId)).toEqual([4, 8])
@@ -55,13 +67,31 @@ describe('persistUserDjClasses', () => {
     const userId = makeUser()
     let db = initDb()
     persistUserDjClasses(db, userId, [
-      { button: 4, djClass: 'SHOWSTOPPER II', djPowerSum: 1, maxDjPower: 2, djPowerConversion: 9800 },
-      { button: 8, djClass: 'HEADLINER IV', djPowerSum: 1, maxDjPower: 2, djPowerConversion: 9400 },
+      {
+        button: 4,
+        djClass: 'SHOWSTOPPER II',
+        djPowerSum: 1,
+        maxDjPower: 2,
+        djPowerConversion: 9800,
+      },
+      {
+        button: 8,
+        djClass: 'HEADLINER IV',
+        djPowerSum: 1,
+        maxDjPower: 2,
+        djPowerConversion: 9400,
+      },
     ])
     db.close()
     db = initDb()
     persistUserDjClasses(db, userId, [
-      { button: 5, djClass: 'HIGH CLASS I', djPowerSum: 1, maxDjPower: 2, djPowerConversion: 8400 },
+      {
+        button: 5,
+        djClass: 'HIGH CLASS I',
+        djPowerSum: 1,
+        maxDjPower: 2,
+        djPowerConversion: 8400,
+      },
     ])
     db.close()
     expect(buttons(userId)).toEqual([5])
@@ -71,7 +101,13 @@ describe('persistUserDjClasses', () => {
     const userId = makeUser()
     let db = initDb()
     persistUserDjClasses(db, userId, [
-      { button: 4, djClass: 'SHOWSTOPPER II', djPowerSum: 1, maxDjPower: 2, djPowerConversion: 9800 },
+      {
+        button: 4,
+        djClass: 'SHOWSTOPPER II',
+        djPowerSum: 1,
+        maxDjPower: 2,
+        djPowerConversion: 9800,
+      },
     ])
     db.close()
     db = initDb()

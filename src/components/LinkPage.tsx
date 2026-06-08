@@ -378,8 +378,8 @@ export default function LinkPage() {
                 <CardHeader>
                   <CardTitle className="text-lg">버튼 선택</CardTitle>
                   <CardDescription>
-                    위젯에 표시할 버튼을 선택하세요. 스트리머가 &lsquo;시청자 선택
-                    우선&rsquo;을 켰을 때 적용됩니다.
+                    위젯에 표시할 버튼을 선택하세요. 스트리머가 &lsquo;시청자
+                    선택 우선&rsquo;을 켰을 때 적용됩니다.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -396,7 +396,9 @@ export default function LinkPage() {
                       htmlFor="pref-auto"
                       className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
                     >
-                      <span className="text-sm font-medium">자동 (최고 클래스)</span>
+                      <span className="text-sm font-medium">
+                        자동 (최고 클래스)
+                      </span>
                       <RadioGroupItem id="pref-auto" value="auto" />
                     </Label>
                     {user.availableButtons.map((b) => (

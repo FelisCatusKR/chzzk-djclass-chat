@@ -35,7 +35,9 @@ function columnExists(
 // which blocks storing more than one button per user.
 function djClassesNeedsRebuild(db: Database.Database): boolean {
   const indexes = db
-    .prepare(`SELECT name FROM pragma_index_list('dj_classes') WHERE "unique" = 1`)
+    .prepare(
+      `SELECT name FROM pragma_index_list('dj_classes') WHERE "unique" = 1`
+    )
     .all() as { name: string }[]
   for (const idx of indexes) {
     const cols = db

@@ -83,10 +83,9 @@ describe('Database', () => {
 
   it('allows multiple buttons per user', () => {
     const db = initDb()
-    db.prepare('INSERT INTO users (chzzk_id, chzzk_nickname) VALUES (?, ?)').run(
-      'multi_user',
-      'multi_nick'
-    )
+    db.prepare(
+      'INSERT INTO users (chzzk_id, chzzk_nickname) VALUES (?, ?)'
+    ).run('multi_user', 'multi_nick')
     const user = db
       .prepare('SELECT id FROM users WHERE chzzk_id = ?')
       .get('multi_user') as { id: number }
@@ -106,10 +105,9 @@ describe('Database', () => {
 
   it('rejects a duplicate (user_id, button) pair', () => {
     const db = initDb()
-    db.prepare('INSERT INTO users (chzzk_id, chzzk_nickname) VALUES (?, ?)').run(
-      'dup_user',
-      'dup_nick'
-    )
+    db.prepare(
+      'INSERT INTO users (chzzk_id, chzzk_nickname) VALUES (?, ?)'
+    ).run('dup_user', 'dup_nick')
     const user = db
       .prepare('SELECT id FROM users WHERE chzzk_id = ?')
       .get('dup_user') as { id: number }
@@ -167,7 +165,9 @@ describe('Database', () => {
     // Re-open through initDb so migrations run.
     const db = initDb()
     const preserved = db
-      .prepare('SELECT dj_class FROM dj_classes WHERE user_id = ? AND button = 4')
+      .prepare(
+        'SELECT dj_class FROM dj_classes WHERE user_id = ? AND button = 4'
+      )
       .get(user.id) as { dj_class: string } | undefined
     expect(preserved?.dj_class).toBe('SHOWSTOPPER II')
     expect(() =>

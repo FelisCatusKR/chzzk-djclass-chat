@@ -98,10 +98,14 @@ describe('Daily DJ CLASS Sync Worker', () => {
     // Verify DB state: all three successful buttons are stored
     const db2 = getDb()
     const rows = db2
-      .prepare('SELECT button FROM dj_classes WHERE user_id = ? ORDER BY button')
+      .prepare(
+        'SELECT button FROM dj_classes WHERE user_id = ? ORDER BY button'
+      )
       .all(user.id) as { button: number }[]
     const eight = db2
-      .prepare('SELECT dj_class, dj_power_conversion FROM dj_classes WHERE user_id = ? AND button = 8')
+      .prepare(
+        'SELECT dj_class, dj_power_conversion FROM dj_classes WHERE user_id = ? AND button = 8'
+      )
       .get(user.id) as { dj_class: string; dj_power_conversion: number }
     db2.close()
 

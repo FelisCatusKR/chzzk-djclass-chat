@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { resolveDisplayedClass, validatePreferredButton, type DjClassRow } from '../src/lib/dj-class'
+import {
+  resolveDisplayedClass,
+  validatePreferredButton,
+  type DjClassRow,
+} from '../src/lib/dj-class'
 
 const rows: DjClassRow[] = [
   { button: 4, djClass: 'SHOWSTOPPER II', djPowerConversion: 9800 },
