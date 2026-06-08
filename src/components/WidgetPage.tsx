@@ -198,7 +198,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
               }
             } else {
               const result = await response.json()
-              if (result.unlinked) {
+              if (result.unlinked || result.unsynced) {
                 cacheEntry.unlinked = true
               } else if (result.djClass) {
                 cacheEntry.djClass = result.djClass

@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
     if ('unlinked' in cached) {
       return NextResponse.json({ unlinked: true, source: 'cache' })
     }
+    if ('unsynced' in cached) {
+      return NextResponse.json({ unsynced: true, source: 'cache' })
+    }
   }
 
   const db = initDb()
@@ -124,15 +127,9 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Linked but no DJ CLASS data → fallback BEGINNER (treat as 4B 0 point)
-    const fallbackData = {
-      djClass: '4B BEGINNER',
-      rankName: 'BEGINNER',
-      rankLevel: null,
-      powerInteger: 0,
-    }
-    setDjClassCache(cacheKey, fallbackData, 0.25) // 15s — sync may finish soon
-    return NextResponse.json({ ...fallbackData, source: 'db' })
+    // Linked but no DJ CLASS data yet → unverified (not synced).
+    setDjClassCache(cacheKey, { unsynced: true }, 0.25) // 15s — sync may finish soon
+    return NextResponse.json({ unsynced: true, source: 'db' })
   } finally {
     db.close()
   }

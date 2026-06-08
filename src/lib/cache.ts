@@ -8,6 +8,7 @@ type CacheValue =
       powerInteger: number | null
     }
   | { unlinked: true }
+  | { unsynced: true }
 
 const cache = new LRUCache<string, CacheValue>({
   max: 10000,

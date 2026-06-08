@@ -32,7 +32,7 @@ export default function ChatMessageRow({
             : 'opacity-100'
       }`}
     >
-      {message.rankShort && (
+      {message.rankShort ? (
         <DjClassBadge
           mode={badgeMode}
           djClass={message.djClass}
@@ -40,7 +40,14 @@ export default function ChatMessageRow({
           rankLevel={message.rankLevel}
           powerInteger={message.powerInteger}
         />
-      )}
+      ) : message.isUnlinked ? (
+        <span
+          className="mr-1 inline-block rounded px-1 py-0.5 font-bold shadow-sm"
+          style={{ background: '#6b7280', color: '#fff', fontSize: '0.85em' }}
+        >
+          미인증
+        </span>
+      ) : null}
 
       <span className="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
         {message.text}
