@@ -32,11 +32,13 @@ export function setDjClassCache(
 }
 
 export function invalidateUserCache(chzzkId: string): void {
-  cache.delete(`id:${chzzkId}`)
+  cache.delete(`id:${chzzkId}:auto`)
+  cache.delete(`id:${chzzkId}:viewer`)
 }
 
 export function invalidateNicknameCache(nickname: string): void {
-  cache.delete(`nick:${nickname}`)
+  cache.delete(`nick:${nickname}:auto`)
+  cache.delete(`nick:${nickname}:viewer`)
 }
 
 export function invalidateAllUserCaches(
