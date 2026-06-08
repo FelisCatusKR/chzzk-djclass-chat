@@ -14,8 +14,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { RadioGroup } from '@/components/ui/radio-group'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Slider } from '@/components/ui/slider'
+import { Label } from '@/components/ui/label'
 import BadgeModePreviewRow from './BadgeModePreviewRow'
 import WidgetPreview from './WidgetPreview'
 
@@ -25,6 +26,7 @@ import {
   FONT_SIZE_MAX,
   FONT_SIZE_DEFAULT,
 } from '@/lib/font-size'
+import { FADEOUT_MIN, FADEOUT_MAX, FADEOUT_DEFAULT } from '@/lib/fadeout'
 
 interface ChannelData {
   channelId: string
@@ -45,6 +47,9 @@ export default function DashboardPage() {
   const [fontSize, setFontSize] = useState<number>(FONT_SIZE_DEFAULT)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
+  const [buttonSel, setButtonSel] = useState<'auto' | 'viewer'>('auto')
+  const [fadeoutOn, setFadeoutOn] = useState(false)
+  const [fadeoutSec, setFadeoutSec] = useState<number>(FADEOUT_DEFAULT)
 
   useEffect(() => {
     fetch('/api/channel')
@@ -68,6 +73,8 @@ export default function DashboardPage() {
     const m = mode || badgeMode
     url.searchParams.set('mode', m)
     url.searchParams.set('fontSize', String(fontSize))
+    if (buttonSel === 'viewer') url.searchParams.set('buttonSel', 'viewer')
+    if (fadeoutOn) url.searchParams.set('fadeout', String(fadeoutSec))
     return url.toString()
   }
 
@@ -212,6 +219,76 @@ export default function DashboardPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     현재: <span className="font-semibold">{fontSize}px</span>
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>버튼 선택 모드</CardTitle>
+                  <CardDescription>
+                    시청자별 DJ CLASS를 어떤 버튼 기준으로 표시할지 선택하세요.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <RadioGroup
+                    value={buttonSel}
+                    onValueChange={(v) => setButtonSel(v as 'auto' | 'viewer')}
+                    className="space-y-2"
+                  >
+                    <Label
+                      htmlFor="buttonsel-auto"
+                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
+                    >
+                      <span className="text-sm font-medium">
+                        자동 (최고 클래스)
+                      </span>
+                      <RadioGroupItem id="buttonsel-auto" value="auto" />
+                    </Label>
+                    <Label
+                      htmlFor="buttonsel-viewer"
+                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
+                    >
+                      <span className="text-sm font-medium">
+                        시청자 선택 우선
+                      </span>
+                      <RadioGroupItem id="buttonsel-viewer" value="viewer" />
+                    </Label>
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>비활성 채팅 페이드아웃</CardTitle>
+                  <CardDescription>
+                    일정 시간이 지난 메시지를 서서히 사라지게 합니다.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Label className="flex items-center justify-between">
+                    <span className="text-sm font-medium">페이드아웃 사용</span>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={fadeoutOn}
+                      onChange={(e) => setFadeoutOn(e.target.checked)}
+                    />
+                  </Label>
+                  <Slider
+                    aria-label="페이드아웃 시간"
+                    min={FADEOUT_MIN}
+                    max={FADEOUT_MAX}
+                    step={1}
+                    value={[fadeoutSec]}
+                    onValueChange={(value) => setFadeoutSec(value[0])}
+                    disabled={!fadeoutOn}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    현재:{' '}
+                    <span className="font-semibold">
+                      {fadeoutOn ? `${fadeoutSec}초` : '꺼짐'}
+                    </span>
                   </p>
                 </CardContent>
               </Card>
