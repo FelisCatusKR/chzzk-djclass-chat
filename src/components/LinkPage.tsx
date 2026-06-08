@@ -14,6 +14,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 interface UserInfo {
   chzzkNickname: string
@@ -21,6 +22,8 @@ interface UserInfo {
   varchiveNickname: string | null
   djClass: string | null
   powerInteger: number | null
+  availableButtons: number[]
+  preferredButton: number | null
 }
 
 export default function LinkPage() {
@@ -87,6 +90,21 @@ export default function LinkPage() {
     } catch {
       setSyncStatus('error')
       setSyncMessage('네트워크 오류가 발생했습니다.')
+    }
+  }
+
+  const handlePreferredButton = async (value: string) => {
+    const button = value === 'auto' ? null : Number(value)
+    // Optimistic update
+    setUser((prev) => (prev ? { ...prev, preferredButton: button } : prev))
+    try {
+      await fetch('/api/user/preferred-button', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ button }),
+      })
+    } catch {
+      // ignore — next /api/user/me load reconciles
     }
   }
 
@@ -353,6 +371,48 @@ export default function LinkPage() {
               )}
             </CardContent>
           </Card>
+
+          {user?.varchiveLinked &&
+            (user?.availableButtons?.length ?? 0) > 1 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">버튼 선택</CardTitle>
+                  <CardDescription>
+                    위젯에 표시할 버튼을 선택하세요. 스트리머가 &lsquo;시청자 선택
+                    우선&rsquo;을 켰을 때 적용됩니다.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RadioGroup
+                    value={
+                      user.preferredButton == null
+                        ? 'auto'
+                        : String(user.preferredButton)
+                    }
+                    onValueChange={handlePreferredButton}
+                    className="space-y-2"
+                  >
+                    <Label
+                      htmlFor="pref-auto"
+                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
+                    >
+                      <span className="text-sm font-medium">자동 (최고 클래스)</span>
+                      <RadioGroupItem id="pref-auto" value="auto" />
+                    </Label>
+                    {user.availableButtons.map((b) => (
+                      <Label
+                        key={b}
+                        htmlFor={`pref-${b}`}
+                        className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
+                      >
+                        <span className="text-sm font-medium">{b}버튼</span>
+                        <RadioGroupItem id={`pref-${b}`} value={String(b)} />
+                      </Label>
+                    ))}
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
 
           <Link
             href="/"
