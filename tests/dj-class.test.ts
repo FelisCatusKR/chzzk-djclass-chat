@@ -8,6 +8,9 @@ import {
   THEORY_POWER_THRESHOLD,
   DJ_CLASS_COLORS,
   SHORT_NAMES,
+  RANK_ORDER,
+  getClassSortKey,
+  compareClassSortKeys,
 } from '../src/lib/dj-class'
 
 describe('getThreshold', () => {
@@ -115,5 +118,82 @@ describe('isTheoryPower', () => {
 
   it('exposes the threshold constant as 10000', () => {
     expect(THEORY_POWER_THRESHOLD).toBe(10000)
+  })
+})
+
+describe('RANK_ORDER', () => {
+  it('runs from LoD (best) to BEGINNER (worst)', () => {
+    expect(RANK_ORDER[0]).toBe('THE LORD OF DJMAX')
+    expect(RANK_ORDER[RANK_ORDER.length - 1]).toBe('BEGINNER')
+  })
+
+  it('has 14 ranks', () => {
+    expect(RANK_ORDER).toHaveLength(14)
+  })
+})
+
+describe('getClassSortKey', () => {
+  it('encodes rank, level, and button (SHOWSTOPPER IV on 4-button)', () => {
+    // SS index 2 → ordinal 13-2=11; level IV=1; button 4→0
+    expect(getClassSortKey('SHOWSTOPPER IV', 9700, 4)).toEqual([11, 1, 0])
+  })
+
+  it('ranks a higher rank above a lower rank regardless of level/button', () => {
+    const ss = getClassSortKey('SHOWSTOPPER IV', 9700, 4) // [11,1,0]
+    const hl = getClassSortKey('HEADLINER I', 9650, 8) // [10,4,3]
+    expect(compareClassSortKeys(ss, hl)).toBeGreaterThan(0)
+  })
+
+  it('orders levels within a rank (I beats IV)', () => {
+    const i = getClassSortKey('SHOWSTOPPER I', 9850, 5) // [11,4,2]
+    const iv = getClassSortKey('SHOWSTOPPER IV', 9700, 8) // [11,1,3]
+    expect(compareClassSortKeys(i, iv)).toBeGreaterThan(0)
+  })
+
+  it('breaks an exact rank+level tie by button 8 > 5 > 6 > 4', () => {
+    const b8 = getClassSortKey('HIGH CLASS I', 8000, 8) // [7,4,3]
+    const b5 = getClassSortKey('HIGH CLASS I', 8000, 5) // [7,4,2]
+    const b6 = getClassSortKey('HIGH CLASS I', 8000, 6) // [7,4,1]
+    const b4 = getClassSortKey('HIGH CLASS I', 8000, 4) // [7,4,0]
+    expect(compareClassSortKeys(b8, b5)).toBeGreaterThan(0)
+    expect(compareClassSortKeys(b5, b6)).toBeGreaterThan(0)
+    expect(compareClassSortKeys(b6, b4)).toBeGreaterThan(0)
+  })
+
+  it('treats Theory (LoD at >=10000) as a level above plain LoD', () => {
+    const theory = getClassSortKey('THE LORD OF DJMAX', 10000, 4) // [13,5,0]
+    const plain = getClassSortKey('THE LORD OF DJMAX', 9990, 8) // [13,0,3]
+    expect(theory).toEqual([13, 5, 0])
+    expect(plain).toEqual([13, 0, 3])
+    expect(compareClassSortKeys(theory, plain)).toBeGreaterThan(0)
+  })
+
+  it('keeps Theory above every non-LoD rank', () => {
+    const theory = getClassSortKey('THE LORD OF DJMAX', 10000, 4)
+    const bm = getClassSortKey('BEAT MAESTRO I', 9970, 8)
+    expect(compareClassSortKeys(theory, bm)).toBeGreaterThan(0)
+  })
+
+  it('gives no-level ranks a level ordinal of 0 without throwing', () => {
+    expect(getClassSortKey('THE LORD OF DJMAX', 9990, 5)).toEqual([13, 0, 2])
+    expect(getClassSortKey('BEGINNER', 0, 4)).toEqual([0, 0, 0])
+  })
+
+  it('sorts an unknown class to the bottom', () => {
+    expect(getClassSortKey('NONSENSE', 0, 4)).toEqual([-1, 0, 0])
+  })
+})
+
+describe('compareClassSortKeys', () => {
+  it('returns 0 for identical keys', () => {
+    expect(compareClassSortKeys([7, 4, 3], [7, 4, 3])).toBe(0)
+  })
+
+  it('is positive when the first key ranks higher', () => {
+    expect(compareClassSortKeys([8, 0, 0], [7, 9, 9])).toBeGreaterThan(0)
+  })
+
+  it('is negative when the first key ranks lower', () => {
+    expect(compareClassSortKeys([7, 4, 0], [7, 4, 3])).toBeLessThan(0)
   })
 })

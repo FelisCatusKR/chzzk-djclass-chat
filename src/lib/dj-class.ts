@@ -93,6 +93,70 @@ export function parseRankName(djClass: string | null): string {
   )
 }
 
+// Canonical DJ CLASS rank order, best → worst. Mirrors the V-ARCHIVE ladder
+// and the key order of RANK_THRESHOLDS / DJ_CLASS_COLORS above.
+export const RANK_ORDER: string[] = [
+  'THE LORD OF DJMAX',
+  'BEAT MAESTRO',
+  'SHOWSTOPPER',
+  'HEADLINER',
+  'TREND SETTER',
+  'PROFESSIONAL',
+  'HIGH CLASS',
+  'PRO DJ',
+  'MIDDLEMAN',
+  'STREET DJ',
+  'ROOKIE',
+  'AMATEUR',
+  'TRAINEE',
+  'BEGINNER',
+]
+
+// Roman level → ordinal (higher is better). Theory (top level of LoD) = 5.
+const LEVEL_VALUES: Record<string, number> = { I: 4, II: 3, III: 2, IV: 1 }
+
+// Button display preference: 8 > 5 > 6 > 4 (higher is preferred).
+const BUTTON_PREFERENCE: Record<number, number> = { 8: 3, 5: 2, 6: 1, 4: 0 }
+
+// Comparable sort key for one button's DJ CLASS result, "bigger is better"
+// at every position: [rankOrdinal, levelOrdinal, buttonPref]. Used to pick
+// the displayed button by highest CLASS (not power). Theory is modeled as
+// LoD's top level, so power only matters via the theory check.
+export function getClassSortKey(
+  djClass: string,
+  djPowerConversion: number | null | undefined,
+  button: number
+): [number, number, number] {
+  const rankName = parseRankName(djClass)
+  const rankIndex = RANK_ORDER.indexOf(rankName)
+  const rankOrdinal = rankIndex === -1 ? -1 : RANK_ORDER.length - 1 - rankIndex
+
+  let levelOrdinal: number
+  if (rankName === 'THE LORD OF DJMAX' && isTheoryPower(djPowerConversion)) {
+    levelOrdinal = 5
+  } else {
+    const levelMatch = djClass?.match(LEVEL_RE)
+    const level = levelMatch ? levelMatch[1].toUpperCase() : null
+    levelOrdinal = level ? (LEVEL_VALUES[level] ?? 0) : 0
+  }
+
+  const buttonPref = BUTTON_PREFERENCE[button] ?? -1
+
+  return [rankOrdinal, levelOrdinal, buttonPref]
+}
+
+// Lexicographic, descending comparison of two class sort keys.
+// Returns > 0 when `a` ranks higher than `b`, < 0 when lower, 0 when equal.
+export function compareClassSortKeys(
+  a: [number, number, number],
+  b: [number, number, number]
+): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i]
+  }
+  return 0
+}
+
 // Pure badge-text computation, identical to the original inline WidgetPage
 // logic. Kept here so it is testable without a DOM.
 export function getBadgeText(
