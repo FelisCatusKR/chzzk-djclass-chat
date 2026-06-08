@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BadgeMode } from '@/lib/types'
 import { FONT_SIZE_DEFAULT, parseFontSize } from '@/lib/font-size'
+import { parseFadeout } from '@/lib/fadeout'
 import { SHORT_NAMES } from '@/lib/dj-class'
 import ChatMessageRow, { type ChatMessage } from './ChatMessageRow'
 
@@ -59,7 +60,9 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   const pendingQueueRef = useRef<PendingMessage[]>([])
   const isProcessingRef = useRef(false)
   const badgeModeRef = useRef<BadgeMode>('short')
+  const selRef = useRef<'auto' | 'viewer'>('auto')
   const [fontSize, setFontSize] = useState<number>(FONT_SIZE_DEFAULT)
+  const [_fadeoutSec, setFadeoutSec] = useState<number>(0)
 
   // Read badge mode and font size from URL query parameters on mount
   useEffect(() => {
@@ -68,7 +71,9 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
     if (mode === 'threshold' || mode === 'power' || mode === 'short') {
       badgeModeRef.current = mode
     }
+    selRef.current = params.get('buttonSel') === 'viewer' ? 'viewer' : 'auto'
     setFontSize(parseFontSize(params.get('fontSize')))
+    setFadeoutSec(parseFadeout(params.get('fadeout')))
   }, [])
 
   useEffect(() => {
@@ -149,7 +154,8 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
         if (isUnmountingRef.current) break
 
         const pending = pendingQueueRef.current.shift()!
-        const cacheKey = pending.senderId || pending.senderNickname
+        const senderKey = pending.senderId || pending.senderNickname
+        const cacheKey = senderKey ? `${senderKey}:${selRef.current}` : ''
 
         let cacheEntry: Omit<CacheEntry, 'expiry'> = {
           djClass: null,
@@ -176,6 +182,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             if (pending.senderId) params.append('chzzkId', pending.senderId)
             if (pending.senderNickname)
               params.append('chzzkNickname', pending.senderNickname)
+            params.append('sel', selRef.current)
 
             const response = await fetch(
               `/api/widget/dj-class?${params.toString()}`
