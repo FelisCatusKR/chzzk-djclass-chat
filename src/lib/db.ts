@@ -31,6 +31,21 @@ function columnExists(
   return !!result
 }
 
+// True when dj_classes still has the legacy single-column UNIQUE(user_id),
+// which blocks storing more than one button per user.
+function djClassesNeedsRebuild(db: Database.Database): boolean {
+  const indexes = db
+    .prepare(`SELECT name FROM pragma_index_list('dj_classes') WHERE "unique" = 1`)
+    .all() as { name: string }[]
+  for (const idx of indexes) {
+    const cols = db
+      .prepare(`SELECT name FROM pragma_index_info(?)`)
+      .all(idx.name) as { name: string }[]
+    if (cols.length === 1 && cols[0].name === 'user_id') return true
+  }
+  return false
+}
+
 function runMigrations(db: Database.Database): void {
   // Migration 1: Add Chzzk token columns to channels table (2024-06-06)
   if (!columnExists(db, 'channels', 'chzzk_access_token_encrypted')) {
@@ -58,6 +73,44 @@ function runMigrations(db: Database.Database): void {
 
   // Migration 3: badge_mode removed (2026-06-06)
   // Badge mode is now set via widget URL query parameter (?mode=short|threshold|power)
+
+  // Migration 4: allow multiple buttons per user (2026-06-08).
+  // Rebuild dj_classes to drop the legacy column-level UNIQUE(user_id),
+  // which SQLite cannot remove in place.
+  if (djClassesNeedsRebuild(db)) {
+    const rebuild = db.transaction(() => {
+      db.exec('ALTER TABLE dj_classes RENAME TO dj_classes_legacy')
+      db.exec(`
+        CREATE TABLE dj_classes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL REFERENCES users(id),
+          button INTEGER NOT NULL CHECK (button IN (4, 5, 6, 8)),
+          dj_class TEXT NOT NULL,
+          dj_power_sum REAL,
+          max_dj_power REAL,
+          dj_power_conversion REAL,
+          synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, button)
+        )
+      `)
+      db.exec(`
+        INSERT INTO dj_classes
+          (id, user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
+        SELECT
+          id, user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at
+        FROM dj_classes_legacy
+      `)
+      db.exec('DROP TABLE dj_classes_legacy')
+    })
+    rebuild()
+    console.log('[DB Migration] Rebuilt dj_classes for multi-button support')
+  }
+
+  // Migration 5: viewer's preferred button (2026-06-08).
+  if (!columnExists(db, 'users', 'preferred_button')) {
+    db.exec(`ALTER TABLE users ADD COLUMN preferred_button INTEGER`)
+    console.log('[DB Migration] Added preferred_button to users')
+  }
 }
 
 export function initSchema(db: Database.Database): void {
@@ -91,13 +144,14 @@ export function initSchema(db: Database.Database): void {
 
     CREATE TABLE IF NOT EXISTS dj_classes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER UNIQUE NOT NULL REFERENCES users(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
       button INTEGER NOT NULL CHECK (button IN (4, 5, 6, 8)),
       dj_class TEXT NOT NULL,
       dj_power_sum REAL,
       max_dj_power REAL,
       dj_power_conversion REAL,
-      synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, button)
     );
 
     CREATE INDEX IF NOT EXISTS idx_users_chzzk_id ON users(chzzk_id);
