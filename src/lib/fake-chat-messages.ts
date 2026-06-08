@@ -8,7 +8,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 9823,
     text: '안녕하세요',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-2',
@@ -17,7 +17,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 9888,
     text: '이거 쉽던데',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-3',
@@ -26,7 +26,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'IV',
     powerInteger: 5342,
     text: '처음 왔어요 잘 부탁드려요',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-4',
@@ -35,7 +35,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 7337,
     text: '신청곡 넣어도 되나요?',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-5',
@@ -44,7 +44,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 9600,
     text: '망이조아',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-6',
@@ -53,7 +53,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: 10000,
     text: 'ㅎㅇ',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-7',
@@ -62,7 +62,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 8800,
     text: '스코어 인증 완료했습니다',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-8',
@@ -71,7 +71,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 2800,
     text: '로페바이럴',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-9',
@@ -80,7 +80,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 6999,
     text: '잘 좀 해봐요',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-10',
@@ -89,7 +89,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 4600,
     text: '키보드 혹시 뭔가요?',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-11',
@@ -98,7 +98,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: 652,
     text: '이거 좀 어렵...',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-12',
@@ -107,7 +107,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 8400,
     text: '오늘도 래더 하시나요?',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-13',
@@ -116,7 +116,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'IV',
     powerInteger: 9900,
     text: '지린다 ㄷㄷ',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-14',
@@ -125,7 +125,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 2000,
     text: '반가워요',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-15',
@@ -134,7 +134,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 8900,
     text: '연타를 변기에 넣고 내려',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-16',
@@ -143,7 +143,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: null,
     text: 'ㅁㅁㅁㅁㄷㄴㅅ',
-    isUnlinked: true,
+    isUnverified: true,
   },
   {
     id: 'fake-17',
@@ -152,7 +152,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 5704,
     text: '방금 어케 친거임',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-18',
@@ -161,7 +161,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 9750,
     text: '퍼펙 ㅊㅊㅊㅊㅊ',
-    isUnlinked: false,
+    isUnverified: false,
   },
   {
     id: 'fake-19',
@@ -170,7 +170,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: null,
     text: '탭소닉은다시돌아온다',
-    isUnlinked: true,
+    isUnverified: true,
   },
   {
     id: 'fake-20',
@@ -179,6 +179,6 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 4943,
     text: '혹시 제가 연타를 잘 못하는데 이거 방법 있을까요? ㅠㅠ',
-    isUnlinked: false,
+    isUnverified: false,
   },
 ]

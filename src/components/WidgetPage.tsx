@@ -24,7 +24,7 @@ interface CacheEntry {
   rankShort: string | null
   rankLevel: string | null
   powerInteger: number | null
-  unlinked: boolean
+  unverified: boolean
   expiry: number
 }
 
@@ -162,7 +162,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           rankShort: null,
           rankLevel: null,
           powerInteger: null,
-          unlinked: false,
+          unverified: false,
         }
 
         // Check client-side cache first
@@ -173,7 +173,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             rankShort: cached.rankShort,
             rankLevel: cached.rankLevel,
             powerInteger: cached.powerInteger,
-            unlinked: cached.unlinked,
+            unverified: cached.unverified,
           }
         } else {
           let shouldCache = true
@@ -189,9 +189,9 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             )
             if (!response.ok) {
               console.error('[Widget] DJ CLASS lookup failed:', response.status)
-              // Only mark as unlinked on 404; 500s are temporary server errors
+              // Only mark as unverified on 404; 500s are temporary server errors
               if (response.status === 404) {
-                cacheEntry.unlinked = true
+                cacheEntry.unverified = true
               } else {
                 // Temporary error — don't cache, just show message without badges
                 shouldCache = false
@@ -199,7 +199,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             } else {
               const result = await response.json()
               if (result.unlinked || result.unsynced) {
-                cacheEntry.unlinked = true
+                cacheEntry.unverified = true
               } else if (result.djClass) {
                 cacheEntry.djClass = result.djClass
                 cacheEntry.rankShort = result.rankName
@@ -214,7 +214,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             shouldCache = false
           }
 
-          // Cache the result only for successful lookups or confirmed unlinked
+          // Cache the result only for successful lookups or confirmed unverified
           if (shouldCache && cacheKey) {
             setCachedDjClass(cacheKey, cacheEntry)
           }
@@ -227,7 +227,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           rankLevel: cacheEntry.rankLevel,
           powerInteger: cacheEntry.powerInteger,
           text: pending.messageText,
-          isUnlinked: cacheEntry.unlinked,
+          isUnverified: cacheEntry.unverified,
           createdAt: Date.now(),
         }
 

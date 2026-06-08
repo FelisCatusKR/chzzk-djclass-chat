@@ -8,7 +8,7 @@ export interface ChatMessage {
   rankLevel: string | null
   powerInteger: number | null
   text: string
-  isUnlinked: boolean
+  isUnverified: boolean
   createdAt?: number
   fading?: boolean
 }
@@ -27,7 +27,7 @@ export default function ChatMessageRow({
       className={`break-words transition-opacity duration-500 ${
         message.fading
           ? 'opacity-0'
-          : message.isUnlinked
+          : message.isUnverified
             ? 'opacity-75'
             : 'opacity-100'
       }`}
@@ -40,7 +40,7 @@ export default function ChatMessageRow({
           rankLevel={message.rankLevel}
           powerInteger={message.powerInteger}
         />
-      ) : message.isUnlinked ? (
+      ) : message.isUnverified ? (
         <span
           className="mr-1 inline-block rounded px-1 py-0.5 font-bold shadow-sm"
           style={{ background: '#6b7280', color: '#fff', fontSize: '0.85em' }}
