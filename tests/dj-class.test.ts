@@ -153,6 +153,32 @@ describe('isTheoryConversion', () => {
   })
 })
 
+describe('toPowerInteger', () => {
+  it('bumps a theory conversion up to THEORY_POWER_THRESHOLD (10000)', () => {
+    expect(toPowerInteger(9999.9847)).toBe(10000)
+    expect(toPowerInteger(10000)).toBe(10000)
+  })
+
+  it('floors a non-theory conversion', () => {
+    expect(toPowerInteger(9999.9846)).toBe(9999)
+    expect(toPowerInteger(9999.5)).toBe(9999)
+    expect(toPowerInteger(8800.7)).toBe(8800)
+  })
+
+  it('a floored non-theory value is not treated as theory by isTheoryPower', () => {
+    expect(isTheoryPower(toPowerInteger(9999.5))).toBe(false)
+  })
+
+  it('preserves a genuine zero (not null)', () => {
+    expect(toPowerInteger(0)).toBe(0)
+  })
+
+  it('returns null for null and undefined', () => {
+    expect(toPowerInteger(null)).toBeNull()
+    expect(toPowerInteger(undefined)).toBeNull()
+  })
+})
+
 describe('RANK_ORDER', () => {
   it('runs from LoD (best) to BEGINNER (worst)', () => {
     expect(RANK_ORDER[0]).toBe('THE LORD OF DJMAX')

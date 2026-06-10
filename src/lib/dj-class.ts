@@ -25,6 +25,18 @@ export function isTheoryConversion(
   return conversion != null && conversion >= THEORY_POWER_CONVERSION_THRESHOLD
 }
 
+// Convert a raw djPowerConversion float to the integer power shown in badges.
+// Theory scores are bumped to THEORY_POWER_THRESHOLD (10000) so the existing
+// integer-based isTheoryPower() callers keep working; every other score floors.
+// Preserves null (no data) and a genuine 0.
+export function toPowerInteger(
+  conversion: number | null | undefined
+): number | null {
+  if (conversion == null) return null
+  if (isTheoryConversion(conversion)) return THEORY_POWER_THRESHOLD
+  return Math.floor(conversion)
+}
+
 // V-ARCHIVE DJ CLASS color scheme (from official wiki)
 export const DJ_CLASS_COLORS: Record<string, string> = {
   'THE LORD OF DJMAX': 'linear-gradient(to right, #f2b2f7, #acebff)',
