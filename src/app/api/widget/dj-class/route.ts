@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { initDb } from '@/lib/db'
 import { getDjClassFromCache, setDjClassCache } from '@/lib/cache'
-import { resolveDisplayedClass, type DjClassRow } from '@/lib/dj-class'
+import {
+  resolveDisplayedClass,
+  toPowerInteger,
+  type DjClassRow,
+} from '@/lib/dj-class'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -102,10 +106,7 @@ export async function GET(request: NextRequest) {
 
     if (chosen) {
       const formattedClass = `${chosen.button}B ${chosen.djClass}`
-      const powerInteger =
-        chosen.djPowerConversion != null
-          ? Math.floor(chosen.djPowerConversion)
-          : null
+      const powerInteger = toPowerInteger(chosen.djPowerConversion)
       const rankMatch = chosen.djClass.match(
         /^(.+?)\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$/
       )

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionCookie } from '@/lib/session'
 import { initDb } from '@/lib/db'
-import { resolveDisplayedClass } from '@/lib/dj-class'
+import { resolveDisplayedClass, toPowerInteger } from '@/lib/dj-class'
 
 export async function GET(request: NextRequest) {
   const sessionCookie = request.cookies.get('session')?.value
@@ -53,10 +53,7 @@ export async function GET(request: NextRequest) {
       null,
       'auto'
     )
-    const powerInteger =
-      highest?.djPowerConversion != null
-        ? Math.floor(highest.djPowerConversion)
-        : null
+    const powerInteger = toPowerInteger(highest?.djPowerConversion)
 
     return NextResponse.json({
       chzzkNickname: user.chzzk_nickname,
@@ -68,10 +65,7 @@ export async function GET(request: NextRequest) {
       buttons: buttonRows.map((r) => ({
         button: r.button,
         djClass: `${r.button}B ${r.dj_class}`,
-        powerInteger:
-          r.dj_power_conversion != null
-            ? Math.floor(r.dj_power_conversion)
-            : null,
+        powerInteger: toPowerInteger(r.dj_power_conversion),
       })),
     })
   } finally {
