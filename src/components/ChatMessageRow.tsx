@@ -1,5 +1,6 @@
 import type { BadgeMode } from '@/lib/types'
 import DjClassBadge from './DjClassBadge'
+import { parseEmojiContent } from '@/lib/emoji'
 
 export interface ChatMessage {
   id: string
@@ -8,6 +9,7 @@ export interface ChatMessage {
   rankLevel: string | null
   powerInteger: number | null
   text: string
+  emojis: Record<string, string>
   isUnverified: boolean
   createdAt?: number
   fading?: boolean
@@ -50,7 +52,20 @@ export default function ChatMessageRow({
       ) : null}
 
       <span className="text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
-        {message.text}
+        {parseEmojiContent(message.text, message.emojis).map((part, i) =>
+          part.type === 'text' ? (
+            <span key={i}>{part.value}</span>
+          ) : (
+            <img
+              key={i}
+              src={part.url}
+              alt=""
+              className="inline-block align-text-bottom"
+              style={{ height: '1em' }}
+              loading="lazy"
+            />
+          )
+        )}
       </span>
     </div>
   )
