@@ -12,6 +12,7 @@ interface ChatMessage {
   nickname: string
   content: string
   messageTime: number
+  emojis: Record<string, string>
 }
 
 interface WidgetSocket {
@@ -286,6 +287,10 @@ export async function connectToChat(channelId: string): Promise<void> {
       const profile = parsed.profile as Record<string, unknown> | undefined
       const sender = String(profile?.nickname ?? parsed.nickname ?? '')
       const content = String(parsed.content ?? '')
+      const emojis =
+        parsed.emojis && typeof parsed.emojis === 'object'
+          ? (parsed.emojis as Record<string, string>)
+          : {}
 
       if (process.env.NODE_ENV !== 'production') {
         logger.debug(
@@ -306,6 +311,7 @@ export async function connectToChat(channelId: string): Promise<void> {
         nickname: sender,
         content,
         messageTime: Number(parsed.messageTime ?? Date.now()),
+        emojis,
       }
 
       const payload = JSON.stringify({
