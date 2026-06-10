@@ -287,10 +287,15 @@ export async function connectToChat(channelId: string): Promise<void> {
       const profile = parsed.profile as Record<string, unknown> | undefined
       const sender = String(profile?.nickname ?? parsed.nickname ?? '')
       const content = String(parsed.content ?? '')
-      const emojis =
+      const rawEmojis =
         parsed.emojis && typeof parsed.emojis === 'object'
-          ? (parsed.emojis as Record<string, string>)
+          ? (parsed.emojis as Record<string, unknown>)
           : {}
+      const emojis: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEmojis).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string'
+        )
+      )
 
       if (process.env.NODE_ENV !== 'production') {
         logger.debug(
@@ -299,6 +304,7 @@ export async function connectToChat(channelId: string): Promise<void> {
             sender,
             content: content.substring(0, 50),
             widgetCount: conn.widgets.size,
+            emojiCount: Object.keys(emojis).length,
           })
         )
       }
