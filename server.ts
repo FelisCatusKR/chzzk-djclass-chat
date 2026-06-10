@@ -3,6 +3,7 @@ import next from 'next'
 import type { UrlWithParsedQuery } from 'url'
 import { WebSocketServer } from 'ws'
 import { addWidget, removeWidget } from './src/lib/chat-proxy'
+import { closeSharedDb } from './src/lib/db'
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = '0.0.0.0'
@@ -67,6 +68,7 @@ app.prepare().then(() => {
     })
     server.close(() => {
       console.log('> HTTP server closed')
+      closeSharedDb()
       process.exit(0)
     })
     // Close existing connections to prevent hanging

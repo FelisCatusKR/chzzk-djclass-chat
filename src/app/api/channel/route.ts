@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initDb } from '@/lib/db'
+import { getSharedDb } from '@/lib/db'
 import { verifySessionCookie } from '@/lib/session'
 import { getActiveConnections } from '@/lib/chat-proxy'
 
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const db = initDb()
+  const db = getSharedDb()
 
   // Get or create channel
   const getStmt = db.prepare('SELECT * FROM channels WHERE user_id = ?')
@@ -30,7 +30,6 @@ export async function GET(request: NextRequest) {
       | undefined
 
     if (!user) {
-      db.close()
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -51,8 +50,6 @@ export async function GET(request: NextRequest) {
   const activeConnections = getActiveConnections()
   const isConnected = activeConnections.includes(channel.chzzk_channel_id)
   const hasTokens = !!channel.chzzk_access_token_encrypted
-
-  db.close()
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || ''
   return NextResponse.json({

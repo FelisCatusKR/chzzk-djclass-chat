@@ -1,5 +1,5 @@
 import io from 'socket.io-client'
-import { initDb } from './db'
+import { getSharedDb } from './db'
 import { decrypt } from './crypto'
 import { refreshAccessToken } from './chzzk'
 import { encrypt } from './crypto'
@@ -95,7 +95,7 @@ export async function connectToChat(channelId: string): Promise<void> {
     return
   }
 
-  const db = initDb()
+  const db = getSharedDb()
 
   // Create a connection stub with a promise so concurrent calls wait
   let resolveConnecting: (() => void) | null = null
@@ -415,7 +415,6 @@ export async function connectToChat(channelId: string): Promise<void> {
       }
     }
   } finally {
-    db.close()
     // Resolve the connecting promise so concurrent callers can proceed
     if (resolveConnecting) {
       ;(resolveConnecting as () => void)()

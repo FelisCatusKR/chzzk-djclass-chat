@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { exchangeCodeForToken, getUserInfo } from '@/lib/chzzk'
 import { logger } from '@/lib/logger'
-import { initDb } from '@/lib/db'
+import { getSharedDb } from '@/lib/db'
 import { createSessionCookie } from '@/lib/session'
 import { encrypt } from '@/lib/crypto'
 import { decrypt } from '@/lib/crypto'
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
   }
 
-  let db: ReturnType<typeof initDb> | null = null
+  let db: ReturnType<typeof getSharedDb> | null = null
   try {
     logger.debug('[OAuth Callback] Exchanging code for token...')
     const { accessToken, refreshToken, expiresIn } = await exchangeCodeForToken(
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       nickname: userInfo.nickname,
     })
 
-    db = initDb()
+    db = getSharedDb()
     const stmt = db.prepare(`
       INSERT INTO users (chzzk_id, chzzk_nickname)
       VALUES (?, ?)
@@ -135,7 +135,5 @@ export async function GET(request: NextRequest) {
       logger.error('[OAuth Callback] Error details:', error.message)
     }
     return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
-  } finally {
-    if (db) db.close()
   }
 }

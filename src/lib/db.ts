@@ -175,3 +175,31 @@ export function initDb(): Database.Database {
   initSchema(db)
   return db
 }
+
+// Process-wide shared connection for the request/proxy/worker paths.
+//
+// `initDb()` opens a fresh connection and re-runs schema + migration
+// introspection — ~1.9 ms of CPU on the Pi. Doing that per request also blocks
+// the same event loop that forwards chat to widgets (server.ts runs Next and
+// the ws server together). The shared singleton opens once and reuses the
+// connection (~0.02 ms/req). better-sqlite3 serializes calls and WAL is on, so
+// a single connection is the recommended pattern. Tests keep using initDb().
+//
+// Guarded on globalThis so Next dev hot-reload doesn't leak connections.
+const sharedDbGlobal = globalThis as typeof globalThis & {
+  __sharedDb?: Database.Database
+}
+
+export function getSharedDb(): Database.Database {
+  const existing = sharedDbGlobal.__sharedDb
+  if (existing && existing.open) return existing
+  const db = initDb()
+  sharedDbGlobal.__sharedDb = db
+  return db
+}
+
+export function closeSharedDb(): void {
+  const existing = sharedDbGlobal.__sharedDb
+  if (existing && existing.open) existing.close()
+  sharedDbGlobal.__sharedDb = undefined
+}

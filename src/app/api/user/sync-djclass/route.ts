@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionCookie } from '@/lib/session'
-import { initDb } from '@/lib/db'
+import { getSharedDb } from '@/lib/db'
 import { decrypt } from '@/lib/crypto'
 import { lookupUser, getAllDjClasses } from '@/lib/varchive'
 import { persistUserDjClasses } from '@/lib/dj-class-store'
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid session' }, { status: 401 })
   }
 
-  const db = initDb()
+  const db = getSharedDb()
   try {
     // Get V-ARCHIVE token
     const tokenRow = db
@@ -109,7 +109,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     logger.error('Manual sync error:', error)
     return NextResponse.json({ error: 'Sync failed' }, { status: 500 })
-  } finally {
-    db.close()
   }
 }

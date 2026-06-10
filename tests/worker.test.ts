@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { syncDjClasses } from '../src/worker/sync-djclass'
-import { getDb, initDb } from '../src/lib/db'
+import { getDb, initDb, closeSharedDb } from '../src/lib/db'
 import { encrypt } from '../src/lib/crypto'
 import fs from 'fs'
 import path from 'path'
@@ -16,6 +16,10 @@ describe('Daily DJ CLASS Sync Worker', () => {
     process.env.DATABASE_URL = TEST_DB_PATH
     process.env.VARCHIVE_TOKEN_KEY = 'test-key-32-chars-long!!!'
 
+    // Drop any shared singleton from a prior test so syncDjClasses() (which
+    // uses getSharedDb) re-opens against the fresh DB file below.
+    closeSharedDb()
+
     const dir = path.dirname(TEST_DB_PATH)
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH)
@@ -26,6 +30,7 @@ describe('Daily DJ CLASS Sync Worker', () => {
   })
 
   afterEach(() => {
+    closeSharedDb()
     if (fs.existsSync(TEST_DB_PATH)) fs.unlinkSync(TEST_DB_PATH)
   })
 

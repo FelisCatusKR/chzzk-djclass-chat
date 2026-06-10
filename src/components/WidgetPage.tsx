@@ -7,14 +7,6 @@ import { parseFadeout } from '@/lib/fadeout'
 import { SHORT_NAMES } from '@/lib/dj-class'
 import ChatMessageRow, { type ChatMessage } from './ChatMessageRow'
 
-interface PendingMessage {
-  id: string
-  senderId: string
-  senderNickname: string
-  messageText: string
-  emojis: Record<string, string>
-}
-
 interface WidgetPageProps {
   channelId: string
 }
@@ -27,6 +19,18 @@ interface CacheEntry {
   powerInteger: number | null
   unverified: boolean
   expiry: number
+}
+
+// Badge fields without the cache bookkeeping — what a lookup resolves to and
+// what gets patched onto a rendered message.
+type DjClassFields = Omit<CacheEntry, 'expiry'>
+
+const EMPTY_FIELDS: DjClassFields = {
+  djClass: null,
+  rankShort: null,
+  rankLevel: null,
+  powerInteger: null,
+  unverified: false,
 }
 
 const djClassCache = new Map<string, CacheEntry>()
@@ -58,8 +62,9 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   const retryCountRef = useRef(0)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isUnmountingRef = useRef(false)
-  const pendingQueueRef = useRef<PendingMessage[]>([])
-  const isProcessingRef = useRef(false)
+  // Dedup in-flight DJ-class lookups so a chatter sending a burst triggers one
+  // request, not one per message. Keyed by `senderKey:sel`.
+  const inFlightRef = useRef<Map<string, Promise<DjClassFields>>>(new Map())
   const badgeModeRef = useRef<BadgeMode>('short')
   const selRef = useRef<'auto' | 'viewer'>('auto')
   const [fontSize, setFontSize] = useState<number>(FONT_SIZE_DEFAULT)
@@ -111,23 +116,44 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           if (payload.type !== 'chat') return
 
           const data = payload.data
-          const senderId = data.senderChannelId
-          const senderNickname = data.nickname
-          const messageText = data.content
+          const senderId: string = data.senderChannelId || ''
+          const senderNickname: string = data.nickname || ''
+          const messageText: string = data.content
           const emojis: Record<string, string> = data.emojis || {}
 
           if (!messageText) return
 
-          // Queue message for sequential processing
-          pendingQueueRef.current.push({
-            id: `${Date.now()}-${Math.random()}`,
-            senderId: senderId || '',
-            senderNickname: senderNickname || '',
-            messageText,
-            emojis,
-          })
+          const senderKey = senderId || senderNickname
+          const cacheKey = senderKey ? `${senderKey}:${selRef.current}` : ''
+          const cached = cacheKey ? getCachedDjClass(cacheKey) : undefined
+          const fields: DjClassFields = cached ?? EMPTY_FIELDS
 
-          processQueue()
+          // Render immediately — text never waits on the badge lookup. If the
+          // sender isn't cached yet, badge fields are filled in by patchSender()
+          // once the async lookup resolves.
+          const message: ChatMessage = {
+            id: `${Date.now()}-${Math.random()}`,
+            senderKey,
+            djClass: fields.djClass,
+            rankShort: fields.rankShort,
+            rankLevel: fields.rankLevel,
+            powerInteger: fields.powerInteger,
+            text: messageText,
+            emojis,
+            isUnverified: fields.unverified,
+            pending: !cached && !!cacheKey,
+            createdAt: Date.now(),
+          }
+          setMessages((prev) => [...prev.slice(-99), message])
+
+          if (!cached && cacheKey) {
+            lookupSender(senderId, senderNickname, cacheKey).then(
+              (resolved) => {
+                if (isUnmountingRef.current) return
+                patchSender(senderKey, resolved)
+              }
+            )
+          }
         } catch {
           // Ignore malformed messages
         }
@@ -149,96 +175,80 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
       }
     }
 
-    const processQueue = async () => {
-      if (isProcessingRef.current) return
-      isProcessingRef.current = true
+    // Resolve a sender's DJ-class fields, deduping concurrent lookups for the
+    // same sender so a burst triggers one request. Resolves to EMPTY_FIELDS on
+    // transient errors (and doesn't cache them, so the next message retries).
+    const lookupSender = (
+      senderId: string,
+      senderNickname: string,
+      cacheKey: string
+    ): Promise<DjClassFields> => {
+      const existing = inFlightRef.current.get(cacheKey)
+      if (existing) return existing
 
-      while (pendingQueueRef.current.length > 0) {
-        if (isUnmountingRef.current) break
+      const promise = (async (): Promise<DjClassFields> => {
+        const fields: DjClassFields = { ...EMPTY_FIELDS }
+        let shouldCache = true
+        try {
+          const params = new URLSearchParams()
+          if (senderId) params.append('chzzkId', senderId)
+          if (senderNickname) params.append('chzzkNickname', senderNickname)
+          params.append('sel', selRef.current)
 
-        const pending = pendingQueueRef.current.shift()!
-        const senderKey = pending.senderId || pending.senderNickname
-        const cacheKey = senderKey ? `${senderKey}:${selRef.current}` : ''
-
-        let cacheEntry: Omit<CacheEntry, 'expiry'> = {
-          djClass: null,
-          rankShort: null,
-          rankLevel: null,
-          powerInteger: null,
-          unverified: false,
-        }
-
-        // Check client-side cache first
-        const cached = cacheKey ? getCachedDjClass(cacheKey) : undefined
-        if (cached) {
-          cacheEntry = {
-            djClass: cached.djClass,
-            rankShort: cached.rankShort,
-            rankLevel: cached.rankLevel,
-            powerInteger: cached.powerInteger,
-            unverified: cached.unverified,
-          }
-        } else {
-          let shouldCache = true
-          try {
-            const params = new URLSearchParams()
-            if (pending.senderId) params.append('chzzkId', pending.senderId)
-            if (pending.senderNickname)
-              params.append('chzzkNickname', pending.senderNickname)
-            params.append('sel', selRef.current)
-
-            const response = await fetch(
-              `/api/widget/dj-class?${params.toString()}`
-            )
-            if (!response.ok) {
-              console.error('[Widget] DJ CLASS lookup failed:', response.status)
-              // Only mark as unverified on 404; 500s are temporary server errors
-              if (response.status === 404) {
-                cacheEntry.unverified = true
-              } else {
-                // Temporary error — don't cache, just show message without badges
-                shouldCache = false
-              }
-            } else {
-              const result = await response.json()
-              if (result.unlinked || result.unsynced) {
-                cacheEntry.unverified = true
-              } else if (result.djClass) {
-                cacheEntry.djClass = result.djClass
-                cacheEntry.rankShort = result.rankName
-                  ? SHORT_NAMES[result.rankName] || result.rankName
-                  : null
-                cacheEntry.rankLevel = result.rankLevel || null
-                cacheEntry.powerInteger = result.powerInteger ?? null
-              }
+          const response = await fetch(
+            `/api/widget/dj-class?${params.toString()}`
+          )
+          if (!response.ok) {
+            console.error('[Widget] DJ CLASS lookup failed:', response.status)
+            // Only mark unverified on 404; 5xx are transient — don't cache.
+            if (response.status === 404) fields.unverified = true
+            else shouldCache = false
+          } else {
+            const result = await response.json()
+            if (result.unlinked || result.unsynced) {
+              fields.unverified = true
+            } else if (result.djClass) {
+              fields.djClass = result.djClass
+              fields.rankShort = result.rankName
+                ? SHORT_NAMES[result.rankName] || result.rankName
+                : null
+              fields.rankLevel = result.rankLevel || null
+              fields.powerInteger = result.powerInteger ?? null
             }
-          } catch {
-            // Network error — don't cache, retry on next message
-            shouldCache = false
           }
+        } catch {
+          // Network error — don't cache, retry on the sender's next message.
+          shouldCache = false
+        }
+        if (shouldCache) setCachedDjClass(cacheKey, fields)
+        return fields
+      })()
 
-          // Cache the result only for successful lookups or confirmed unverified
-          if (shouldCache && cacheKey) {
-            setCachedDjClass(cacheKey, cacheEntry)
+      inFlightRef.current.set(cacheKey, promise)
+      void promise.finally(() => inFlightRef.current.delete(cacheKey))
+      return promise
+    }
+
+    // Patch every currently-displayed pending row from this sender with the
+    // resolved badge fields, in a single state update.
+    const patchSender = (senderKey: string, fields: DjClassFields) => {
+      setMessages((prev) => {
+        let changed = false
+        const next = prev.map((m) => {
+          if (m.senderKey !== senderKey || !m.pending) return m
+          changed = true
+          return {
+            ...m,
+            djClass: fields.djClass,
+            rankShort: fields.rankShort,
+            rankLevel: fields.rankLevel,
+            powerInteger: fields.powerInteger,
+            isUnverified: fields.unverified,
+            pending: false,
           }
-        }
-
-        const newMessage: ChatMessage = {
-          id: pending.id,
-          djClass: cacheEntry.djClass,
-          rankShort: cacheEntry.rankShort,
-          rankLevel: cacheEntry.rankLevel,
-          powerInteger: cacheEntry.powerInteger,
-          text: pending.messageText,
-          emojis: pending.emojis,
-          isUnverified: cacheEntry.unverified,
-          createdAt: Date.now(),
-        }
-
-        setMessages((prev) => [...prev.slice(-99), newMessage])
-      }
-
-      isProcessingRef.current = false
+        })
+        return changed ? next : prev
+      })
     }
 
     connect()
@@ -255,7 +265,8 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
   }, [channelId])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // 'auto' (not 'smooth'): bursts must not queue stacked scroll animations.
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [messages])
 
   // Per-message fadeout: when enabled, mark aged messages as fading (CSS

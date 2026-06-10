@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionCookie } from '@/lib/session'
-import { initDb } from '@/lib/db'
+import { getSharedDb } from '@/lib/db'
 import { validatePreferredButton } from '@/lib/dj-class'
 import { invalidateAllUserCaches } from '@/lib/cache'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
@@ -30,38 +30,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
   }
 
-  const db = initDb()
+  const db = getSharedDb()
+  const available = (
+    db
+      .prepare('SELECT button FROM dj_classes WHERE user_id = ?')
+      .all(userId) as { button: number }[]
+  ).map((r) => r.button)
+
+  let resolved: number | null
   try {
-    const available = (
-      db
-        .prepare('SELECT button FROM dj_classes WHERE user_id = ?')
-        .all(userId) as { button: number }[]
-    ).map((r) => r.button)
-
-    let resolved: number | null
-    try {
-      resolved = validatePreferredButton(body.button ?? null, available)
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid preferred button' },
-        { status: 400 }
-      )
-    }
-
-    db.prepare('UPDATE users SET preferred_button = ? WHERE id = ?').run(
-      resolved,
-      userId
+    resolved = validatePreferredButton(body.button ?? null, available)
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid preferred button' },
+      { status: 400 }
     )
-
-    const userRow = db
-      .prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?')
-      .get(userId) as { chzzk_id: string; chzzk_nickname: string } | undefined
-    if (userRow) {
-      invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
-    }
-
-    return NextResponse.json({ success: true, preferredButton: resolved })
-  } finally {
-    db.close()
   }
+
+  db.prepare('UPDATE users SET preferred_button = ? WHERE id = ?').run(
+    resolved,
+    userId
+  )
+
+  const userRow = db
+    .prepare('SELECT chzzk_id, chzzk_nickname FROM users WHERE id = ?')
+    .get(userId) as { chzzk_id: string; chzzk_nickname: string } | undefined
+  if (userRow) {
+    invalidateAllUserCaches(userRow.chzzk_id, userRow.chzzk_nickname)
+  }
+
+  return NextResponse.json({ success: true, preferredButton: resolved })
 }

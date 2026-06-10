@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initDb } from '@/lib/db'
+import { getSharedDb } from '@/lib/db'
 import { encrypt } from '@/lib/crypto'
 import { lookupUser, getAllDjClasses } from '@/lib/varchive'
 import { persistUserDjClasses } from '@/lib/dj-class-store'
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let db: ReturnType<typeof initDb> | null = null
+  let db: ReturnType<typeof getSharedDb> | null = null
   try {
     const { token } = await request.json()
     if (!token || typeof token !== 'string') {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Encrypt and store token
     const encryptedToken = encrypt(token)
-    db = initDb()
+    db = getSharedDb()
 
     const stmt = db.prepare(`
       INSERT INTO varchive_tokens (user_id, token_encrypted, varchive_nickname)
@@ -105,7 +105,5 @@ export async function POST(request: NextRequest) {
       },
       { status: 400 }
     )
-  } finally {
-    if (db) db.close()
   }
 }

@@ -1,9 +1,13 @@
+import { memo } from 'react'
 import type { BadgeMode } from '@/lib/types'
 import DjClassBadge from './DjClassBadge'
 import { parseEmojiContent } from '@/lib/emoji'
 
 export interface ChatMessage {
   id: string
+  // Sender identity used to patch badge fields once an async lookup resolves.
+  // Optional: static preview messages (fake-chat-messages) have no lookup.
+  senderKey?: string
   djClass: string | null
   rankShort: string | null
   rankLevel: string | null
@@ -11,6 +15,8 @@ export interface ChatMessage {
   text: string
   emojis: Record<string, string>
   isUnverified: boolean
+  // True while the DJ-class lookup for this sender is still in flight.
+  pending?: boolean
   createdAt?: number
   fading?: boolean
 }
@@ -20,10 +26,7 @@ interface ChatMessageRowProps {
   badgeMode: BadgeMode
 }
 
-export default function ChatMessageRow({
-  message,
-  badgeMode,
-}: ChatMessageRowProps) {
+function ChatMessageRow({ message, badgeMode }: ChatMessageRowProps) {
   return (
     <div
       className={`break-words transition-opacity duration-500 ${
@@ -70,3 +73,9 @@ export default function ChatMessageRow({
     </div>
   )
 }
+
+// Memoized so a new message only re-renders its own row, not the whole list.
+// `message` is a stable object reference until it is patched (badge resolves or
+// fadeout flips), and `badgeMode` comes from a ref, so shallow compare is
+// correct.
+export default memo(ChatMessageRow)
