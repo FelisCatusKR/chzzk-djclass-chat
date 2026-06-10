@@ -12,6 +12,7 @@ interface PendingMessage {
   senderId: string
   senderNickname: string
   messageText: string
+  emojis: Record<string, string>
 }
 
 interface WidgetPageProps {
@@ -113,6 +114,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           const senderId = data.senderChannelId
           const senderNickname = data.nickname
           const messageText = data.content
+          const emojis: Record<string, string> = data.emojis || {}
 
           if (!messageText) return
 
@@ -122,6 +124,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
             senderId: senderId || '',
             senderNickname: senderNickname || '',
             messageText,
+            emojis,
           })
 
           processQueue()
@@ -227,6 +230,7 @@ export default function WidgetPage({ channelId }: WidgetPageProps) {
           rankLevel: cacheEntry.rankLevel,
           powerInteger: cacheEntry.powerInteger,
           text: pending.messageText,
+          emojis: pending.emojis,
           isUnverified: cacheEntry.unverified,
           createdAt: Date.now(),
         }

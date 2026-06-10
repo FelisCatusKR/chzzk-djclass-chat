@@ -8,6 +8,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 9823,
     text: '안녕하세요',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -17,6 +18,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 9888,
     text: '이거 쉽던데',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -26,6 +28,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'IV',
     powerInteger: 5342,
     text: '처음 왔어요 잘 부탁드려요',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -35,6 +38,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 7337,
     text: '신청곡 넣어도 되나요?',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -44,6 +48,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 9600,
     text: '망이조아',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -53,6 +58,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: 10000,
     text: 'ㅎㅇ',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -62,6 +68,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 8800,
     text: '스코어 인증 완료했습니다',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -71,6 +78,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 2800,
     text: '로페바이럴',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -80,6 +88,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 6999,
     text: '잘 좀 해봐요',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -89,6 +98,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'II',
     powerInteger: 4600,
     text: '키보드 혹시 뭔가요?',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -98,6 +108,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: 652,
     text: '이거 좀 어렵...',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -107,6 +118,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 8400,
     text: '오늘도 래더 하시나요?',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -116,6 +128,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'IV',
     powerInteger: 9900,
     text: '지린다 ㄷㄷ',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -125,6 +138,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 2000,
     text: '반가워요',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -134,6 +148,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 8900,
     text: '연타를 변기에 넣고 내려',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -143,6 +158,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: null,
     text: 'ㅁㅁㅁㅁㄷㄴㅅ',
+    emojis: {},
     isUnverified: true,
   },
   {
@@ -152,6 +168,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 5704,
     text: '방금 어케 친거임',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -161,6 +178,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'III',
     powerInteger: 9750,
     text: '퍼펙 ㅊㅊㅊㅊㅊ',
+    emojis: {},
     isUnverified: false,
   },
   {
@@ -170,6 +188,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: null,
     powerInteger: null,
     text: '탭소닉은다시돌아온다',
+    emojis: {},
     isUnverified: true,
   },
   {
@@ -179,6 +198,7 @@ export const FAKE_CHAT_MESSAGES: ChatMessage[] = [
     rankLevel: 'I',
     powerInteger: 4943,
     text: '혹시 제가 연타를 잘 못하는데 이거 방법 있을까요? ㅠㅠ',
+    emojis: {},
     isUnverified: false,
   },
 ]
