@@ -11,6 +11,20 @@ export function isTheoryPower(
   return powerInteger != null && powerInteger >= THEORY_POWER_THRESHOLD
 }
 
+// TEMPORARY WORKAROUND (2026-06-11): V-ARCHIVE's djPowerConversion calculation
+// reports true in-game theory (이론치) scores slightly below 10000 (observed
+// 9999.9847). Until V-ARCHIVE corrects this, treat any raw conversion at or
+// above this value as theory. Detection runs on the RAW float; the displayed
+// integer is still bumped to THEORY_POWER_THRESHOLD via toPowerInteger().
+export const THEORY_POWER_CONVERSION_THRESHOLD = 9999.9847
+
+// Source-of-truth theory check, applied to the raw djPowerConversion float.
+export function isTheoryConversion(
+  conversion: number | null | undefined
+): boolean {
+  return conversion != null && conversion >= THEORY_POWER_CONVERSION_THRESHOLD
+}
+
 // V-ARCHIVE DJ CLASS color scheme (from official wiki)
 export const DJ_CLASS_COLORS: Record<string, string> = {
   'THE LORD OF DJMAX': 'linear-gradient(to right, #f2b2f7, #acebff)',

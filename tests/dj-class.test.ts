@@ -6,6 +6,11 @@ import {
   parseRankName,
   isTheoryPower,
   THEORY_POWER_THRESHOLD,
+  THEORY_POWER_CONVERSION_THRESHOLD,
+  isTheoryConversion,
+  toPowerInteger,
+  GLINT_PERIOD_MS,
+  glintDelayMs,
   DJ_CLASS_COLORS,
   SHORT_NAMES,
   RANK_ORDER,
@@ -118,6 +123,33 @@ describe('isTheoryPower', () => {
 
   it('exposes the threshold constant as 10000', () => {
     expect(THEORY_POWER_THRESHOLD).toBe(10000)
+  })
+})
+
+describe('isTheoryConversion', () => {
+  it('exposes the conversion threshold constant as 9999.9847', () => {
+    expect(THEORY_POWER_CONVERSION_THRESHOLD).toBe(9999.9847)
+  })
+
+  it('is true at exactly the conversion threshold', () => {
+    expect(isTheoryConversion(9999.9847)).toBe(true)
+  })
+
+  it('is true above the conversion threshold', () => {
+    expect(isTheoryConversion(10000)).toBe(true)
+  })
+
+  it('is false just below the conversion threshold', () => {
+    expect(isTheoryConversion(9999.9846)).toBe(false)
+  })
+
+  it('is false for a clearly sub-theory score', () => {
+    expect(isTheoryConversion(9999.5)).toBe(false)
+  })
+
+  it('is false for null and undefined', () => {
+    expect(isTheoryConversion(null)).toBe(false)
+    expect(isTheoryConversion(undefined)).toBe(false)
   })
 })
 
