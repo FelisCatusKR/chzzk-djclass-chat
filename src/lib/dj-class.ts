@@ -158,6 +158,9 @@ export function getClassSortKey(
   const rankOrdinal = rankIndex === -1 ? -1 : RANK_ORDER.length - 1 - rankIndex
 
   let levelOrdinal: number
+  // isTheoryConversion (raw float), not isTheoryPower: djPowerConversion here is
+  // the raw V-ARCHIVE value; 9999.9847 only becomes 10000 after toPowerInteger,
+  // so the badge/threshold-text path uses isTheoryPower on that bumped integer.
   if (rankName === 'THE LORD OF DJMAX' && isTheoryConversion(djPowerConversion)) {
     levelOrdinal = 5
   } else {
