@@ -277,3 +277,23 @@ describe('compareClassSortKeys', () => {
     expect(compareClassSortKeys([7, 4, 0], [7, 4, 3])).toBeLessThan(0)
   })
 })
+
+describe('glintDelayMs', () => {
+  it('exposes the glint period as 2600ms', () => {
+    expect(GLINT_PERIOD_MS).toBe(2600)
+  })
+
+  it('is 0 at the start of a cycle', () => {
+    expect(glintDelayMs(0)).toBe(0)
+  })
+
+  it('is 0 at an exact period boundary', () => {
+    expect(glintDelayMs(GLINT_PERIOD_MS)).toBe(0)
+    expect(glintDelayMs(GLINT_PERIOD_MS * 3)).toBe(0)
+  })
+
+  it('returns the negative offset within a cycle', () => {
+    expect(glintDelayMs(1300)).toBe(-1300)
+    expect(glintDelayMs(GLINT_PERIOD_MS + 1)).toBe(-1)
+  })
+})

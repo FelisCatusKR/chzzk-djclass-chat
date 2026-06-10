@@ -186,6 +186,20 @@ export function compareClassSortKeys(
   return 0
 }
 
+// Glint (shiny badge) animation period in ms. Single source of truth shared
+// with dj-class-badge.module.css via the --glint-duration CSS variable.
+export const GLINT_PERIOD_MS = 2600
+
+// Negative animation-delay (ms) that phase-locks a shiny badge's glint to
+// absolute wall-clock time. Because the offset comes from the clock and not
+// the element's mount time, every badge — freshly mounted or re-mounted while
+// chat scrolls — lands on the same point in the cycle, so the glint never
+// visibly restarts. Pass Date.now().
+export function glintDelayMs(now: number): number {
+  const offset = now % GLINT_PERIOD_MS
+  return offset === 0 ? 0 : -offset
+}
+
 // One stored button's DJ CLASS, in the shape the display resolver needs.
 export interface DjClassRow {
   button: number
