@@ -5,7 +5,7 @@ const csp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https://*.pstatic.net https://*.naver.net",
   "font-src 'self'",
   "connect-src 'self' ws: wss:",
   "frame-ancestors 'none'",
