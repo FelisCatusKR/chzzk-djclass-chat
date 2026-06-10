@@ -2,12 +2,11 @@ export type EmojiPart =
   | { type: 'text'; value: string }
   | { type: 'emoji'; key: string; url: string }
 
-const PLACEHOLDER = /\{:([\w-]+):\}/g
-
 /**
  * Tokenizes Chzzk chat `content` into an ordered list of text and emoji parts.
  * `{:key:}` placeholders are replaced by emoji parts when `key` is present in
  * `emojis`; unmatched placeholders are dropped (per design).
+ * When an unmatched placeholder is dropped, the surrounding text may be emitted as two adjacent text parts (this is expected).
  */
 export function parseEmojiContent(
   content: string,
@@ -15,11 +14,10 @@ export function parseEmojiContent(
 ): EmojiPart[] {
   const parts: EmojiPart[] = []
   let lastIndex = 0
-  // Reset because the regex is module-scoped and stateful (global flag).
-  PLACEHOLDER.lastIndex = 0
+  const placeholderRe = /\{:([\w-]+):\}/g
 
   let match: RegExpExecArray | null
-  while ((match = PLACEHOLDER.exec(content)) !== null) {
+  while ((match = placeholderRe.exec(content)) !== null) {
     const [placeholder, key] = match
     const start = match.index
 
