@@ -158,7 +158,7 @@ export function getClassSortKey(
   const rankOrdinal = rankIndex === -1 ? -1 : RANK_ORDER.length - 1 - rankIndex
 
   let levelOrdinal: number
-  if (rankName === 'THE LORD OF DJMAX' && isTheoryPower(djPowerConversion)) {
+  if (rankName === 'THE LORD OF DJMAX' && isTheoryConversion(djPowerConversion)) {
     levelOrdinal = 5
   } else {
     const levelMatch = djClass.match(LEVEL_RE)

@@ -247,6 +247,23 @@ describe('getClassSortKey', () => {
   })
 })
 
+describe('getClassSortKey — raw-conversion theory threshold', () => {
+  it('treats a just-under-10000 LoD score (9999.9847) as theory (level 5)', () => {
+    const theory = getClassSortKey('THE LORD OF DJMAX', 9999.9847, 4)
+    expect(theory).toEqual([13, 5, 0])
+  })
+
+  it('ranks a 9999.9847 theory above a plain LoD', () => {
+    const theory = getClassSortKey('THE LORD OF DJMAX', 9999.9847, 4)
+    const plain = getClassSortKey('THE LORD OF DJMAX', 9990, 8) // [13,0,3]
+    expect(compareClassSortKeys(theory, plain)).toBeGreaterThan(0)
+  })
+
+  it('does not treat a sub-threshold LoD (9999.5) as theory', () => {
+    expect(getClassSortKey('THE LORD OF DJMAX', 9999.5, 5)).toEqual([13, 0, 2])
+  })
+})
+
 describe('compareClassSortKeys', () => {
   it('returns 0 for identical keys', () => {
     expect(compareClassSortKeys([7, 4, 3], [7, 4, 3])).toBe(0)
