@@ -30,5 +30,6 @@
     transparent
   );
   transform: skewX(-20deg);
-  animation: glint 2.6s ease-in-out infinite;
+  animation: glint var(--glint-duration, 2.6s) ease-in-out infinite;
+  animation-delay: var(--glint-delay, 0ms);
 }
