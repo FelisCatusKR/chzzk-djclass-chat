@@ -76,7 +76,7 @@ npx shadcn@latest add collapsible
   </Collapsible>
   ```
 
-Already shadcn and unchanged: `Card`, `Input`, `Button`, `RadioGroup`/`RadioGroupItem`, `Slider`, `Label`, `Badge`, `Alert` (Alert is now used only for the top-level error state).
+Already shadcn and unchanged: `Card`, `Input`, `Button`, `RadioGroup`/`RadioGroupItem`, `Slider`, `Label`, `Alert` (Alert is now used only for the top-level error state). `Badge` is no longer used — it was only consumed by the deleted 연결 상태 card, so its import is removed from `DashboardPage.tsx` (the `badge.tsx` component file itself stays for other potential consumers).
 
 Intentionally **not** converted: non-interactive text (`<h1>`/`<h2>`, `<p>`, `<ol>`/`<li>`, `<span>`) has no shadcn primitive and stays as semantic HTML. The "위젯 열기" and "← 돌아가기" links stay as styled `<a>`/`<Link>` — converting them to buttons would overweight subtle links and break the visual hierarchy.
 
