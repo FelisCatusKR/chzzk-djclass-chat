@@ -2,11 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Pretendard: modern Korean font with excellent CJK and Latin support */
+/* Pretendard: modern Korean font with excellent CJK and Latin support.
+   Served from jsDelivr CDN (version-pinned) instead of self-hosting the 2 MB woff2. */
 @font-face {
   font-family: 'Pretendard';
-  src: url('/fonts/PretendardVariable.woff2') format('woff2');
-  font-weight: 100 900;
+  src: url('https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2')
+    format('woff2-variations');
+  font-weight: 45 920;
   font-display: swap;
   font-style: normal;
 }

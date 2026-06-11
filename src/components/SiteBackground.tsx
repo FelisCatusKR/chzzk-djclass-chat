@@ -9,7 +9,8 @@ export default function SiteBackground({ children }: { children: ReactNode }) {
         aria-hidden
         className="fixed inset-0 -z-10 bg-cover bg-center"
         style={{
-          backgroundImage: 'url(/cover.jpg)',
+          backgroundImage:
+            'url(https://chzzk-djclass-assets.pages.dev/cover.jpg)',
           filter: 'blur(2px) brightness(1.15)',
           transform: 'scale(1.05)',
         }}
