@@ -15,7 +15,15 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,md,json,jsonc,yml,yaml}": "prettier --write"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.8",
@@ -50,6 +58,8 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
     "eslint-config-prettier": "^9.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
     "playwright": "^1.60.0",
     "postcss": "^8.4.0",
     "prettier": "^3.0.0",
