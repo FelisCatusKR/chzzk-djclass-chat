@@ -32,7 +32,7 @@ A desktop-first two-pane layout: configuration on the wider left pane, the URL +
 
 - **Container:** widen from `max-w-lg` to `max-w-5xl`.
 - **Outer grid:** `lg:grid lg:grid-cols-[1.7fr_1fr]` with a gap. Header and footer span the full width (outside the two-column grid, or via `lg:col-span-2`).
-- **Left pane (config):** `grid grid-cols-1 sm:grid-cols-2` gap grid holding the four config cards, with `items-start` so each card takes its natural height. (The 뱃지 모드 card is taller; forcing equal row heights would leave dead space in the shorter cards.)
+- **Left pane (config):** a CSS multi-column (masonry) container `columns-1 sm:columns-2` holding the four config cards, each `break-inside-avoid` with bottom margin. Cards pack up to fill vertical space rather than snapping to grid rows, so the taller 뱃지 모드 card doesn't leave a gap beside the shorter 글자 크기 card. (A `grid` was rejected: row alignment leaves dead space under the shorter card; a single column leaves the wide cards sparse and unbalances the panes.)
 - **Right pane (output):** `lg:sticky lg:top-8 self-start` so preview + URL stay in view while the left pane scrolls.
 
 ## Section changes

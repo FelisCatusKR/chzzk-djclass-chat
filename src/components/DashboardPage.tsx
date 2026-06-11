@@ -129,8 +129,8 @@ export default function DashboardPage() {
             <p className="text-center text-gray-500">로딩 중...</p>
           ) : (
             <div className="grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
-              {/* LEFT — configuration */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+              {/* LEFT — configuration (masonry: cards pack up to fill gaps) */}
+              <div className="columns-1 gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
                 <Card>
                   <CardHeader>
                     <CardTitle>뱃지 모드</CardTitle>
