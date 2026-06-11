@@ -31,9 +31,9 @@ describe('getSharedDb', () => {
   it('initializes the schema once', () => {
     const db = getSharedDb()
     const tables = (
-      db
-        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
-        .all() as { name: string }[]
+      db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string
+      }[]
     ).map((t) => t.name)
     expect(tables).toContain('users')
     expect(tables).toContain('dj_classes')
