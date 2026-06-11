@@ -244,7 +244,6 @@ export default function DashboardPage() {
                         id="fadeout-toggle"
                         checked={fadeoutOn}
                         onCheckedChange={setFadeoutOn}
-                        aria-label="페이드아웃 사용"
                       />
                     </div>
                     <Slider
@@ -321,12 +320,15 @@ export default function DashboardPage() {
                     <Collapsible>
                       <CollapsibleTrigger className="group flex w-full items-center justify-between font-medium">
                         <span>OBS 설정 방법</span>
-                        <span className="text-muted-foreground transition-transform group-data-[state=open]:rotate-90">
+                        <span
+                          aria-hidden="true"
+                          className="text-muted-foreground transition-transform group-data-[state=open]:rotate-90"
+                        >
                           ▸
                         </span>
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <ol className="mt-3 list-inside list-decimal space-y-1 text-sm text-gray-600">
+                        <ol className="mt-3 list-inside list-decimal space-y-1 text-sm text-muted-foreground">
                           <li>OBS에서 소스 추가 → 브라우저 선택</li>
                           <li>위 URL을 입력하세요</li>
                           <li>너비: 400, 높이: 600 권장</li>
