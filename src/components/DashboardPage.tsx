@@ -13,7 +13,12 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
@@ -115,7 +120,7 @@ export default function DashboardPage() {
   return (
     <SiteBackground>
       <main className="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:py-12">
-        <div className="w-full max-w-lg space-y-6">
+        <div className="w-full max-w-5xl space-y-6">
           <h1 className="text-center text-3xl font-bold text-gray-900">
             채팅 위젯 설정
           </h1>
@@ -123,232 +128,218 @@ export default function DashboardPage() {
           {!data ? (
             <p className="text-center text-gray-500">로딩 중...</p>
           ) : (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>위젯 URL</CardTitle>
-                  <CardDescription>
-                    OBS Browser Source에 이 URL을 사용하세요.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={getWidgetUrl()}
-                      readOnly
-                      className="flex-1 bg-gray-100"
-                    />
-                    <Button onClick={copyUrl}>
-                      {copied ? '복사됨!' : 'URL 복사'}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    미리보기:{' '}
-                    <a
-                      href={getWidgetUrl()}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-gray-700"
+            <div className="grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
+              {/* LEFT — configuration (masonry: cards pack up to fill gaps) */}
+              <div className="columns-1 gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>뱃지 모드</CardTitle>
+                    <CardDescription>
+                      위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <RadioGroup
+                      value={badgeMode}
+                      onValueChange={(value) =>
+                        handleSetBadgeMode(value as BadgeMode)
+                      }
+                      className="space-y-2"
                     >
-                      위젯 열기
-                    </a>
-                  </p>
-
-                  <div className="space-y-2 pt-4">
-                    <h2 className="font-medium">OBS 설정 방법</h2>
-                    <ol className="list-inside list-decimal space-y-1 text-sm text-gray-600">
-                      <li>OBS에서 소스 추가 → 브라우저 선택</li>
-                      <li>위 URL을 입력하세요</li>
-                      <li>너비: 400, 높이: 600 권장</li>
-                      <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
-                    </ol>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>뱃지 모드</CardTitle>
-                  <CardDescription>
-                    위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <RadioGroup
-                    value={badgeMode}
-                    onValueChange={(value) =>
-                      handleSetBadgeMode(value as BadgeMode)
-                    }
-                    className="space-y-2"
-                  >
-                    {(Object.keys(BADGE_MODE_LABELS) as BadgeMode[]).map(
-                      (mode) => (
-                        <BadgeModePreviewRow
-                          key={mode}
-                          mode={mode}
-                          label={BADGE_MODE_LABELS[mode]}
-                        />
-                      )
-                    )}
-                  </RadioGroup>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    현재 선택:{' '}
-                    <span className="font-semibold">
-                      {BADGE_MODE_LABELS[badgeMode]}
-                    </span>
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>글자 크기</CardTitle>
-                  <CardDescription>
-                    위젯 채팅 글자 크기를 선택하세요.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Slider
-                    aria-label="글자 크기"
-                    min={FONT_SIZE_MIN}
-                    max={FONT_SIZE_MAX}
-                    step={1}
-                    value={[fontSize]}
-                    onValueChange={(value) => setFontSize(value[0])}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    현재: <span className="font-semibold">{fontSize}px</span>
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>버튼 선택 모드</CardTitle>
-                  <CardDescription>
-                    시청자별 DJ CLASS를 어떤 버튼 기준으로 표시할지 선택하세요.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <RadioGroup
-                    value={buttonSel}
-                    onValueChange={(v) => setButtonSel(v as 'auto' | 'viewer')}
-                    className="space-y-2"
-                  >
-                    <Label
-                      htmlFor="buttonsel-auto"
-                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
-                    >
-                      <span className="text-sm font-medium">
-                        자동 (최고 클래스)
+                      {(Object.keys(BADGE_MODE_LABELS) as BadgeMode[]).map(
+                        (mode) => (
+                          <BadgeModePreviewRow
+                            key={mode}
+                            mode={mode}
+                            label={BADGE_MODE_LABELS[mode]}
+                          />
+                        )
+                      )}
+                    </RadioGroup>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      현재 선택:{' '}
+                      <span className="font-semibold">
+                        {BADGE_MODE_LABELS[badgeMode]}
                       </span>
-                      <RadioGroupItem id="buttonsel-auto" value="auto" />
-                    </Label>
-                    <Label
-                      htmlFor="buttonsel-viewer"
-                      className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
-                    >
-                      <span className="text-sm font-medium">
-                        시청자 선택 우선
-                      </span>
-                      <RadioGroupItem id="buttonsel-viewer" value="viewer" />
-                    </Label>
-                  </RadioGroup>
-                </CardContent>
-              </Card>
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>비활성 채팅 페이드아웃</CardTitle>
-                  <CardDescription>
-                    일정 시간이 지난 메시지를 서서히 사라지게 합니다.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Label className="flex items-center justify-between">
-                    <span className="text-sm font-medium">페이드아웃 사용</span>
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={fadeoutOn}
-                      onChange={(e) => setFadeoutOn(e.target.checked)}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>글자 크기</CardTitle>
+                    <CardDescription>
+                      위젯 채팅 글자 크기를 선택하세요.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Slider
+                      aria-label="글자 크기"
+                      min={FONT_SIZE_MIN}
+                      max={FONT_SIZE_MAX}
+                      step={1}
+                      value={[fontSize]}
+                      onValueChange={(value) => setFontSize(value[0])}
                     />
-                  </Label>
-                  <Slider
-                    aria-label="페이드아웃 시간"
-                    min={FADEOUT_MIN}
-                    max={FADEOUT_MAX}
-                    step={1}
-                    value={[fadeoutSec]}
-                    onValueChange={(value) => setFadeoutSec(value[0])}
-                    disabled={!fadeoutOn}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    현재:{' '}
-                    <span className="font-semibold">
-                      {fadeoutOn ? `${fadeoutSec}초` : '꺼짐'}
-                    </span>
-                  </p>
-                </CardContent>
-              </Card>
+                    <p className="text-xs text-muted-foreground">
+                      현재: <span className="font-semibold">{fontSize}px</span>
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>위젯 미리보기</CardTitle>
-                  <CardDescription>
-                    실제 위젯 화면 미리보기 (400×200)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col items-center space-y-3">
-                  <WidgetPreview badgeMode={badgeMode} fontSize={fontSize} />
-                  <p className="text-center text-xs text-muted-foreground">
-                    가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
-                  </p>
-                </CardContent>
-              </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>버튼 선택 모드</CardTitle>
+                    <CardDescription>
+                      시청자별 DJ CLASS를 어떤 버튼 기준으로 표시할지
+                      선택하세요.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <RadioGroup
+                      value={buttonSel}
+                      onValueChange={(v) =>
+                        setButtonSel(v as 'auto' | 'viewer')
+                      }
+                      className="space-y-2"
+                    >
+                      <Label
+                        htmlFor="buttonsel-auto"
+                        className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
+                      >
+                        <span className="text-sm font-medium">
+                          자동 (최고 클래스)
+                        </span>
+                        <RadioGroupItem id="buttonsel-auto" value="auto" />
+                      </Label>
+                      <Label
+                        htmlFor="buttonsel-viewer"
+                        className="flex w-full cursor-pointer items-center justify-between rounded-lg border p-3"
+                      >
+                        <span className="text-sm font-medium">
+                          시청자 선택 우선
+                        </span>
+                        <RadioGroupItem id="buttonsel-viewer" value="viewer" />
+                      </Label>
+                    </RadioGroup>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>연결 상태</CardTitle>
-                  <CardDescription>채팅 서버 연결 상태</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Chzzk 로그인</span>
-                    <Badge variant={data.hasTokens ? 'default' : 'destructive'}>
-                      {data.hasTokens ? '완료' : '미완료'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">
-                      채팅 서버 연결
-                    </span>
-                    <Badge variant={data.isConnected ? 'default' : 'secondary'}>
-                      {data.isConnected ? '연결됨' : '대기 중'}
-                    </Badge>
-                  </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>비활성 채팅 페이드아웃</CardTitle>
+                    <CardDescription>
+                      일정 시간이 지난 메시지를 서서히 사라지게 합니다.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="fadeout-toggle"
+                        className="text-sm font-medium"
+                      >
+                        페이드아웃 사용
+                      </Label>
+                      <Switch
+                        id="fadeout-toggle"
+                        checked={fadeoutOn}
+                        onCheckedChange={setFadeoutOn}
+                      />
+                    </div>
+                    <Slider
+                      aria-label="페이드아웃 시간"
+                      min={FADEOUT_MIN}
+                      max={FADEOUT_MAX}
+                      step={1}
+                      value={[fadeoutSec]}
+                      onValueChange={(value) => setFadeoutSec(value[0])}
+                      disabled={!fadeoutOn}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      현재:{' '}
+                      <span className="font-semibold">
+                        {fadeoutOn ? `${fadeoutSec}초` : '꺼짐'}
+                      </span>
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
 
-                  {!data.hasTokens && (
-                    <Alert variant="destructive" className="mt-2">
-                      <AlertDescription>
-                        Chzzk 로그인이 필요합니다. 위젯을 사용하려면 Chzzk
-                        계정으로 다시 로그인해주세요.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+              {/* RIGHT — output (sticky on desktop) */}
+              <div className="space-y-6 lg:sticky lg:top-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>위젯 미리보기</CardTitle>
+                    <CardDescription>
+                      실제 위젯 화면 미리보기 (400×200)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col items-center space-y-3">
+                    <WidgetPreview badgeMode={badgeMode} fontSize={fontSize} />
+                    <p className="text-center text-xs text-muted-foreground">
+                      가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다
+                    </p>
+                  </CardContent>
+                </Card>
 
-                  {data.hasTokens && !data.isConnected && (
-                    <Alert className="mt-2 border-yellow-200 bg-yellow-50">
-                      <AlertDescription className="text-yellow-800">
-                        위젯이 아직 연결되지 않았습니다. OBS에서 위젯을 추가하면
-                        자동으로 연결됩니다.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            </>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>위젯 URL</CardTitle>
+                    <CardDescription>
+                      OBS Browser Source에 이 URL을 사용하세요.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                      <Input
+                        type="text"
+                        value={getWidgetUrl()}
+                        readOnly
+                        className="flex-1 bg-gray-100"
+                      />
+                      <Button onClick={copyUrl}>
+                        {copied ? '복사됨!' : 'URL 복사'}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      미리보기:{' '}
+                      <a
+                        href={getWidgetUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-gray-700"
+                      >
+                        위젯 열기
+                      </a>
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <Collapsible>
+                      <CollapsibleTrigger className="group flex w-full items-center justify-between font-medium">
+                        <span>OBS 설정 방법</span>
+                        <span
+                          aria-hidden="true"
+                          className="text-muted-foreground transition-transform group-data-[state=open]:rotate-90"
+                        >
+                          ▸
+                        </span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <ol className="mt-3 list-inside list-decimal space-y-1 text-sm text-muted-foreground">
+                          <li>OBS에서 소스 추가 → 브라우저 선택</li>
+                          <li>위 URL을 입력하세요</li>
+                          <li>너비: 400, 높이: 600 권장</li>
+                          <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
+                        </ol>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           )}
 
           <div className="flex flex-col gap-3">
