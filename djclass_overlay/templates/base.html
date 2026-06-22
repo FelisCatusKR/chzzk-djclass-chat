@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="ko" data-theme="night">
+<html lang="ko" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,7 +11,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
   </head>
-  <body class="min-h-screen bg-base-200">
+  <body class="min-h-screen">
+    <!-- SiteBackground: fixed blurred cover-image + white wash (ported from SiteBackground.tsx) -->
+    <div aria-hidden="true" class="fixed inset-0 -z-10 bg-cover bg-center"
+         style="background-image:url('https://chzzk-djclass-assets.pages.dev/cover.jpg');filter:blur(2px) brightness(1.15);transform:scale(1.05)"></div>
+    <div aria-hidden="true" class="fixed inset-0 -z-10"
+         style="background:rgba(248,248,250,0.82)"></div>
     {% block content %}{% endblock %}
     <!-- Alpine loads LAST (after any page x-data component scripts) so that
          deferred component definitions (e.g. widget-preview.js) are registered
