@@ -9,6 +9,13 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style type="text/tailwindcss">
+      @layer components {
+        .frosted-card { @apply rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md; }
+        .btn-chzzk { @apply block rounded-lg bg-gray-900 py-3 text-sm font-bold text-yellow-400; }
+        .btn-chzzk-alt { @apply block rounded-lg bg-yellow-500 py-3 text-sm font-bold text-gray-900; }
+      }
+    </style>
     <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
     <script defer src="{% static 'js/components.js' %}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>

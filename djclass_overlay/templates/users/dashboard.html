@@ -9,7 +9,7 @@
     <div class="grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
       <!-- LEFT: config (masonry) -->
       <div class="columns-1 gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <h2 class="text-base font-bold text-gray-900 mb-1">뱃지 모드</h2>
           <p class="mb-2 text-sm text-gray-600">위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.</p>
           <div class="space-y-2">
@@ -28,14 +28,14 @@
           </div>
         </div>
 
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <h2 class="text-base font-bold text-gray-900 mb-1">글자 크기</h2>
           <p class="mb-2 text-sm text-gray-600">위젯 채팅 글자 크기를 선택하세요.</p>
           <input type="range" min="12" max="28" step="1" class="range range-sm" x-model.number="fontSize" />
           <p class="mt-2 text-xs text-gray-600">현재: <span class="font-semibold" x-text="fontSize + 'px'"></span></p>
         </div>
 
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <h2 class="text-base font-bold text-gray-900 mb-1">버튼 선택 모드</h2>
           <p class="mb-2 text-sm text-gray-600">시청자별 DJ CLASS를 어떤 버튼 기준으로 표시할지 선택하세요.</p>
           <div class="space-y-2">
@@ -50,7 +50,7 @@
           </div>
         </div>
 
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <h2 class="text-base font-bold text-gray-900 mb-1">비활성 채팅 페이드아웃</h2>
           <p class="mb-2 text-sm text-gray-600">일정 시간이 지난 메시지를 서서히 사라지게 합니다.</p>
           <div class="mb-2 flex items-center justify-between">
@@ -65,7 +65,7 @@
       <!-- RIGHT: output (sticky) -->
       <div class="space-y-6 lg:sticky lg:top-8">
         {% block preview_card %}
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <h2 class="text-base font-bold text-gray-900 mb-1">위젯 미리보기</h2>
           <p class="mb-3 text-sm text-gray-600">실제 위젯 화면 미리보기 (400×200)</p>
           <div x-data="widgetPreview()" x-init="init()"
@@ -87,7 +87,7 @@
         </div>
         {% endblock %}
 
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <h2 class="text-base font-bold text-gray-900 mb-1">위젯 URL</h2>
           <p class="mb-3 text-sm text-gray-600">OBS Browser Source에 이 URL을 사용하세요.</p>
           <div class="flex gap-2">
@@ -99,7 +99,7 @@
           </p>
         </div>
 
-        <div class="rounded-2xl border border-white/90 bg-white/70 shadow-lg backdrop-blur-md p-5">
+        <div class="frosted-card p-5">
           <div class="collapse-arrow collapse">
             <input type="checkbox" />
             <div class="collapse-title font-medium text-gray-900">OBS 설정 방법</div>
@@ -119,7 +119,7 @@
     <div class="flex flex-col gap-3">
       <form method="post" action="{% url 'logout' %}" hx-boost="false">
         {% csrf_token %}
-        <button type="submit" class="block w-full rounded-lg bg-gray-900 py-3 text-sm font-bold text-yellow-400">로그아웃</button>
+        <button type="submit" class="btn-chzzk w-full">로그아웃</button>
       </form>
       <a href="/" class="block text-center text-gray-500 hover:text-gray-700">← 돌아가기</a>
     </div>
