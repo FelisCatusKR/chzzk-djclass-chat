@@ -98,6 +98,6 @@ def test_dashboard_includes_live_preview(client):
     Channel.objects.create(user=u, chzzk_channel_id="chanY")
     client.force_login(u, backend=BACKEND)
     body = client.get("/dashboard/").content.decode()
-    assert "widget-preview.js" in body
+    assert "components.js" in body
     assert 'x-data="widgetPreview' in body
     assert "500~1200ms" in body  # the preview caption

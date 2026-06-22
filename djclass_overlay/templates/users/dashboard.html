@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% load static %}
 {% block title %}채팅 위젯 설정{% endblock %}
 {% block content %}
 <main class="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
@@ -126,35 +125,5 @@
     </div>
   </div>
 
-  <script defer src="{% static 'js/widget-preview.js' %}"></script>
-  <script>
-    function widgetConfig(base) {
-      return {
-        base: base,
-        mode: "short",
-        fontSize: 14,
-        buttonSel: "auto",
-        fadeoutOn: false,
-        fadeoutSec: 15,
-        copied: false,
-        widgetUrl() {
-          if (!this.base) return "";
-          var u = new URL(this.base, window.location.origin);
-          u.searchParams.set("mode", this.mode);
-          u.searchParams.set("fontSize", String(this.fontSize));
-          if (this.buttonSel === "viewer") u.searchParams.set("buttonSel", "viewer");
-          if (this.fadeoutOn) u.searchParams.set("fadeout", String(this.fadeoutSec));
-          return u.toString();
-        },
-        copy() {
-          var url = this.widgetUrl();
-          if (!url) return;
-          navigator.clipboard.writeText(url);
-          this.copied = true;
-          setTimeout(() => { this.copied = false; }, 2000);
-        },
-      };
-    }
-  </script>
 </main>
 {% endblock %}

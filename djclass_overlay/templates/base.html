@@ -9,6 +9,10 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/morph@3.14.1/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@imacrayon/alpine-ajax@0.12.7/dist/cdn.min.js"></script>
+    <script defer src="{% static 'js/components.js' %}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
     <style>
       /* Pretendard (Korean font), matching the legacy app — jsDelivr, version-pinned. */
@@ -32,9 +36,5 @@
     <div aria-hidden="true" class="fixed inset-0 -z-10"
          style="background:rgba(248,248,250,0.82)"></div>
     {% block content %}{% endblock %}
-    <!-- Alpine loads LAST (after any page x-data component scripts) so that
-         deferred component definitions (e.g. widget-preview.js) are registered
-         before Alpine initializes. -->
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
   </body>
 </html>

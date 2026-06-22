@@ -1,7 +1,9 @@
-/* Dashboard live preview: cycle fake DJ CLASS chat messages. Port of
-   src/components/WidgetPreview.tsx + src/lib/fake-chat-messages.ts. Badge colors
-   come from badge.css (.dj-badge.rank-*); text from the same rules as widget.js. */
-window.FAKE_CHAT_MESSAGES = [
+/* Global Alpine component registrations (run before Alpine starts, via alpine:init).
+   Registering with Alpine.data() — instead of per-page inline <script>s — means the
+   components are available after alpine-ajax content swaps, and lets all scripts live
+   in <head>. */
+/* global Alpine */
+const FAKE_CHAT_MESSAGES = [
   {
     rank: 'SS',
     level: 'II',
@@ -150,8 +152,36 @@ window.FAKE_CHAT_MESSAGES = [
   },
 ]
 
-window.widgetPreview = function () {
-  return {
+document.addEventListener('alpine:init', () => {
+  Alpine.data('widgetConfig', (base) => ({
+    base: base,
+    mode: 'short',
+    fontSize: 14,
+    buttonSel: 'auto',
+    fadeoutOn: false,
+    fadeoutSec: 15,
+    copied: false,
+    widgetUrl() {
+      if (!this.base) return ''
+      const u = new URL(this.base, window.location.origin)
+      u.searchParams.set('mode', this.mode)
+      u.searchParams.set('fontSize', String(this.fontSize))
+      if (this.buttonSel === 'viewer') u.searchParams.set('buttonSel', 'viewer')
+      if (this.fadeoutOn) u.searchParams.set('fadeout', String(this.fadeoutSec))
+      return u.toString()
+    },
+    copy() {
+      const url = this.widgetUrl()
+      if (!url) return
+      navigator.clipboard.writeText(url)
+      this.copied = true
+      setTimeout(() => {
+        this.copied = false
+      }, 2000)
+    },
+  }))
+
+  Alpine.data('widgetPreview', () => ({
     rows: [],
     timer: null,
     i: 0,
@@ -159,22 +189,23 @@ window.widgetPreview = function () {
       this.tick()
     },
     tick() {
-      var msgs = window.FAKE_CHAT_MESSAGES
-      this.rows.push(msgs[this.i % msgs.length])
+      this.rows.push(FAKE_CHAT_MESSAGES[this.i % FAKE_CHAT_MESSAGES.length])
       this.i++
       if (this.rows.length > 15) this.rows.shift()
       this.$nextTick(() => {
-        var el = this.$refs.preview
+        const el = this.$refs.preview
         if (el) el.scrollTop = el.scrollHeight
       })
-      var delay = 500 + Math.floor(Math.random() * 700) // 500–1200ms
-      this.timer = setTimeout(() => this.tick(), delay)
+      this.timer = setTimeout(
+        () => this.tick(),
+        500 + Math.floor(Math.random() * 700)
+      )
     },
     destroy() {
       if (this.timer) clearTimeout(this.timer)
     },
     badgeText(m, mode) {
-      var prefix = m.button + 'B'
+      const prefix = m.button + 'B'
       if (mode === 'power')
         return prefix + ' ' + (m.power == null ? 0 : m.power)
       if (mode === 'threshold') {
@@ -183,5 +214,5 @@ window.widgetPreview = function () {
       }
       return prefix + ' ' + m.rank + (m.level ? ' ' + m.level : '')
     },
-  }
-}
+  }))
+})
