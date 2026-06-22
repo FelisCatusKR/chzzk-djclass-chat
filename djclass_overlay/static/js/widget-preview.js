@@ -173,11 +173,11 @@ window.widgetPreview = function () {
     destroy() {
       if (this.timer) clearTimeout(this.timer)
     },
-    badgeText(m) {
+    badgeText(m, mode) {
       var prefix = m.button + 'B'
-      if (this.mode === 'power')
+      if (mode === 'power')
         return prefix + ' ' + (m.power == null ? 0 : m.power)
-      if (this.mode === 'threshold') {
+      if (mode === 'threshold') {
         if (m.isTheory) return prefix + ' 10000'
         return prefix + ' ' + m.rank + (m.level ? ' ' + m.level : '')
       }

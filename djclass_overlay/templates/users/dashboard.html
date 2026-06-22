@@ -78,7 +78,7 @@
                   <span class="dj-badge unverified">미인증</span>
                 </template>
                 <template x-if="m.status !== 'unverified'">
-                  <span class="dj-badge" :class="'rank-' + m.rank + (m.isTheory ? ' shiny' : '')" x-text="badgeText(m)"></span>
+                  <span class="dj-badge" :class="'rank-' + m.rank + (m.isTheory ? ' shiny' : '')" x-text="badgeText(m, mode)"></span>
                 </template>
                 <span x-text="m.text"></span>
               </div>
