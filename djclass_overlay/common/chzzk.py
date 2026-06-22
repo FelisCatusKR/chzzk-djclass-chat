@@ -77,3 +77,32 @@ def get_user_info(access_token):
     data = resp.json()
     content = data.get("content") or data
     return {"user_id": content["channelId"], "nickname": content["channelName"]}
+
+
+async def get_session_url(access_token):
+    """GET the Chzzk chat session URL and append the auth token as a query param.
+
+    Port of chat-proxy.ts:38 + :206 (and ~/chzzk-spike/chzzk.py). Don't double-append.
+    """
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.get(
+            f"{API_URL}/sessions/auth",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        url = (data.get("content") or data)["url"]
+    if "?auth=" not in url:
+        url += ("&" if "?" in url else "?") + f"auth={access_token}"
+    return url
+
+
+async def subscribe_chat(access_token, session_key):
+    """POST to subscribe the session to CHAT events. Port of chat-proxy.ts:59."""
+    async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+        resp = await client.post(
+            f"{API_URL}/sessions/events/subscribe/chat",
+            params={"sessionKey": session_key},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        resp.raise_for_status()
