@@ -84,3 +84,13 @@ AUTHENTICATION_BACKENDS = [
     "djclass_overlay.users.backends.ChzzkBackend",
     "django.contrib.auth.backends.ModelBackend",  # /admin superuser login
 ]
+
+# --- Logging (realtime is otherwise silent) ---
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {
+        "djclass_overlay": {"handlers": ["console"], "level": "INFO"},
+    },
+}
