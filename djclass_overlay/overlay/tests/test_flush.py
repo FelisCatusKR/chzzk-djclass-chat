@@ -30,7 +30,8 @@ def test_build_batch_resolves_and_dedups(django_assert_num_queries):
         {"senderChannelId": "s1", "nickname": "N", "content": "again", "emojis": {"a": "u"}},
         {"senderChannelId": "ghost", "nickname": "G", "content": "yo", "emojis": {}},
     ]
-    batch = flush.build_batch(raw)
+    with django_assert_num_queries(5):
+        batch = flush.build_batch(raw)
     msgs = batch["messages"]
     assert len(msgs) == 3
     assert msgs[0]["text"] == "hi"
