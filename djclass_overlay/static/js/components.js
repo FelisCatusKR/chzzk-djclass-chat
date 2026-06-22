@@ -1,7 +1,14 @@
 /* Global Alpine component registrations (run before Alpine starts, via alpine:init).
    Registering with Alpine.data() — instead of per-page inline <script>s — means the
-   components are available after alpine-ajax content swaps, and lets all scripts live
+   components are available after htmx content swaps, and lets all scripts live
    in <head>. */
+
+/* htmx hx-boost: after htmx settles new DOM into #content, explicitly init any
+   Alpine x-data trees that Alpine's MutationObserver may have missed during the
+   outerHTML swap (e.g. widgetPreview.init() starting its tick timer). */
+document.addEventListener('htmx:afterSettle', (e) => {
+  if (window.Alpine) Alpine.initTree(e.detail.elt)
+})
 /* global Alpine */
 const FAKE_CHAT_MESSAGES = [
   {

@@ -9,8 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/morph@3.14.1/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@imacrayon/alpine-ajax@0.12.7/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
     <script defer src="{% static 'js/components.js' %}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
@@ -29,12 +28,12 @@
       }
     </style>
   </head>
-  <body class="min-h-screen" x-data>
+  <body class="min-h-screen" hx-boost="true" hx-target="#content" hx-select="#content" hx-swap="outerHTML">
     <!-- SiteBackground: fixed blurred cover-image + white wash (ported from SiteBackground.tsx) -->
     <div aria-hidden="true" class="fixed inset-0 -z-10 bg-cover bg-center"
          style="background-image:url('https://chzzk-djclass-assets.pages.dev/cover.jpg');filter:blur(2px) brightness(1.15);transform:scale(1.05)"></div>
     <div aria-hidden="true" class="fixed inset-0 -z-10"
          style="background:rgba(248,248,250,0.82)"></div>
-    <main id="content" x-merge="morph">{% block content %}{% endblock %}</main>
+    <main id="content" hx-history-elt>{% block content %}{% endblock %}</main>
   </body>
 </html>
