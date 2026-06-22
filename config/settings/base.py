@@ -21,6 +21,7 @@ INSTALLED_APPS = [
     "djclass_overlay.streamers",
     "djclass_overlay.viewers",
     "djclass_overlay.djclass",
+    "djclass_overlay.overlay",
 ]
 
 MIDDLEWARE = [
