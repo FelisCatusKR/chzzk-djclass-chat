@@ -1808,6 +1808,16 @@ git commit -m "chore(overlay): realtime logging + record live verification; reti
 
 ---
 
+## Live verification — 2026-06-22 (PASSED ✅)
+
+Real Chzzk chat rendered live in the OBS overlay end-to-end (uvicorn `--workers 1` → SSE → vanilla-JS widget), confirming the realtime heart works on the target stack.
+
+- **Config:** set `BASE_URL=https://dev-chatoverlay.felis.kr` in `.env.django` (it was defaulting to `http://localhost:8000`, which made the OAuth `redirect_uri` wrong); Cloudflare Tunnel pointed at the uvicorn port; `ALLOWED_HOSTS` already listed the dev host.
+- **Bug found + fixed (commit `9603aee`):** the flush loop and the ingestor are detached `asyncio.create_task`s spawned from an SSE request, so `sync_to_async` (default `thread_sensitive=True`) rode that request's `CurrentThreadExecutor`, which quits when the view returns → `RuntimeError: CurrentThreadExecutor already quit or is broken` on later flush ticks (the same twin bug would have hit ingestor reconnect). Fixed with `thread_sensitive=False` + `close_old_connections()` for both detached-task DB calls. The unit suite couldn't catch this (its `async_to_sync` wrapper keeps the executor alive for the whole call); it only manifests with Django's real ASGI request teardown around a detached task.
+- **Still TODO (owner):** `rm get-token.ts && rm -rf ~/chzzk-spike` once done poking at the live overlay.
+
+---
+
 ## Deferred (documented, not dropped)
 
 - **Plan 6 (pages/daisyUI):** gradient rank colors (`DJ_CLASS_COLORS`), theory glint shimmer (`dj-class-badge.module.css` + `glintDelayMs`), `0.85em` badge sizing, unlinked/unsynced opacity tiers, Pretendard font, dashboard widget-URL builder. The widget here is functional with minimal styling.
