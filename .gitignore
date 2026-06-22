@@ -20,3 +20,6 @@ __pycache__/
 *.pyc
 .env.django
 staticfiles/
+
+# throwaway Chzzk token helper (Plan 5 live verification; delete after)
+get-token.ts
