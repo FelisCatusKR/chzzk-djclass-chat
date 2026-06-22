@@ -1,0 +1,103 @@
+/* DJ CLASS badge colors + theory glint. Port of src/lib/dj-class.ts DJ_CLASS_COLORS
+   (re-keyed full-rank -> short rank) + dj-class-badge.module.css. */
+.dj-badge {
+  display: inline-block;
+  padding: 0 4px;
+  margin-right: 4px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.85em;
+  color: #000;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.5);
+}
+.dj-badge.unverified {
+  background: #6b7280;
+  color: #fff;
+}
+
+.rank-LoD {
+  background: linear-gradient(to right, #f2b2f7, #acebff);
+}
+.rank-BM {
+  background: linear-gradient(135deg, #ff7183, #ff8a9a);
+}
+.rank-SS {
+  background: linear-gradient(135deg, #ff856f, #ff9a87);
+}
+.rank-HL {
+  background: linear-gradient(135deg, #ff9758, #ffaa75);
+}
+.rank-TS {
+  background: linear-gradient(135deg, #ffaf51, #ffbf70);
+}
+.rank-PRO {
+  background: linear-gradient(135deg, #ffd352, #ffdd70);
+}
+.rank-HC {
+  background: linear-gradient(135deg, #feff63, #feff85);
+}
+.rank-PD {
+  background: linear-gradient(135deg, #c7e644, #d1eb60);
+}
+.rank-MM {
+  background: linear-gradient(135deg, #9ae28a, #a8e89c);
+}
+.rank-SD {
+  background: linear-gradient(135deg, #92eaca, #a2edd2);
+}
+.rank-RK {
+  background: linear-gradient(135deg, #78e3da, #8ee8e0);
+}
+.rank-AM {
+  background: linear-gradient(135deg, #8eccdb, #a2d6e2);
+}
+.rank-TR {
+  background: linear-gradient(135deg, #a9d0ee, #bdd8f0);
+}
+.rank-BG {
+  background: linear-gradient(135deg, #c0c0c0, #d0d0d0);
+}
+
+/* Theory (power >= 10000): a glossy highlight sweeps across, phase-locked via
+   --glint-delay so it doesn't restart when chat scrolls. */
+@keyframes glint {
+  0% {
+    left: -60%;
+  }
+  55%,
+  100% {
+    left: 130%;
+  }
+}
+.dj-badge.shiny {
+  position: relative;
+  clip-path: inset(0 round 0.25rem);
+}
+.dj-badge.shiny::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgba(255, 255, 255, 0.85),
+    transparent
+  );
+  transform: skewX(-20deg);
+  animation: glint var(--glint-duration, 2600ms) ease-in-out infinite;
+  animation-delay: var(--glint-delay, 0ms);
+}
+
+/* Faded (inactive) chat rows. */
+.row {
+  transition: opacity 0.5s;
+}
+.row.fading {
+  opacity: 0;
+}
+.row.unverified-row {
+  opacity: 0.75;
+}

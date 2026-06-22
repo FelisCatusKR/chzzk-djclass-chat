@@ -66,6 +66,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 WHITENOISE_USE_FINDERS = True  # serve app/static files directly (no collectstatic needed in dev)
+STATICFILES_DIRS = [BASE_DIR / "djclass_overlay" / "static"]
 
 # --- Chzzk OAuth ---
 # Secrets: not required for build/tests (Chzzk HTTP is mocked). Empty default keeps
