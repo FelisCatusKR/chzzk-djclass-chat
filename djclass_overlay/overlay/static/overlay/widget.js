@@ -74,19 +74,32 @@
       parent.appendChild(document.createTextNode(content.slice(last)))
   }
 
+  var GLINT_PERIOD_MS = 2600 // dj-class.ts GLINT_PERIOD_MS
+  function glintDelayMs(now) {
+    var offset = now % GLINT_PERIOD_MS
+    return offset === 0 ? 0 : -offset
+  }
+
   function addMessage(msg) {
     var row = document.createElement('div')
     row.className = 'row'
     row.dataset.created = String(Date.now())
 
     if (msg.status === 'linked' && msg.badge) {
+      var badge = msg.badge[BUTTON_SEL]
       var b = document.createElement('span')
-      b.className = 'badge'
-      b.textContent = badgeText(msg.badge[BUTTON_SEL])
+      b.className =
+        'dj-badge rank-' + badge.rank + (badge.isTheory ? ' shiny' : '')
+      if (badge.isTheory) {
+        b.style.setProperty('--glint-duration', GLINT_PERIOD_MS + 'ms')
+        b.style.setProperty('--glint-delay', glintDelayMs(Date.now()) + 'ms')
+      }
+      b.textContent = badgeText(badge)
       row.appendChild(b)
     } else if (msg.status === 'unlinked' || msg.status === 'unsynced') {
+      row.classList.add('unverified-row')
       var u = document.createElement('span')
-      u.className = 'badge unverified'
+      u.className = 'dj-badge unverified'
       u.textContent = '미인증'
       row.appendChild(u)
     }

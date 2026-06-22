@@ -5,18 +5,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DJ CLASS Overlay</title>
+    <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
     <style>
-      /* Minimal, transparent overlay. Full styling (colors/glint/opacity) → Plan 6. */
+      /* Layout-only rules. Badge/row/glint styling → badge.css */
       html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
       #chat { display: flex; flex-direction: column; justify-content: flex-end;
               height: 100vh; padding: 8px; gap: 4px; box-sizing: border-box;
               font-family: system-ui, sans-serif; color: #fff;
               text-shadow: 0 1px 1px rgba(0,0,0,0.8); }
-      .row { transition: opacity 0.5s; }
-      .row.fading { opacity: 0; }
-      .badge { display: inline-block; padding: 0 4px; margin-right: 4px; border-radius: 4px;
-               font-weight: 700; font-size: 0.85em; background: #444; }
-      .badge.unverified { background: #6b7280; }
       .emoji { height: 1em; vertical-align: text-bottom; }
       #status { position: fixed; top: 4px; left: 4px; font-size: 12px; opacity: 0.6; }
     </style>
