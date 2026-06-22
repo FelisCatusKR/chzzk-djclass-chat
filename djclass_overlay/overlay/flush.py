@@ -8,6 +8,7 @@ import json
 import logging
 
 from asgiref.sync import sync_to_async
+from django.db import close_old_connections
 
 from djclass_overlay.djclass.resolver import resolve_sender_badges
 from djclass_overlay.overlay import registry
@@ -42,6 +43,20 @@ def build_batch(raw_messages):
     return {"messages": messages}
 
 
+def _build_batch_detached(raw_messages):
+    """build_batch for the detached flush loop. Runs in a NON-thread-sensitive pool
+    thread: the loop is spawned by an SSE request but outlives it, so it must not
+    ride that request's CurrentThreadExecutor (it quits when the view returns →
+    "CurrentThreadExecutor already quit"). close_old_connections() drops any stale
+    pooled DB connection before use and releases it after, since a background loop
+    never gets Django's per-request connection cleanup."""
+    close_old_connections()
+    try:
+        return build_batch(raw_messages)
+    finally:
+        close_old_connections()
+
+
 async def flush_once():
     """One flush tick across all channels."""
     for channel_id, conn in list(registry.connections.items()):
@@ -51,7 +66,7 @@ async def flush_once():
         conn.buffer = []
         if not conn.subscribers:
             continue                              # drop: nobody listening
-        payload = await sync_to_async(build_batch)(raw)
+        payload = await sync_to_async(_build_batch_detached, thread_sensitive=False)(raw)
         data = f"event: chat\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
         for q in list(conn.subscribers):
             try:

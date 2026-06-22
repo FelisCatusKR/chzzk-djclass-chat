@@ -10,6 +10,7 @@ from datetime import timedelta
 
 import socketio
 from asgiref.sync import sync_to_async
+from django.db import close_old_connections
 from django.utils import timezone
 
 from djclass_overlay.common import chzzk, crypto
@@ -84,6 +85,18 @@ def get_channel_access_token(channel_id):
     return crypto.decrypt(channel.chzzk_access_token_encrypted)
 
 
+def _load_access_token_detached(channel_id):
+    """get_channel_access_token for the detached ingestor/reconnect task: runs in a
+    NON-thread-sensitive pool thread (must not ride the spawning request's
+    CurrentThreadExecutor, which quits when that request ends) + connection hygiene.
+    See flush._build_batch_detached for the full rationale."""
+    close_old_connections()
+    try:
+        return get_channel_access_token(channel_id)
+    finally:
+        close_old_connections()
+
+
 async def connect_to_chat(channel_id):
     """Connect a channel's Chzzk chat socket and wire CHAT → buffer.
     Dedup via the per-channel lock (port of the connectingPromise pattern)."""
@@ -91,7 +104,7 @@ async def connect_to_chat(channel_id):
     async with conn.connect_lock:
         if conn.sio is not None and getattr(conn.sio, "connected", False):
             return
-        token = await sync_to_async(get_channel_access_token)(channel_id)
+        token = await sync_to_async(_load_access_token_detached, thread_sensitive=False)(channel_id)
         if not token:
             logger.warning("[ingestor] no access token for %s; not connecting", channel_id)
             return
