@@ -29,12 +29,12 @@
       }
     </style>
   </head>
-  <body class="min-h-screen">
+  <body class="min-h-screen" x-data>
     <!-- SiteBackground: fixed blurred cover-image + white wash (ported from SiteBackground.tsx) -->
     <div aria-hidden="true" class="fixed inset-0 -z-10 bg-cover bg-center"
          style="background-image:url('https://chzzk-djclass-assets.pages.dev/cover.jpg');filter:blur(2px) brightness(1.15);transform:scale(1.05)"></div>
     <div aria-hidden="true" class="fixed inset-0 -z-10"
          style="background:rgba(248,248,250,0.82)"></div>
-    {% block content %}{% endblock %}
+    <main id="content" x-merge="morph">{% block content %}{% endblock %}</main>
   </body>
 </html>
