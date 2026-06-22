@@ -10,6 +10,20 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
+    <style>
+      /* Pretendard (Korean font), matching the legacy app — jsDelivr, version-pinned. */
+      @font-face {
+        font-family: "Pretendard";
+        src: url("https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2")
+          format("woff2-variations");
+        font-weight: 45 920;
+        font-display: swap;
+      }
+      body {
+        font-family: "Pretendard", system-ui, "Apple SD Gothic Neo", "Noto Sans KR",
+          "Malgun Gothic", sans-serif;
+      }
+    </style>
   </head>
   <body class="min-h-screen">
     <!-- SiteBackground: fixed blurred cover-image + white wash (ported from SiteBackground.tsx) -->
