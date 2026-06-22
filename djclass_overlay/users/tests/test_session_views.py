@@ -88,3 +88,16 @@ def test_dashboard_shows_config_and_widget_base_url(client, settings):
     assert "버튼 선택 모드" in body and "비활성 채팅 페이드아웃" in body
     assert "OBS 설정 방법" in body
     assert "https://app.test/widget/chanX/" in body  # widget base URL for Alpine
+
+
+@pytest.mark.django_db
+def test_dashboard_includes_live_preview(client):
+    from djclass_overlay.streamers.models import Channel
+
+    u = User.objects.create_user(chzzk_id="chanY", chzzk_nickname="S")
+    Channel.objects.create(user=u, chzzk_channel_id="chanY")
+    client.force_login(u, backend=BACKEND)
+    body = client.get("/dashboard/").content.decode()
+    assert "widget-preview.js" in body
+    assert 'x-data="widgetPreview' in body
+    assert "500~1200ms" in body  # the preview caption

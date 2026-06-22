@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}채팅 위젯 설정{% endblock %}
 {% block content %}
 <main class="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
@@ -67,7 +68,23 @@
         {% block preview_card %}
         <div class="card bg-base-100 p-5 shadow">
           <h2 class="card-title text-base">위젯 미리보기</h2>
-          <p class="text-sm opacity-70">위젯 URL을 OBS에 추가하면 실제 채팅이 표시됩니다.</p>
+          <p class="mb-3 text-sm opacity-70">실제 위젯 화면 미리보기 (400×200)</p>
+          <div x-data="widgetPreview()" x-init="init()"
+               class="mx-auto flex h-[200px] w-[400px] flex-col justify-end gap-1 overflow-hidden rounded-lg bg-neutral p-2 text-neutral-content"
+               x-ref="preview" :style="`font-size:${fontSize}px`">
+            <template x-for="(m, idx) in rows" :key="idx">
+              <div class="row" :class="m.status === 'unverified' ? 'unverified-row' : ''">
+                <template x-if="m.status === 'unverified'">
+                  <span class="dj-badge unverified">미인증</span>
+                </template>
+                <template x-if="m.status !== 'unverified'">
+                  <span class="dj-badge" :class="'rank-' + m.rank + (m.isTheory ? ' shiny' : '')" x-text="badgeText(m)"></span>
+                </template>
+                <span x-text="m.text"></span>
+              </div>
+            </template>
+          </div>
+          <p class="mt-3 text-center text-xs opacity-60">가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다</p>
         </div>
         {% endblock %}
 
@@ -109,6 +126,7 @@
     </div>
   </div>
 
+  <script defer src="{% static 'js/widget-preview.js' %}"></script>
   <script>
     function widgetConfig(base) {
       return {
