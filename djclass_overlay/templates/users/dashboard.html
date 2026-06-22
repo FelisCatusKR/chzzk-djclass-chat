@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}대시보드{% endblock %}
+{% block content %}
+  <h1>대시보드</h1>
+  <p>{{ user.chzzk_nickname }}님, 환영합니다.</p>
+  <form method="post" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">로그아웃</button>
+  </form>
+{% endblock %}

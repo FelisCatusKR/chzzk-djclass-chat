@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}로그인{% endblock %}
+{% block content %}
+  <h1>로그인</h1>
+  <a href="{% url 'chzzk_login' %}?next={{ next|urlencode }}">치지직으로 로그인</a>
+{% endblock %}

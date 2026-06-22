@@ -3,10 +3,12 @@ import logging
 import secrets
 from datetime import timedelta
 
-from django.contrib.auth import login
+from django.contrib.auth import login, logout
+from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from djclass_overlay.common import chzzk, crypto
 from djclass_overlay.common.safe_redirect import safe_next_path
@@ -68,3 +70,20 @@ def chzzk_callback(request):
     except Exception:
         logger.exception("[OAuth] callback failed")
         return redirect("/?error=auth_failed")
+
+
+def login_page(request):
+    if request.user.is_authenticated:
+        return redirect("/dashboard/")
+    return render(request, "users/login.html", {"next": safe_next_path(request.GET.get("next"))})
+
+
+@require_POST
+def logout_view(request):
+    logout(request)
+    return redirect("/")
+
+
+@login_required
+def dashboard(request):
+    return render(request, "users/dashboard.html")
