@@ -13,3 +13,9 @@ tsconfig.tsbuildinfo
 next-env.d.ts
 .superpowers/
 /test-data
+
+# Python / Django (migration)
+.venv/
+__pycache__/
+*.pyc
+.env.django
