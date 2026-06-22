@@ -50,3 +50,23 @@ def test_logout_clears_session(client):
 def test_logout_rejects_get(client):
     resp = client.get("/logout/")
     assert resp.status_code == 405
+
+
+def test_login_page_context_copy_dashboard(client):
+    resp = client.get("/login/", {"next": "/dashboard/"})
+    body = resp.content.decode()
+    assert "로그인이 필요해요" in body
+    assert "위젯 설정을 위해" in body
+    assert "Chzzk로 로그인" in body
+
+
+def test_login_page_context_copy_link(client):
+    resp = client.get("/login/", {"next": "/link/"})
+    assert "DJ CLASS 연동을 위해" in resp.content.decode()
+
+
+def test_login_page_no_context_copy_default(client):
+    resp = client.get("/login/")
+    body = resp.content.decode()
+    assert "Chzzk 계정으로 로그인해주세요" in body
+    assert "위젯 설정을 위해" not in body

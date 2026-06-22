@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block title %}로그인{% endblock %}
 {% block content %}
-  <h1>로그인</h1>
-  <a href="{% url 'chzzk_login' %}?next={{ next|urlencode }}">치지직으로 로그인</a>
+<main class="flex min-h-screen items-center justify-center px-4 py-8 sm:py-12">
+  <div class="card w-full max-w-sm bg-base-100 p-8 text-center shadow-lg">
+    <div class="mb-4 text-4xl">🔒</div>
+    <h1 class="mb-2 text-xl font-bold">로그인이 필요해요</h1>
+    <p class="mb-6 text-sm leading-relaxed opacity-70">
+      {% if context %}<b class="opacity-100">{{ context }}</b><br />{% endif %}
+      Chzzk 계정으로 로그인해주세요.
+    </p>
+    <a href="{% url 'chzzk_login' %}?next={{ next|urlencode }}" class="btn btn-neutral btn-block">Chzzk로 로그인</a>
+    <a href="/" class="mt-4 block text-xs opacity-60 hover:opacity-100">← 메인으로 돌아가기</a>
+  </div>
+</main>
 {% endblock %}

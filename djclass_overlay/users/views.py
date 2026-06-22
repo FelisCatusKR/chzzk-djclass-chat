@@ -75,7 +75,13 @@ def chzzk_callback(request):
 def login_page(request):
     if request.user.is_authenticated:
         return redirect("/dashboard/")
-    return render(request, "users/login.html", {"next": safe_next_path(request.GET.get("next"))})
+    next_param = request.GET.get("next")
+    next_path = safe_next_path(next_param)
+    context = {
+        "/dashboard/": "위젯 설정을 위해",
+        "/link/": "DJ CLASS 연동을 위해",
+    }.get(next_param)
+    return render(request, "users/login.html", {"next": next_path, "context": context})
 
 
 @require_POST
