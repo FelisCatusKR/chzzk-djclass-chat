@@ -288,4 +288,15 @@ Expected: chat streams through the tunnel just like local. Leave it open for 1�
 
 If the decision is "fall back to 3.12," update spec §11.3 (Python version) and §10 R1. If "proceed on 3.13," mark R1/R2 retired. Either way, Plan 2 (Scaffold + Models + Migration) is then unblocked.
 
-- [ ] **Step 3: Tear down the scratch dir** (throwaway): `rm -rf ~/chzzk-spike`. The findings live in this plan; no spike code is kept.
+- [ ] **Step 3: Tear down the scratch dir** (throwaway): `rm -rf ~/chzzk-spike` and `rm get-token.ts`. The findings live in this plan; no spike code is kept.
+
+---
+
+## Spike Result — 2026-06-22 (PASSED ✅)
+
+- **R1-A** ✅ `python-socketio 4.6.1` / `python-engineio 3.14.2` (EIO3) / `aiohttp 3.14.1` install + import on **Python 3.13.5 (aarch64)** from prebuilt wheels — no compile, no 3.12 fallback.
+- **R1-B** ✅ Connected to Chzzk + received live `CHAT` end-to-end (chat streamed all the way to the SSE browser).
+- **SSE local** ✅ (after the fix below). **R2** ✅ verified through the **real Cloudflare Tunnel** `dev-chatoverlay.felis.kr → :3000` (stronger than a quick tunnel), with keepalive + `X-Accel-Buffering: no`.
+- **Quirk:** Starlette 1.3.1 removed `on_startup`/`on_shutdown` → use a `lifespan` async context manager. Spike-only — the real app uses Django `StreamingHttpResponse`, not Starlette.
+- **Carry forward:** pin `python-socketio ~=4.6`, `python-engineio ~=3.14`; the spike's `chzzk.py` flow (session-auth → `?auth=` → ws connect → SYSTEM `connected` → subscribe → CHAT) is the validated reference for the real ingestor.
+- **DECISION: PROCEED on Python 3.13.** R1 & R2 retired (spec §10).

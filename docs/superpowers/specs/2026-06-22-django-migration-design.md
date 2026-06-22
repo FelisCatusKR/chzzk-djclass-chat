@@ -234,8 +234,8 @@ data: {
 
 | # | 리스크 | 완화 |
 |---|--------|------|
-| R1 | `python-socketio` 4.x가 Python 3.13에서 동작 안 할 수 있음 | **Step 0가 판정.** 폴백: Python 3.12(Django 6.0 지원), 또는 5.x+EIO3 호환 조사 |
-| R2 | SSE가 Cloudflare Tunnel을 통과 못/버퍼링 | keepalive + `X-Accel-Buffering: no`. Step 0에서 끝까지 확인 |
+| R1 | ~~`python-socketio` 4.x가 Python 3.13에서 동작 안 할 수 있음~~ **✅ 해소(2026-06-22 spike):** socketio 4.6.1·engineio 3.14.2·aiohttp 3.14.1이 Py3.13.5(aarch64)에서 설치·Chzzk 연결·CHAT 수신 확인 | — (3.13 확정) |
+| R2 | ~~SSE가 Cloudflare Tunnel을 통과 못/버퍼링~~ **✅ 해소(2026-06-22 spike):** 실제 터널 `dev-chatoverlay.felis.kr→:3000`로 SSE 통과 확인(keepalive + `X-Accel-Buffering: no`) | — |
 | R3 | 단일 워커 강제(인메모리 상태) | 문서화, 현 Node와 동일 제약. 확장 필요 시 §11의 멀티프로세스+Redis 경로 |
 | R4 | 마이그레이션 스크립트가 Node 암호화 포맷 복호화 실패 | `crypto.ts` 정독, DB 사본에 대해 일회성 검증 |
 | R5 | 하드원 버그픽스 재유입(dedup·debounce·TTL) | 기존 테스트 이식 + parity 체크리스트 |
@@ -246,6 +246,6 @@ data: {
 
 1. **buttonSel 범위:** 위젯별(URL 파라미터, 현행) 유지 → 이벤트에 auto·viewer 동봉. vs **채널(스트리머) 설정**으로 단순화 → 단일 뱃지 객체. (기본 제안: 현행 유지)
 2. **세션 백엔드:** DB(idiomatic, 제안) vs signed-cookie(현 동작에 근접).
-3. **Python 버전:** 3.13 우선, R1 결과에 따라 3.12 폴백.
+3. ~~**Python 버전**~~ **→ ✅ 확정: Python 3.13** (spike에서 R1 통과, 3.12 폴백 불필요).
 4. ~~User 모델 통합~~ **→ 해결(Decision 8):** 커스텀 `User(AbstractBaseUser)` + 커스텀 auth 백엔드 + hand-rolled Chzzk OAuth(allauth 미사용).
 5. **앱 granularity:** 5 도메인 app + `common`(제안) vs `users`+`streamers` 병합·`common` 순수 패키지화한 leaner 변형.
