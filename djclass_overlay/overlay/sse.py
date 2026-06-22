@@ -8,7 +8,7 @@ import asyncio
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
 
-from djclass_overlay.overlay import flush, ingestor, registry
+from djclass_overlay.overlay import flush, ingestor, lifecycle, registry
 
 
 def _ensure_ingestor(channel_id):
@@ -47,11 +47,15 @@ async def widget_stream(request, channel_id):
     async def gen():
         try:
             yield ": connected\n\n"                # open the stream promptly
-            while True:
+            while not lifecycle.shutting_down.is_set():
                 try:
-                    yield await asyncio.wait_for(q.get(), timeout=flush.KEEPALIVE_TIMEOUT)
+                    item = await asyncio.wait_for(q.get(), timeout=flush.KEEPALIVE_TIMEOUT)
                 except asyncio.TimeoutError:
                     yield ": keepalive\n\n"        # survive proxy idle timeouts
+                    continue
+                if item is None:                  # shutdown wake-up sentinel
+                    break
+                yield item
         finally:
             unsubscribe(channel_id, q)
 

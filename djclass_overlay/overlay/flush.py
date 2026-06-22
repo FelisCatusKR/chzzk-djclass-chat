@@ -89,3 +89,16 @@ def ensure_flush_loop():
     global _flush_task
     if _flush_task is None or _flush_task.done():
         _flush_task = asyncio.create_task(flush_loop())
+
+
+async def stop_flush_loop():
+    """Cancel the global flush loop on shutdown (idempotent)."""
+    global _flush_task
+    task = _flush_task
+    _flush_task = None
+    if task is not None and not task.done():
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
