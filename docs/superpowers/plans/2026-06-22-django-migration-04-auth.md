@@ -830,6 +830,17 @@ The build + suite fully exercise the flow with mocked Chzzk HTTP. A real round-t
 
 ---
 
+## Deferred to Plan 8 — production hardening (from the final auth review)
+
+The auth subsystem is functionally complete and secure for its own surface; these are global, deploy-time hardening items surfaced by the holistic review. They are deferred to Plan 8 (Deploy + Cutover) because they are cross-cutting and interact with subsystems not yet built (the widget's frame policy, the Cloudflare/reverse-proxy layer):
+
+- **Security response headers:** add `django.middleware.clickjacking.XFrameOptionsMiddleware` + `X_FRAME_OPTIONS = "DENY"` — but coordinate with the OBS widget's framing needs (Plan 5/6) so embedding isn't broken; add `SECURE_HSTS_SECONDS` (+ `_INCLUDE_SUBDOMAINS`/`_PRELOAD`), `SECURE_CONTENT_TYPE_NOSNIFF`, and `SECURE_PROXY_SSL_HEADER`/`SECURE_SSL_REDIRECT` (behind Cloudflare Tunnel) to `production.py`.
+- **Rate limiting on the OAuth endpoints:** the Node app rate-limited `/api/auth/chzzk` and `/api/auth/chzzk/callback` at 10 req/60 s per IP. Re-establish this before public exposure — via Cloudflare rules or `django-ratelimit`.
+
+These do not block Plans 5–7; they are a Plan 8 checklist item.
+
+---
+
 ## Self-Review
 
 - **Spec coverage:** Decision 8 (hand-rolled Chzzk OAuth, no allauth) ✓; custom `User` + custom backend + DB sessions ✓; security checklist — `state`/CSRF via session + timing-safe compare ✓, exact `redirect_uri` (path preserved) ✓, safe `next` redirect ✓, encrypted token storage via `common.crypto` ✓, 8 s httpx timeouts ✓.
