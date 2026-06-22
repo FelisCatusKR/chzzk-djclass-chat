@@ -91,12 +91,11 @@
   animation-delay: var(--glint-delay, 0ms);
 }
 
-/* Faded (inactive) chat rows. */
-.row {
-  transition: opacity 0.5s;
-}
+/* Faded (inactive) chat rows. The opacity transition is scoped to .fading so only
+   the fade-out animates; unverified rows take their dimmed opacity immediately. */
 .row.fading {
   opacity: 0;
+  transition: opacity 0.5s;
 }
 .row.unverified-row {
   opacity: 0.75;
