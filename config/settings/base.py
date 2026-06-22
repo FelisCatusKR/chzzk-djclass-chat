@@ -78,3 +78,8 @@ LOGOUT_REDIRECT_URL = "/"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days, matching the legacy session cookie
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_HTTPONLY = True
+
+AUTHENTICATION_BACKENDS = [
+    "djclass_overlay.users.backends.ChzzkBackend",
+    "django.contrib.auth.backends.ModelBackend",  # /admin superuser login
+]
