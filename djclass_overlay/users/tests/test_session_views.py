@@ -33,7 +33,7 @@ def test_dashboard_renders_for_authenticated_user(client):
     client.force_login(u, backend=BACKEND)
     resp = client.get("/dashboard/")
     assert resp.status_code == 200
-    assert "Streamer".encode() in resp.content
+    assert "채팅 위젯 설정" in resp.content.decode()
 
 
 @pytest.mark.django_db
@@ -70,3 +70,21 @@ def test_login_page_no_context_copy_default(client):
     body = resp.content.decode()
     assert "Chzzk 계정으로 로그인해주세요" in body
     assert "위젯 설정을 위해" not in body
+
+
+@pytest.mark.django_db
+def test_dashboard_shows_config_and_widget_base_url(client, settings):
+    from djclass_overlay.streamers.models import Channel
+
+    settings.BASE_URL = "https://app.test"
+    u = User.objects.create_user(chzzk_id="chanX", chzzk_nickname="Streamer")
+    Channel.objects.create(user=u, chzzk_channel_id="chanX")
+    client.force_login(u, backend=BACKEND)
+    resp = client.get("/dashboard/")
+    body = resp.content.decode()
+    assert resp.status_code == 200
+    assert "채팅 위젯 설정" in body
+    assert "뱃지 모드" in body and "글자 크기" in body
+    assert "버튼 선택 모드" in body and "비활성 채팅 페이드아웃" in body
+    assert "OBS 설정 방법" in body
+    assert "https://app.test/widget/chanX/" in body  # widget base URL for Alpine

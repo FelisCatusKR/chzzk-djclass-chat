@@ -3,6 +3,7 @@ import logging
 import secrets
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -92,4 +93,8 @@ def logout_view(request):
 
 @login_required
 def dashboard(request):
-    return render(request, "users/dashboard.html")
+    channel = getattr(request.user, "channel", None)
+    widget_base_url = ""
+    if channel:
+        widget_base_url = f"{settings.BASE_URL}/widget/{channel.chzzk_channel_id}/"
+    return render(request, "users/dashboard.html", {"widget_base_url": widget_base_url})

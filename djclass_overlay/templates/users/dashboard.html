@@ -1,10 +1,142 @@
 {% extends "base.html" %}
-{% block title %}대시보드{% endblock %}
+{% block title %}채팅 위젯 설정{% endblock %}
 {% block content %}
-  <h1>대시보드</h1>
-  <p>{{ user.chzzk_nickname }}님, 환영합니다.</p>
-  <form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button type="submit">로그아웃</button>
-  </form>
+<main class="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
+  <div class="w-full max-w-5xl space-y-6"
+       x-data="widgetConfig('{{ widget_base_url|escapejs }}')">
+    <h1 class="text-center text-3xl font-bold">채팅 위젯 설정</h1>
+
+    <div class="grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
+      <!-- LEFT: config (masonry) -->
+      <div class="columns-1 gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
+        <div class="card bg-base-100 p-5 shadow">
+          <h2 class="card-title text-base">뱃지 모드</h2>
+          <p class="mb-2 text-sm opacity-70">위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.</p>
+          <div class="space-y-2">
+            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 p-3">
+              <input type="radio" name="mode" value="short" class="radio radio-sm" x-model="mode" />
+              <span class="text-sm font-medium">짧은 이름 (4B SS II)</span>
+            </label>
+            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 p-3">
+              <input type="radio" name="mode" value="threshold" class="radio radio-sm" x-model="mode" />
+              <span class="text-sm font-medium">근사 파워 (4B 9800+)</span>
+            </label>
+            <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 p-3">
+              <input type="radio" name="mode" value="power" class="radio radio-sm" x-model="mode" />
+              <span class="text-sm font-medium">정수 파워 (4B 9823)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 p-5 shadow">
+          <h2 class="card-title text-base">글자 크기</h2>
+          <p class="mb-2 text-sm opacity-70">위젯 채팅 글자 크기를 선택하세요.</p>
+          <input type="range" min="12" max="28" step="1" class="range range-sm" x-model.number="fontSize" />
+          <p class="mt-2 text-xs opacity-70">현재: <span class="font-semibold" x-text="fontSize + 'px'"></span></p>
+        </div>
+
+        <div class="card bg-base-100 p-5 shadow">
+          <h2 class="card-title text-base">버튼 선택 모드</h2>
+          <p class="mb-2 text-sm opacity-70">시청자별 DJ CLASS를 어떤 버튼 기준으로 표시할지 선택하세요.</p>
+          <div class="space-y-2">
+            <label class="flex cursor-pointer items-center justify-between rounded-lg border border-base-300 p-3">
+              <span class="text-sm font-medium">자동 (최고 클래스)</span>
+              <input type="radio" name="buttonSel" value="auto" class="radio radio-sm" x-model="buttonSel" />
+            </label>
+            <label class="flex cursor-pointer items-center justify-between rounded-lg border border-base-300 p-3">
+              <span class="text-sm font-medium">시청자 선택 우선</span>
+              <input type="radio" name="buttonSel" value="viewer" class="radio radio-sm" x-model="buttonSel" />
+            </label>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 p-5 shadow">
+          <h2 class="card-title text-base">비활성 채팅 페이드아웃</h2>
+          <p class="mb-2 text-sm opacity-70">일정 시간이 지난 메시지를 서서히 사라지게 합니다.</p>
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-sm font-medium">페이드아웃 사용</span>
+            <input type="checkbox" class="toggle toggle-sm" x-model="fadeoutOn" />
+          </div>
+          <input type="range" min="5" max="60" step="1" class="range range-sm" x-model.number="fadeoutSec" :disabled="!fadeoutOn" />
+          <p class="mt-2 text-xs opacity-70">현재: <span class="font-semibold" x-text="fadeoutOn ? fadeoutSec + '초' : '꺼짐'"></span></p>
+        </div>
+      </div>
+
+      <!-- RIGHT: output (sticky) -->
+      <div class="space-y-6 lg:sticky lg:top-8">
+        {% block preview_card %}
+        <div class="card bg-base-100 p-5 shadow">
+          <h2 class="card-title text-base">위젯 미리보기</h2>
+          <p class="text-sm opacity-70">위젯 URL을 OBS에 추가하면 실제 채팅이 표시됩니다.</p>
+        </div>
+        {% endblock %}
+
+        <div class="card bg-base-100 p-5 shadow">
+          <h2 class="card-title text-base">위젯 URL</h2>
+          <p class="mb-3 text-sm opacity-70">OBS Browser Source에 이 URL을 사용하세요.</p>
+          <div class="flex gap-2">
+            <input type="text" class="input input-bordered input-sm flex-1" :value="widgetUrl()" readonly />
+            <button class="btn btn-sm btn-primary" @click="copy()" x-text="copied ? '복사됨!' : 'URL 복사'"></button>
+          </div>
+          <p class="mt-2 text-xs opacity-60">
+            미리보기: <a :href="widgetUrl()" target="_blank" rel="noopener noreferrer" class="link">위젯 열기</a>
+          </p>
+        </div>
+
+        <div class="card bg-base-100 p-5 shadow">
+          <div class="collapse-arrow collapse">
+            <input type="checkbox" />
+            <div class="collapse-title font-medium">OBS 설정 방법</div>
+            <div class="collapse-content">
+              <ol class="list-inside list-decimal space-y-1 text-sm opacity-70">
+                <li>OBS에서 소스 추가 → 브라우저 선택</li>
+                <li>위 URL을 입력하세요</li>
+                <li>너비: 400, 높이: 600 권장</li>
+                <li>투명도: 사용자 지정 CSS로 배경 투명 설정</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline btn-block">로그아웃</button>
+      </form>
+      <a href="/" class="block text-center opacity-60 hover:opacity-100">← 돌아가기</a>
+    </div>
+  </div>
+
+  <script>
+    function widgetConfig(base) {
+      return {
+        base: base,
+        mode: "short",
+        fontSize: 14,
+        buttonSel: "auto",
+        fadeoutOn: false,
+        fadeoutSec: 15,
+        copied: false,
+        widgetUrl() {
+          if (!this.base) return "";
+          var u = new URL(this.base, window.location.origin);
+          u.searchParams.set("mode", this.mode);
+          u.searchParams.set("fontSize", String(this.fontSize));
+          if (this.buttonSel === "viewer") u.searchParams.set("buttonSel", "viewer");
+          if (this.fadeoutOn) u.searchParams.set("fadeout", String(this.fadeoutSec));
+          return u.toString();
+        },
+        copy() {
+          var url = this.widgetUrl();
+          if (!url) return;
+          navigator.clipboard.writeText(url);
+          this.copied = true;
+          setTimeout(() => { this.copied = false; }, 2000);
+        },
+      };
+    }
+  </script>
+</main>
 {% endblock %}
