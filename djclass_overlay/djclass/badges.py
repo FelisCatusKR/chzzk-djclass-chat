@@ -116,3 +116,59 @@ def get_threshold(rank_name, rank_level):
     if rank_level is not None and thresholds.get(rank_level) is not None:
         return thresholds[rank_level]
     return None
+
+
+def get_class_sort_key(dj_class, dj_power_conversion, button):
+    """Port of dj-class.ts:147. Returns (rank_ordinal, level_ordinal, button_pref);
+    bigger is better at every position, compared lexicographically (Python tuple order)."""
+    rank_name = parse_rank_name(dj_class)
+    try:
+        rank_index = RANK_ORDER.index(rank_name)
+        rank_ordinal = len(RANK_ORDER) - 1 - rank_index
+    except ValueError:
+        rank_ordinal = -1
+
+    if rank_name == "THE LORD OF DJMAX" and is_theory_conversion(dj_power_conversion):
+        level_ordinal = 5
+    else:
+        level = extract_level(dj_class)
+        level_ordinal = LEVEL_VALUES.get(level, 0) if level else 0
+
+    button_pref = BUTTON_PREFERENCE.get(button, -1)
+    return (rank_ordinal, level_ordinal, button_pref)
+
+
+def resolve_displayed_class(rows, preferred_button, sel):
+    """Port of dj-class.ts:212. `rows` = objects with .button/.dj_class/.dj_power_conversion."""
+    if not rows:
+        return None
+    if sel == "viewer" and preferred_button is not None:
+        for row in rows:
+            if row.button == preferred_button:
+                return row
+    # Highest CLASS by sort key. max() returns the first maximal row on ties,
+    # matching the JS reduce that keeps the earlier `best` on a tie.
+    return max(
+        rows,
+        key=lambda r: get_class_sort_key(r.dj_class, r.dj_power_conversion, r.button),
+    )
+
+
+def build_badge(row):
+    """Compose the atomic SSE badge fields (spec §4.4.1) from a chosen DJ CLASS row.
+
+    `class` = short rank + level (e.g. "SS II", or "LoD" for level-less ranks);
+    `rank`  = short rank only (color/authority key); the widget prepends "<button>B".
+    """
+    rank_name = parse_rank_name(row.dj_class)
+    level = extract_level(row.dj_class)
+    rank_short = SHORT_NAMES.get(rank_name, rank_name)
+    power = to_power_integer(row.dj_power_conversion)
+    return {
+        "button": row.button,
+        "class": f"{rank_short} {level}" if level else rank_short,
+        "rank": rank_short,
+        "power": power,
+        "threshold": get_threshold(rank_name, level),
+        "isTheory": is_theory_power(power),
+    }
