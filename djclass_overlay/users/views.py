@@ -1,3 +1,70 @@
-from django.shortcuts import render
+import hmac
+import logging
+import secrets
+from datetime import timedelta
 
-# Create your views here.
+from django.contrib.auth import login
+from django.db import transaction
+from django.shortcuts import redirect
+from django.utils import timezone
+
+from djclass_overlay.common import chzzk, crypto
+from djclass_overlay.common.safe_redirect import safe_next_path
+from djclass_overlay.streamers.models import Channel
+
+from .models import User
+
+logger = logging.getLogger(__name__)
+
+_BACKEND = "djclass_overlay.users.backends.ChzzkBackend"
+
+
+def chzzk_login(request):
+    state = secrets.token_hex(32)  # 64 hex chars, like Node randomBytes(32).hex()
+    request.session["oauth_state"] = state
+    request.session["oauth_next"] = request.GET.get("next") or ""
+    return redirect(chzzk.get_oauth_url(state))
+
+
+def chzzk_callback(request):
+    code = request.GET.get("code")
+    state = request.GET.get("state")
+    stored = request.session.get("oauth_state")
+    if not code or not state or not stored or not hmac.compare_digest(state, stored):
+        logger.warning("[OAuth] state mismatch or missing parameters")
+        return redirect("/?error=auth_failed")
+
+    try:
+        tokens = chzzk.exchange_code_for_token(code, state)
+        info = chzzk.get_user_info(tokens["access_token"])
+        expires_at = timezone.now() + timedelta(seconds=tokens["expires_in"])
+
+        with transaction.atomic():
+            user, created = User.objects.update_or_create(
+                chzzk_id=info["user_id"],
+                defaults={"chzzk_nickname": info["nickname"]},
+            )
+            if created:
+                user.set_unusable_password()
+                user.save(update_fields=["password"])
+            Channel.objects.update_or_create(
+                user=user,
+                defaults={
+                    "chzzk_channel_id": info["user_id"],
+                    "chzzk_access_token_encrypted": crypto.encrypt(tokens["access_token"]),
+                    "chzzk_refresh_token_encrypted": crypto.encrypt(tokens["refresh_token"]),
+                    "token_expires_at": expires_at,
+                },
+            )
+        # NOTE(plan-7): the Node callback also auto-syncs DJ CLASS here when the
+        # user already has an active V-ARCHIVE token. That depends on the sync
+        # subsystem and is wired in Plan 7; migrated users keep their imported
+        # classes meanwhile.
+
+        next_path = safe_next_path(request.session.pop("oauth_next", None))
+        request.session.pop("oauth_state", None)
+        login(request, user, backend=_BACKEND)
+        return redirect(next_path)
+    except Exception:
+        logger.exception("[OAuth] callback failed")
+        return redirect("/?error=auth_failed")
