@@ -62,3 +62,19 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+
+# --- Chzzk OAuth ---
+# Secrets: not required for build/tests (Chzzk HTTP is mocked). Empty default keeps
+# dev/test runs working; production.py re-reads CLIENT_ID/SECRET as required.
+CHZZK_CLIENT_ID = env("CHZZK_CLIENT_ID", default="")
+CHZZK_CLIENT_SECRET = env("CHZZK_CLIENT_SECRET", default="")
+# Public origin used to build redirect_uri + the OAuth callback. No trailing slash.
+BASE_URL = env("BASE_URL", default="http://localhost:8000")
+
+# --- Auth / sessions ---
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/dashboard/"
+LOGOUT_REDIRECT_URL = "/"
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 7  # 7 days, matching the legacy session cookie
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
