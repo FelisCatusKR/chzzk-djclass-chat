@@ -51,6 +51,7 @@ def test_build_batch_caps_messages():
     assert len(batch["messages"]) == flush.MAX_BATCH
 
 
+@pytest.mark.django_db(transaction=True)
 def test_flush_once_pushes_event_to_subscribers():
     async def scenario():
         conn = registry.get_or_create("ch")
@@ -66,6 +67,7 @@ def test_flush_once_pushes_event_to_subscribers():
     async_to_sync(scenario)()
 
 
+@pytest.mark.django_db(transaction=True)
 def test_flush_once_clears_buffer_when_no_subscribers():
     async def scenario():
         conn = registry.get_or_create("ch")
