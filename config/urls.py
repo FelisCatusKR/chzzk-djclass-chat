@@ -19,6 +19,7 @@ from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("", include("djclass_overlay.streamers.urls")),
     path("", include("djclass_overlay.users.urls")),
     path("", include("djclass_overlay.overlay.urls")),
 ]
