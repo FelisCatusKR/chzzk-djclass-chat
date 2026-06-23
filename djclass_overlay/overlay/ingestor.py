@@ -142,10 +142,10 @@ async def connect_to_chat(channel_id: str) -> None:  # noqa: C901 — cohesive s
             )
             return
 
-        sio = socketio.AsyncClient(reconnection=False)
+        sio: registry.AsyncSocketIO = socketio.AsyncClient(reconnection=False)
         conn.sio = sio
 
-        @sio.on("SYSTEM")  # type: ignore[untyped-decorator]  # python-socketio @sio.on is untyped (no stubs)
+        @sio.on("SYSTEM")
         async def on_system(data: object) -> None:
             parsed = parse(data)
             if parsed.get("type") == "connected":
@@ -159,11 +159,11 @@ async def connect_to_chat(channel_id: str) -> None:  # noqa: C901 — cohesive s
                             "[ingestor] subscribe failed for %s", channel_id
                         )
 
-        @sio.on("CHAT")  # type: ignore[untyped-decorator]  # python-socketio @sio.on is untyped (no stubs)
+        @sio.on("CHAT")
         async def on_chat(data: object) -> None:
             conn.buffer.append(extract_chat(parse(data), channel_id))
 
-        @sio.on("disconnect")  # type: ignore[untyped-decorator]  # python-socketio @sio.on is untyped (no stubs)
+        @sio.on("disconnect")
         async def on_disconnect() -> None:
             conn.sio = None
             conn.session_key = None

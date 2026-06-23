@@ -6,10 +6,13 @@ buffer, the set of SSE subscriber queues, and the teardown timer. Mirrors the No
 """
 
 import asyncio
+from collections.abc import Awaitable
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
-from typing import Any
+from typing import Protocol
 from typing import TypedDict
+from typing import TypeVar
 
 
 class ChatMessage(TypedDict):
@@ -31,12 +34,30 @@ class ChatMessage(TypedDict):
 SubscriberQueue = asyncio.Queue[str | None]
 
 
+_SioHandler = TypeVar("_SioHandler", bound=Callable[..., Awaitable[object]])
+
+
+class AsyncSocketIO(Protocol):
+    """The python-socketio ``AsyncClient`` surface this app actually uses.
+
+    The library ships no type stubs, so rather than fall back to ``Any`` we declare
+    just the few members we call. ``on`` is the passthrough decorator form
+    (``@sio.on("EVENT")``), generic so each handler keeps its own signature.
+    """
+
+    connected: bool
+
+    def on(self, event: str) -> Callable[[_SioHandler], _SioHandler]: ...
+    async def connect(
+        self, url: str, *, transports: list[str] | None = None
+    ) -> None: ...
+    async def disconnect(self) -> None: ...
+
+
 @dataclass
 class ChannelConnection:
     channel_id: str
-    # socketio.AsyncClient | None; Any because python-socketio ships no stubs, so we
-    # still get attribute access (.connected / .disconnect()) without it being object.
-    sio: Any = None
+    sio: AsyncSocketIO | None = None  # the live Chzzk socket (None while disconnected)
     session_key: str | None = None
     buffer: list[ChatMessage] = field(default_factory=list)  # raw CHAT message dicts
     subscribers: set[SubscriberQueue] = field(default_factory=set)  # one per widget
