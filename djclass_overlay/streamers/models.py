@@ -13,5 +13,5 @@ class Channel(models.Model):
     class Meta:
         db_table = "channels"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.chzzk_channel_id

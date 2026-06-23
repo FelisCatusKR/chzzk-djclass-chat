@@ -8,6 +8,7 @@ from django.contrib.auth import login
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import HttpRequest
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.shortcuts import render
@@ -27,21 +28,21 @@ logger = logging.getLogger(__name__)
 _BACKEND = "djclass_overlay.users.backends.ChzzkBackend"
 
 
-def chzzk_login(request):
+def chzzk_login(request: HttpRequest) -> HttpResponse:
     state = secrets.token_hex(32)  # 64 hex chars, like Node randomBytes(32).hex()
     request.session["oauth_state"] = state
     request.session["oauth_next"] = request.GET.get("next") or ""
     return redirect(chzzk.get_oauth_url(state))
 
 
-def chzzk_callback(request):
+def chzzk_callback(request: HttpRequest) -> HttpResponse:
     if not ratelimit.allow(request, scope="auth", limit=10, window=60):
         return HttpResponse(
             "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", status=429
         )
-    code = request.GET.get("code")
-    state = request.GET.get("state")
-    stored = request.session.get("oauth_state")
+    code: str | None = request.GET.get("code")
+    state: str | None = request.GET.get("state")
+    stored: str | None = request.session.get("oauth_state")
     if not code or not state or not stored or not hmac.compare_digest(state, stored):
         logger.warning("[OAuth] state mismatch or missing parameters")
         return redirect("/?error=auth_failed")
@@ -87,27 +88,27 @@ def chzzk_callback(request):
         return redirect("/?error=auth_failed")
 
 
-def login_page(request):
+def login_page(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         return redirect("/dashboard/")
-    next_param = request.GET.get("next")
-    next_path = safe_next_path(next_param)
+    next_param: str | None = request.GET.get("next")
+    next_path = safe_next_path(next_param or "")
     context = {
         "/dashboard/": "위젯 설정을 위해",
         "/link/": "DJ CLASS 연동을 위해",
-    }.get(next_param)
+    }.get(next_param or "")
     return render(request, "users/login.html", {"next": next_path, "context": context})
 
 
 @require_POST
-def logout_view(request):
+def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     return redirect("/")
 
 
 @login_required
-def dashboard(request):
-    channel = getattr(request.user, "channel", None)
+def dashboard(request: HttpRequest) -> HttpResponse:
+    channel: Channel | None = getattr(request.user, "channel", None)
     widget_base_url = ""
     if channel:
         widget_base_url = f"{settings.BASE_URL}/widget/{channel.chzzk_channel_id}/"

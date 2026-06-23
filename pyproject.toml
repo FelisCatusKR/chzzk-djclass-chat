@@ -115,8 +115,6 @@ implicit_reexport = true
 # from this list until it is empty. DO NOT remove any here in Task 1.
 [[tool.mypy.overrides]]
 module = [
-  "djclass_overlay.streamers.*",
-  "djclass_overlay.users.*",
   "djclass_overlay.djclass.*",
   "djclass_overlay.viewers.*",
   "djclass_overlay.overlay.*",

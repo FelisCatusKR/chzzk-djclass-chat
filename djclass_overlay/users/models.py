@@ -1,26 +1,41 @@
+from typing import Any
+
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 
 
-class UserManager(BaseUserManager):
+class UserManager(BaseUserManager["User"]):
     use_in_migrations = True
 
-    def create_user(self, chzzk_id, chzzk_nickname="", **extra):
+    def create_user(
+        self,
+        chzzk_id: str,
+        chzzk_nickname: str = "",
+        **extra: Any,
+    ) -> "User":
         if not chzzk_id:
             raise ValueError("chzzk_id is required")
-        user = self.model(chzzk_id=chzzk_id, chzzk_nickname=chzzk_nickname, **extra)
+        user: User = self.model(
+            chzzk_id=chzzk_id, chzzk_nickname=chzzk_nickname, **extra
+        )
         user.set_unusable_password()
         user.save(using=self._db)
         return user
 
     def create_superuser(
-        self, chzzk_id, chzzk_nickname="admin", password=None, **extra
-    ):
+        self,
+        chzzk_id: str,
+        chzzk_nickname: str = "admin",
+        password: str | None = None,
+        **extra: Any,
+    ) -> "User":
         extra.setdefault("is_staff", True)
         extra.setdefault("is_superuser", True)
-        user = self.model(chzzk_id=chzzk_id, chzzk_nickname=chzzk_nickname, **extra)
+        user: User = self.model(
+            chzzk_id=chzzk_id, chzzk_nickname=chzzk_nickname, **extra
+        )
         if password:
             user.set_password(password)
         else:
@@ -44,5 +59,5 @@ class User(AbstractBaseUser, PermissionsMixin):
     class Meta:
         db_table = "users"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.chzzk_nickname
