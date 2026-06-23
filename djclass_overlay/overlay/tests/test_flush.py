@@ -24,10 +24,17 @@ def _reset():
 def test_build_batch_resolves_and_dedups(django_assert_num_queries):
     u = User.objects.create_user(chzzk_id="s1", chzzk_nickname="N")
     VarchiveToken.objects.create(user=u, varchive_nickname="v", is_active=True)
-    DjClass.objects.create(user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9810)
+    DjClass.objects.create(
+        user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9810
+    )
     raw = [
         {"senderChannelId": "s1", "nickname": "N", "content": "hi", "emojis": {}},
-        {"senderChannelId": "s1", "nickname": "N", "content": "again", "emojis": {"a": "u"}},
+        {
+            "senderChannelId": "s1",
+            "nickname": "N",
+            "content": "again",
+            "emojis": {"a": "u"},
+        },
         {"senderChannelId": "ghost", "nickname": "G", "content": "yo", "emojis": {}},
     ]
     with django_assert_num_queries(5):
@@ -46,8 +53,10 @@ def test_build_batch_resolves_and_dedups(django_assert_num_queries):
 
 @pytest.mark.django_db
 def test_build_batch_caps_messages():
-    raw = [{"senderChannelId": "x", "nickname": "X", "content": str(i), "emojis": {}}
-           for i in range(flush.MAX_BATCH + 50)]
+    raw = [
+        {"senderChannelId": "x", "nickname": "X", "content": str(i), "emojis": {}}
+        for i in range(flush.MAX_BATCH + 50)
+    ]
     batch = flush.build_batch(raw)
     assert len(batch["messages"]) == flush.MAX_BATCH
 
@@ -58,13 +67,21 @@ def test_flush_once_pushes_event_to_subscribers():
         conn = registry.get_or_create("ch")
         q = asyncio.Queue()
         conn.subscribers.add(q)
-        conn.buffer.append({"senderChannelId": "", "nickname": "Anon", "content": "hello", "emojis": {}})
+        conn.buffer.append(
+            {
+                "senderChannelId": "",
+                "nickname": "Anon",
+                "content": "hello",
+                "emojis": {},
+            }
+        )
         await flush.flush_once()
-        assert conn.buffer == []                 # buffer drained
+        assert conn.buffer == []  # buffer drained
         data = q.get_nowait()
         assert data.startswith("event: chat\ndata: ")
         payload = json.loads(data.split("data: ", 1)[1].strip())
         assert payload["messages"][0]["text"] == "hello"
+
     async_to_sync(scenario)()
 
 
@@ -72,7 +89,10 @@ def test_flush_once_pushes_event_to_subscribers():
 def test_flush_once_clears_buffer_when_no_subscribers():
     async def scenario():
         conn = registry.get_or_create("ch")
-        conn.buffer.append({"senderChannelId": "", "nickname": "A", "content": "x", "emojis": {}})
+        conn.buffer.append(
+            {"senderChannelId": "", "nickname": "A", "content": "x", "emojis": {}}
+        )
         await flush.flush_once()
-        assert conn.buffer == []                 # dropped — nobody listening
+        assert conn.buffer == []  # dropped — nobody listening
+
     async_to_sync(scenario)()

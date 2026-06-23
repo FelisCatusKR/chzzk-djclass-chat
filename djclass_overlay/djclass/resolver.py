@@ -46,7 +46,10 @@ def _resolve_uncached(sender_channel_id, nickname):
     viewer = badges.resolve_displayed_class(rows, user.preferred_button, "viewer")
     return {
         "status": "linked",
-        "badge": {"auto": badges.build_badge(auto), "viewer": badges.build_badge(viewer)},
+        "badge": {
+            "auto": badges.build_badge(auto),
+            "viewer": badges.build_badge(viewer),
+        },
     }
 
 

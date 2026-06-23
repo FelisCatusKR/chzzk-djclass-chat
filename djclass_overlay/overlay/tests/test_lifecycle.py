@@ -28,6 +28,7 @@ def test_shutdown_sets_event_and_wakes_subscribers():
         await lifecycle.shutdown()
         assert lifecycle.shutting_down.is_set()
         assert q.get_nowait() is None  # wake-up sentinel queued for the generator
+
     async_to_sync(scenario)()
 
 
@@ -52,4 +53,5 @@ def test_stream_generator_exits_promptly_on_shutdown():
         # finally: unsubscribe ran -> last subscriber gone -> teardown armed
         conn = registry.connections.get("ch")
         assert conn is None or not conn.subscribers
+
     async_to_sync(scenario)()

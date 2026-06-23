@@ -37,7 +37,9 @@ def test_exchange_code_for_token(httpx_mock, settings):
 
 def test_exchange_flat_envelope_and_default_expiry(httpx_mock, settings):
     # No `content` wrapper, missing expiresIn -> default 86400.
-    httpx_mock.add_response(url=TOKEN_URL, json={"accessToken": "A", "refreshToken": "R"})
+    httpx_mock.add_response(
+        url=TOKEN_URL, json={"accessToken": "A", "refreshToken": "R"}
+    )
     out = chzzk.exchange_code_for_token("CODE", "STATE")
     assert out == {"access_token": "A", "refresh_token": "R", "expires_in": 86400}
 

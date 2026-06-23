@@ -7,27 +7,36 @@ from djclass_overlay.viewers.models import VarchiveToken
 
 BACKEND = "djclass_overlay.users.backends.ChzzkBackend"
 
-CLASSES = [{"button": 4, "djClass": "SHOWSTOPPER II", "djPowerSum": 1.0,
-            "maxDjPower": 2.0, "djPowerConversion": 9823.0}]
+CLASSES = [
+    {
+        "button": 4,
+        "djClass": "SHOWSTOPPER II",
+        "djPowerSum": 1.0,
+        "maxDjPower": 2.0,
+        "djPowerConversion": 9823.0,
+    }
+]
 
 
 # --- connect ---
+
 
 @pytest.mark.django_db
 def test_connect_valid_token_links_and_syncs(client, monkeypatch):
     u = User.objects.create_user(chzzk_id="v1", chzzk_nickname="Viewer")
     client.force_login(u, backend=BACKEND)
-    monkeypatch.setattr(varchive, "lookup_user",
-                        lambda tok: {"user_no": 7, "nickname": "VA-Nick"})
+    monkeypatch.setattr(
+        varchive, "lookup_user", lambda tok: {"user_no": 7, "nickname": "VA-Nick"}
+    )
     monkeypatch.setattr(varchive, "get_all_dj_classes", lambda nick: CLASSES)
 
     resp = client.post("/link/connect/", {"token": "good-token"})
     body = resp.content.decode()
 
     assert resp.status_code == 200
-    assert "<!doctype" not in body.lower()                 # a fragment, not a full page
+    assert "<!doctype" not in body.lower()  # a fragment, not a full page
     assert "연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다." in body
-    assert "V-ARCHIVE 연동 완료" in body                    # linked state
+    assert "V-ARCHIVE 연동 완료" in body  # linked state
     link = VarchiveToken.objects.get(user=u)
     assert link.varchive_nickname == "VA-Nick"
     assert link.varchive_user_no == 7
@@ -73,6 +82,7 @@ def test_connect_empty_token_shows_error(client):
 
 # --- sync ---
 
+
 @pytest.mark.django_db
 def test_sync_success_reports_highest(client, monkeypatch):
     u = User.objects.create_user(chzzk_id="v1", chzzk_nickname="Viewer")
@@ -88,12 +98,14 @@ def test_sync_success_reports_highest(client, monkeypatch):
 def test_sync_empty_with_existing_rows_prompts_relink(client, monkeypatch):
     u = User.objects.create_user(chzzk_id="v1", chzzk_nickname="Viewer")
     VarchiveToken.objects.create(user=u, varchive_nickname="VA", varchive_user_no=7)
-    DjClass.objects.create(user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0)
+    DjClass.objects.create(
+        user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0
+    )
     client.force_login(u, backend=BACKEND)
     monkeypatch.setattr(varchive, "get_all_dj_classes", lambda nick: [])
     resp = client.post("/link/sync/")
     assert "다시 연동" in resp.content.decode()
-    assert DjClass.objects.filter(user=u).count() == 1     # not wiped
+    assert DjClass.objects.filter(user=u).count() == 1  # not wiped
 
 
 @pytest.mark.django_db
@@ -106,20 +118,25 @@ def test_sync_without_link_errors(client):
 
 # --- unlink ---
 
+
 @pytest.mark.django_db
 def test_unlink_deactivates_and_clears(client):
     u = User.objects.create_user(chzzk_id="v1", chzzk_nickname="Viewer")
     u.preferred_button = 4
     u.save(update_fields=["preferred_button"])
-    link = VarchiveToken.objects.create(user=u, varchive_nickname="VA", varchive_user_no=7)
-    DjClass.objects.create(user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0)
+    link = VarchiveToken.objects.create(
+        user=u, varchive_nickname="VA", varchive_user_no=7
+    )
+    DjClass.objects.create(
+        user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0
+    )
     client.force_login(u, backend=BACKEND)
 
     resp = client.post("/link/unlink/")
     body = resp.content.decode()
 
     assert "V-ARCHIVE 연동을 해제했습니다." in body
-    assert "조회토큰을 입력하세요" in body                 # back to not-linked state
+    assert "조회토큰을 입력하세요" in body  # back to not-linked state
     link.refresh_from_db()
     u.refresh_from_db()
     assert link.is_active is False
@@ -129,11 +146,13 @@ def test_unlink_deactivates_and_clears(client):
 
 # --- preferred button ---
 
+
 def _link_with_buttons(u, buttons):
     VarchiveToken.objects.create(user=u, varchive_nickname="VA", varchive_user_no=7)
     for b in buttons:
-        DjClass.objects.create(user=u, button=b, dj_class="SHOWSTOPPER II",
-                               dj_power_conversion=9823.0)
+        DjClass.objects.create(
+            user=u, button=b, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0
+        )
 
 
 @pytest.mark.django_db
@@ -156,7 +175,7 @@ def test_preferred_button_auto_clears(client):
     client.force_login(u, backend=BACKEND)
     resp = client.post("/link/preferred-button/", {"button": "auto"})
     assert resp.status_code == 200
-    assert "자동 (최고 클래스)" in resp.content.decode()   # re-rendered picker fragment
+    assert "자동 (최고 클래스)" in resp.content.decode()  # re-rendered picker fragment
     u.refresh_from_db()
     assert u.preferred_button is None
 
@@ -166,7 +185,7 @@ def test_preferred_button_invalid_rejected(client):
     u = User.objects.create_user(chzzk_id="v1", chzzk_nickname="Viewer")
     _link_with_buttons(u, [4, 8])
     client.force_login(u, backend=BACKEND)
-    resp = client.post("/link/preferred-button/", {"button": "5"})   # no 5 row
+    resp = client.post("/link/preferred-button/", {"button": "5"})  # no 5 row
     assert "잘못된 버튼 선택입니다." in resp.content.decode()
     u.refresh_from_db()
     assert u.preferred_button is None
@@ -181,5 +200,5 @@ def test_link_sync_rate_limited(client, monkeypatch):
     client.force_login(u, backend=BACKEND)
     monkeypatch.setattr(ratelimit, "allow", lambda *a, **k: False)
     resp = client.post("/link/sync/")
-    assert resp.status_code == 200                       # htmx-swappable fragment
+    assert resp.status_code == 200  # htmx-swappable fragment
     assert "요청이 너무 많습니다" in resp.content.decode()

@@ -23,7 +23,7 @@ def test_extract_chat_full_payload():
         "nickname": "Streamer",
         "content": "hello {:cat:}",
         "messageTime": 1700000000000,
-        "emojis": {"cat": "https://e/cat.png"},   # non-string emoji value dropped
+        "emojis": {"cat": "https://e/cat.png"},  # non-string emoji value dropped
     }
 
 

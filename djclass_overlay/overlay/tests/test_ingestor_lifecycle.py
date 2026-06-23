@@ -44,8 +44,13 @@ def test_get_channel_access_token_refreshes_when_expired(monkeypatch):
     from djclass_overlay.common import chzzk
 
     monkeypatch.setattr(
-        chzzk, "refresh_access_token",
-        lambda rt: {"access_token": "NEW", "refresh_token": "NEWREFRESH", "expires_in": 86400},
+        chzzk,
+        "refresh_access_token",
+        lambda rt: {
+            "access_token": "NEW",
+            "refresh_token": "NEWREFRESH",
+            "expires_in": 86400,
+        },
     )
     assert ingestor.get_channel_access_token("c2") == "NEW"
     ch = Channel.objects.get(chzzk_channel_id="c2")
@@ -64,6 +69,7 @@ def test_schedule_teardown_cancelled_on_rejoin():
         conn = registry.get_or_create("ch")
         ingestor.schedule_teardown("ch", delay=10)
         assert conn.disconnect_task is not None
-        ingestor.cancel_teardown(conn)        # rejoin cancels it
+        ingestor.cancel_teardown(conn)  # rejoin cancels it
         assert conn.disconnect_task is None
+
     async_to_sync(scenario)()

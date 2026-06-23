@@ -32,7 +32,9 @@ def chzzk_login(request):
 
 def chzzk_callback(request):
     if not ratelimit.allow(request, scope="auth", limit=10, window=60):
-        return HttpResponse("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", status=429)
+        return HttpResponse(
+            "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", status=429
+        )
     code = request.GET.get("code")
     state = request.GET.get("state")
     stored = request.session.get("oauth_state")
@@ -57,8 +59,12 @@ def chzzk_callback(request):
                 user=user,
                 defaults={
                     "chzzk_channel_id": info["user_id"],
-                    "chzzk_access_token_encrypted": crypto.encrypt(tokens["access_token"]),
-                    "chzzk_refresh_token_encrypted": crypto.encrypt(tokens["refresh_token"]),
+                    "chzzk_access_token_encrypted": crypto.encrypt(
+                        tokens["access_token"]
+                    ),
+                    "chzzk_refresh_token_encrypted": crypto.encrypt(
+                        tokens["refresh_token"]
+                    ),
                     "token_expires_at": expires_at,
                 },
             )

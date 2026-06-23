@@ -39,8 +39,8 @@ class Command(BaseCommand):
             host=options["host"],
             port=options["port"],
             log_level=options["log_level"],
-            lifespan="off",                 # Django's ASGI app doesn't speak lifespan
-            timeout_graceful_shutdown=5,    # backstop; the watcher normally closes streams first
+            lifespan="off",  # Django's ASGI app doesn't speak lifespan
+            timeout_graceful_shutdown=5,  # backstop; the watcher normally closes streams first
         )
         server = uvicorn.Server(config)
 

@@ -46,14 +46,16 @@ async def widget_stream(request, channel_id):
 
     async def gen():
         try:
-            yield ": connected\n\n"                # open the stream promptly
+            yield ": connected\n\n"  # open the stream promptly
             while not lifecycle.shutting_down.is_set():
                 try:
-                    item = await asyncio.wait_for(q.get(), timeout=flush.KEEPALIVE_TIMEOUT)
+                    item = await asyncio.wait_for(
+                        q.get(), timeout=flush.KEEPALIVE_TIMEOUT
+                    )
                 except asyncio.TimeoutError:
-                    yield ": keepalive\n\n"        # survive proxy idle timeouts
+                    yield ": keepalive\n\n"  # survive proxy idle timeouts
                     continue
-                if item is None:                  # shutdown wake-up sentinel
+                if item is None:  # shutdown wake-up sentinel
                     break
                 yield item
         finally:

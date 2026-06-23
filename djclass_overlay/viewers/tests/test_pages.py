@@ -23,14 +23,16 @@ def test_link_not_linked_state(client):
     assert "조회토큰을 입력하세요" in body
     assert "V-ARCHIVE 마이페이지" in body
     assert 'hx-post="/link/connect/"' in body
-    assert "버튼 선택" not in body          # no picker when not linked
+    assert "버튼 선택" not in body  # no picker when not linked
 
 
 @pytest.mark.django_db
 def test_link_linked_state_shows_actions_and_buttons(client):
     u = User.objects.create_user(chzzk_id="v2", chzzk_nickname="Viewer2")
     VarchiveToken.objects.create(user=u, varchive_nickname="VA", varchive_user_no=7)
-    DjClass.objects.create(user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0)
+    DjClass.objects.create(
+        user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9823.0
+    )
     client.force_login(u, backend=BACKEND)
     body = client.get("/link/").content.decode()
     assert "V-ARCHIVE 연동 완료" in body
@@ -39,8 +41,8 @@ def test_link_linked_state_shows_actions_and_buttons(client):
     assert "버튼 선택" in body
     assert "자동 (최고 클래스)" in body
     assert "4버튼" in body
-    assert "SS II" in body                  # compact rank chip (build_badge "class")
-    assert "9823" in body                   # power chip
+    assert "SS II" in body  # compact rank chip (build_badge "class")
+    assert "9823" in body  # power chip
 
 
 @pytest.mark.django_db

@@ -21,11 +21,17 @@ def test_login_sets_state_and_redirects(client, settings):
 @pytest.mark.django_db
 def test_callback_creates_user_channel_and_logs_in(client, monkeypatch):
     monkeypatch.setattr(
-        chzzk, "exchange_code_for_token",
-        lambda code, state: {"access_token": "AT", "refresh_token": "RT", "expires_in": 86400},
+        chzzk,
+        "exchange_code_for_token",
+        lambda code, state: {
+            "access_token": "AT",
+            "refresh_token": "RT",
+            "expires_in": 86400,
+        },
     )
     monkeypatch.setattr(
-        chzzk, "get_user_info",
+        chzzk,
+        "get_user_info",
         lambda access_token: {"user_id": "chan42", "nickname": "Streamer"},
     )
     s = client.session
@@ -50,13 +56,21 @@ def test_callback_creates_user_channel_and_logs_in(client, monkeypatch):
 
 @pytest.mark.django_db
 def test_callback_updates_existing_user_nickname(client, monkeypatch):
-    User.objects.create_user(chzzk_id="chan42", chzzk_nickname="Old", preferred_button=6)
-    monkeypatch.setattr(
-        chzzk, "exchange_code_for_token",
-        lambda code, state: {"access_token": "AT", "refresh_token": "RT", "expires_in": 86400},
+    User.objects.create_user(
+        chzzk_id="chan42", chzzk_nickname="Old", preferred_button=6
     )
     monkeypatch.setattr(
-        chzzk, "get_user_info",
+        chzzk,
+        "exchange_code_for_token",
+        lambda code, state: {
+            "access_token": "AT",
+            "refresh_token": "RT",
+            "expires_in": 86400,
+        },
+    )
+    monkeypatch.setattr(
+        chzzk,
+        "get_user_info",
         lambda access_token: {"user_id": "chan42", "nickname": "New"},
     )
     s = client.session

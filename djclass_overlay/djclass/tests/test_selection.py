@@ -36,19 +36,21 @@ def test_sort_key_unknown_rank():
 def test_resolve_auto_picks_highest_class():
     rows = [Row(4, "SHOWSTOPPER II", 9810), Row(8, "HEADLINER I", 9660)]
     chosen = badges.resolve_displayed_class(rows, None, "auto")
-    assert chosen.dj_class == "SHOWSTOPPER II"   # higher rank wins over higher button
+    assert chosen.dj_class == "SHOWSTOPPER II"  # higher rank wins over higher button
 
 
 def test_resolve_auto_class_beats_raw_power():
     # lower rank but higher power must lose — selection is by CLASS, not power
     rows = [Row(4, "SHOWSTOPPER II", 9810), Row(8, "HEADLINER I", 9999)]
-    assert badges.resolve_displayed_class(rows, None, "auto").dj_class == "SHOWSTOPPER II"
+    assert (
+        badges.resolve_displayed_class(rows, None, "auto").dj_class == "SHOWSTOPPER II"
+    )
 
 
 def test_resolve_viewer_prefers_preferred_button():
     rows = [Row(4, "SHOWSTOPPER II", 9810), Row(8, "HEADLINER I", 9660)]
     chosen = badges.resolve_displayed_class(rows, 8, "viewer")
-    assert chosen.button == 8                    # preferred even though not highest class
+    assert chosen.button == 8  # preferred even though not highest class
 
 
 def test_resolve_viewer_falls_back_when_preferred_missing():
@@ -59,7 +61,10 @@ def test_resolve_viewer_falls_back_when_preferred_missing():
 
 def test_resolve_viewer_falls_back_when_no_preference():
     rows = [Row(4, "SHOWSTOPPER II", 9810), Row(8, "HEADLINER I", 9660)]
-    assert badges.resolve_displayed_class(rows, None, "viewer").dj_class == "SHOWSTOPPER II"
+    assert (
+        badges.resolve_displayed_class(rows, None, "viewer").dj_class
+        == "SHOWSTOPPER II"
+    )
 
 
 def test_resolve_empty_is_none():
@@ -82,9 +87,9 @@ def test_build_badge_theory_lod():
     badge = badges.build_badge(Row(8, "THE LORD OF DJMAX", 9999.9847))
     assert badge == {
         "button": 8,
-        "class": "LoD",        # level-less rank → no trailing level
+        "class": "LoD",  # level-less rank → no trailing level
         "rank": "LoD",
-        "power": 10000,        # theory bump
+        "power": 10000,  # theory bump
         "threshold": 9980,
         "isTheory": True,
     }

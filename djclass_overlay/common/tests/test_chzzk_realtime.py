@@ -32,7 +32,9 @@ def test_get_session_url_no_double_append(httpx_mock):
 
 
 def test_subscribe_chat_posts_session_key(httpx_mock):
-    httpx_mock.add_response(method="POST", url=f"{SUBSCRIBE_URL}?sessionKey=KEY1", json={})
+    httpx_mock.add_response(
+        method="POST", url=f"{SUBSCRIBE_URL}?sessionKey=KEY1", json={}
+    )
     async_to_sync(chzzk.subscribe_chat)("TOK", "KEY1")
     req = httpx_mock.get_request()
     assert req.method == "POST"

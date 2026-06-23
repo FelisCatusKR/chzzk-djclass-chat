@@ -22,6 +22,7 @@ def test_subscribe_registers_queue_and_cancels_teardown():
         conn = registry.connections["ch"]
         assert q in conn.subscribers
         assert conn.disconnect_task is None
+
     async_to_sync(scenario)()
 
 
@@ -31,8 +32,9 @@ def test_unsubscribe_schedules_teardown_when_empty():
         sse.unsubscribe("ch", q)
         conn = registry.connections["ch"]
         assert q not in conn.subscribers
-        assert conn.disconnect_task is not None     # 30s teardown armed
+        assert conn.disconnect_task is not None  # 30s teardown armed
         conn.disconnect_task.cancel()
+
     async_to_sync(scenario)()
 
 

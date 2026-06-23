@@ -54,5 +54,8 @@ def sync_user(link):
     invalidate_user(link.user)
     # Re-fetch as model instances — resolve_displayed_class needs .button/.dj_class/etc.
     rows = list(DjClass.objects.filter(user=link.user))
-    return {"ok": True, "stale": False,
-            "highest": badges.resolve_displayed_class(rows, None, "auto")}
+    return {
+        "ok": True,
+        "stale": False,
+        "highest": badges.resolve_displayed_class(rows, None, "auto"),
+    }

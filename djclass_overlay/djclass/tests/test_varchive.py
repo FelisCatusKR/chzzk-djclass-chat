@@ -44,15 +44,25 @@ def test_get_all_dj_classes_skips_failures(httpx_mock):
     base = "https://v-archive.net/api/v2/archive/VA-Nick/djClass"
     httpx_mock.add_response(
         url=f"{base}/4",
-        json={"success": True, "djClass": "SHOWSTOPPER II",
-              "djPowerSum": 1.0, "maxDjPower": 2.0, "djPowerConversion": 9823.0},
+        json={
+            "success": True,
+            "djClass": "SHOWSTOPPER II",
+            "djPowerSum": 1.0,
+            "maxDjPower": 2.0,
+            "djPowerConversion": 9823.0,
+        },
     )
     httpx_mock.add_response(url=f"{base}/5", status_code=404)
     httpx_mock.add_response(url=f"{base}/6", status_code=404)
     httpx_mock.add_response(
         url=f"{base}/8",
-        json={"success": True, "djClass": "HEADLINER IV",
-              "djPowerSum": 3.0, "maxDjPower": 4.0, "djPowerConversion": 9410.0},
+        json={
+            "success": True,
+            "djClass": "HEADLINER IV",
+            "djPowerSum": 3.0,
+            "maxDjPower": 4.0,
+            "djPowerConversion": 9410.0,
+        },
     )
     rows = varchive.get_all_dj_classes("VA-Nick")
     assert [r["button"] for r in rows] == [4, 8]

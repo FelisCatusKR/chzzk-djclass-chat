@@ -20,16 +20,23 @@ def _link_context(user, message=None, message_type=None):
     options = []
     if rows:
         auto = badges.resolve_displayed_class(rows, None, "auto")
-        options.append({
-            "label": "자동 (최고 클래스)", "value": "auto",
-            "badge": badges.build_badge(auto), "checked": user.preferred_button is None,
-        })
+        options.append(
+            {
+                "label": "자동 (최고 클래스)",
+                "value": "auto",
+                "badge": badges.build_badge(auto),
+                "checked": user.preferred_button is None,
+            }
+        )
         for row in rows:
-            options.append({
-                "label": f"{row.button}버튼", "value": str(row.button),
-                "badge": badges.build_badge(row),
-                "checked": user.preferred_button == row.button,
-            })
+            options.append(
+                {
+                    "label": f"{row.button}버튼",
+                    "value": str(row.button),
+                    "badge": badges.build_badge(row),
+                    "checked": user.preferred_button == row.button,
+                }
+            )
     return {
         "link": link,
         "varchive_nickname": link.varchive_nickname if link else None,
@@ -41,8 +48,11 @@ def _link_context(user, message=None, message_type=None):
 
 def _render_card(request, message=None, message_type=None):
     """Render just the #link-card partial for an hx-post swap (Django 6.0 partials)."""
-    return render(request, "viewers/link.html#link_card",
-                  _link_context(request.user, message, message_type))
+    return render(
+        request,
+        "viewers/link.html#link_card",
+        _link_context(request.user, message, message_type),
+    )
 
 
 @login_required
@@ -54,30 +64,41 @@ def link_page(request):
 @require_POST
 def link_connect(request):
     if not ratelimit.allow(request, scope="link", limit=5, window=60):
-        return _render_card(request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error")
+        return _render_card(
+            request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error"
+        )
     token = (request.POST.get("token") or "").strip()
     if not token:
         return _render_card(request, "조회토큰을 입력하세요.", "error")
     try:
         info = varchive.lookup_user(token)
     except varchive.InvalidToken:
-        return _render_card(request, "조회토큰이 유효하지 않습니다. 다시 확인해주세요.", "error")
+        return _render_card(
+            request, "조회토큰이 유효하지 않습니다. 다시 확인해주세요.", "error"
+        )
     except varchive.VarchiveError:
         return _render_card(request, "네트워크 오류가 발생했습니다.", "error")
     link, _ = VarchiveToken.objects.update_or_create(
         user=request.user,
-        defaults={"varchive_nickname": info["nickname"],
-                  "varchive_user_no": info["user_no"], "is_active": True},
+        defaults={
+            "varchive_nickname": info["nickname"],
+            "varchive_user_no": info["user_no"],
+            "is_active": True,
+        },
     )
     sync_user(link)  # immediate first sync (empty result is fine — no badges yet)
-    return _render_card(request, "연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.", "success")
+    return _render_card(
+        request, "연동 완료! 이제 채팅에서 DJ CLASS가 표시됩니다.", "success"
+    )
 
 
 @login_required
 @require_POST
 def link_sync(request):
     if not ratelimit.allow(request, scope="sync", limit=3, window=60):
-        return _render_card(request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error")
+        return _render_card(
+            request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error"
+        )
     link = VarchiveToken.objects.filter(user=request.user, is_active=True).first()
     if link is None:
         return _render_card(request, "먼저 V-ARCHIVE를 연동해주세요.", "error")
@@ -116,7 +137,9 @@ def link_unlink(request):
 @require_POST
 def link_preferred_button(request):
     if not ratelimit.allow(request, scope="pref", limit=10, window=60):
-        return _render_card(request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error")
+        return _render_card(
+            request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error"
+        )
     raw = request.POST.get("button")
     available = list(
         DjClass.objects.filter(user=request.user).values_list("button", flat=True)

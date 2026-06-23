@@ -29,18 +29,20 @@ def test_is_theory_conversion():
 
 
 def test_to_power_integer():
-    assert badges.to_power_integer(9999.9847) == 10000   # theory bump
+    assert badges.to_power_integer(9999.9847) == 10000  # theory bump
     assert badges.to_power_integer(10000) == 10000
-    assert badges.to_power_integer(9999.9846) == 9999    # floor
+    assert badges.to_power_integer(9999.9846) == 9999  # floor
     assert badges.to_power_integer(9999.5) == 9999
     assert badges.to_power_integer(8800.7) == 8800
-    assert badges.to_power_integer(0) == 0               # genuine zero preserved
+    assert badges.to_power_integer(0) == 0  # genuine zero preserved
     assert badges.to_power_integer(None) is None
 
 
 def test_parse_rank_name():
     assert badges.parse_rank_name("SHOWSTOPPER II") == "SHOWSTOPPER"
-    assert badges.parse_rank_name("4B SHOWSTOPPER II") == "SHOWSTOPPER"  # strips button prefix
+    assert (
+        badges.parse_rank_name("4B SHOWSTOPPER II") == "SHOWSTOPPER"
+    )  # strips button prefix
     assert badges.parse_rank_name("THE LORD OF DJMAX") == "THE LORD OF DJMAX"
     assert badges.parse_rank_name(None) == "BEGINNER"
     assert badges.parse_rank_name("") == "BEGINNER"
@@ -53,11 +55,15 @@ def test_extract_level():
 
 
 def test_get_threshold():
-    assert badges.get_threshold("THE LORD OF DJMAX", None) == 9980   # default ignores level
+    assert (
+        badges.get_threshold("THE LORD OF DJMAX", None) == 9980
+    )  # default ignores level
     assert badges.get_threshold("SHOWSTOPPER", "II") == 9800
-    assert badges.get_threshold("BEGINNER", None) == 0               # default
-    assert badges.get_threshold("UNKNOWN RANK", "II") is None        # unknown rank
-    assert badges.get_threshold("SHOWSTOPPER", None) is None         # rank needs a level, none given
+    assert badges.get_threshold("BEGINNER", None) == 0  # default
+    assert badges.get_threshold("UNKNOWN RANK", "II") is None  # unknown rank
+    assert (
+        badges.get_threshold("SHOWSTOPPER", None) is None
+    )  # rank needs a level, none given
 
 
 def test_validate_preferred_button():

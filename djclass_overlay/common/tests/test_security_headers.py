@@ -14,6 +14,6 @@ def test_csp_header(client):
     assert "default-src 'self'" in csp
     assert "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net" in csp
     assert "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net" in csp
-    assert "https://chzzk-djclass-assets.pages.dev" in csp   # cover image
-    assert "connect-src 'self'" in csp                       # htmx + SSE
-    assert "font-src https://cdn.jsdelivr.net" in csp        # Pretendard font
+    assert "https://chzzk-djclass-assets.pages.dev" in csp  # cover image
+    assert "connect-src 'self'" in csp  # htmx + SSE
+    assert "font-src https://cdn.jsdelivr.net" in csp  # Pretendard font

@@ -80,11 +80,13 @@ def get_all_dj_classes(nickname):
         except VarchiveError:
             continue
         if result.get("success") and result.get("djClass"):
-            out.append({
-                "button": button,
-                "djClass": result["djClass"],
-                "djPowerSum": result.get("djPowerSum"),
-                "maxDjPower": result.get("maxDjPower"),
-                "djPowerConversion": result.get("djPowerConversion"),
-            })
+            out.append(
+                {
+                    "button": button,
+                    "djClass": result["djClass"],
+                    "djPowerSum": result.get("djPowerSum"),
+                    "maxDjPower": result.get("maxDjPower"),
+                    "djPowerConversion": result.get("djPowerConversion"),
+                }
+            )
     return out

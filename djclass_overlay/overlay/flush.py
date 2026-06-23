@@ -15,9 +15,9 @@ from djclass_overlay.overlay import registry
 
 logger = logging.getLogger(__name__)
 
-FLUSH_INTERVAL = 0.25     # 250 ms (spec Decision 7)
-MAX_BATCH = 200           # abnormal-burst cap (spec §6)
-KEEPALIVE_TIMEOUT = 15    # SSE idle heartbeat (matches the spike)
+FLUSH_INTERVAL = 0.25  # 250 ms (spec Decision 7)
+MAX_BATCH = 200  # abnormal-burst cap (spec §6)
+KEEPALIVE_TIMEOUT = 15  # SSE idle heartbeat (matches the spike)
 
 _id_counter = itertools.count(1)
 _flush_task = None
@@ -33,13 +33,15 @@ def build_batch(raw_messages):
         if cache_key not in per_batch:
             per_batch[cache_key] = resolve_sender_badges(sender, m["nickname"])
         res = per_batch[cache_key]
-        messages.append({
-            "id": next(_id_counter),
-            "text": m["content"],
-            "emojis": m["emojis"],
-            "status": res["status"],
-            "badge": res["badge"],
-        })
+        messages.append(
+            {
+                "id": next(_id_counter),
+                "text": m["content"],
+                "emojis": m["emojis"],
+                "status": res["status"],
+                "badge": res["badge"],
+            }
+        )
     return {"messages": messages}
 
 
@@ -65,8 +67,10 @@ async def flush_once():
         raw = conn.buffer
         conn.buffer = []
         if not conn.subscribers:
-            continue                              # drop: nobody listening
-        payload = await sync_to_async(_build_batch_detached, thread_sensitive=False)(raw)
+            continue  # drop: nobody listening
+        payload = await sync_to_async(_build_batch_detached, thread_sensitive=False)(
+            raw
+        )
         data = f"event: chat\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
         for q in list(conn.subscribers):
             try:

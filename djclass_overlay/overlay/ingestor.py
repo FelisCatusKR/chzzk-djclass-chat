@@ -18,8 +18,8 @@ from djclass_overlay.overlay import registry
 
 logger = logging.getLogger(__name__)
 
-RECONNECT_DELAY = 5      # chat-proxy.ts:367
-TEARDOWN_DELAY = 30      # chat-proxy.ts:484
+RECONNECT_DELAY = 5  # chat-proxy.ts:367
+TEARDOWN_DELAY = 30  # chat-proxy.ts:484
 
 
 def parse(data):
@@ -45,7 +45,9 @@ def extract_chat(parsed, channel_id):
     )
     return {
         "channelId": str(parsed.get("channelId") or channel_id),
-        "senderChannelId": str(profile.get("senderChannelId") or parsed.get("senderChannelId") or ""),
+        "senderChannelId": str(
+            profile.get("senderChannelId") or parsed.get("senderChannelId") or ""
+        ),
         "nickname": str(profile.get("nickname") or parsed.get("nickname") or ""),
         "content": str(parsed.get("content") or ""),
         "messageTime": int(parsed.get("messageTime") or 0),
@@ -68,18 +70,26 @@ def get_channel_access_token(channel_id):
             logger.warning("[ingestor] no refresh token for %s", channel_id)
             return None
         try:
-            refreshed = chzzk.refresh_access_token(crypto.decrypt(channel.chzzk_refresh_token_encrypted))
+            refreshed = chzzk.refresh_access_token(
+                crypto.decrypt(channel.chzzk_refresh_token_encrypted)
+            )
         except Exception:
             logger.exception("[ingestor] token refresh failed for %s", channel_id)
             return None
         channel.chzzk_access_token_encrypted = crypto.encrypt(refreshed["access_token"])
-        channel.chzzk_refresh_token_encrypted = crypto.encrypt(refreshed["refresh_token"])
-        channel.token_expires_at = timezone.now() + timedelta(seconds=refreshed["expires_in"])
-        channel.save(update_fields=[
-            "chzzk_access_token_encrypted",
-            "chzzk_refresh_token_encrypted",
-            "token_expires_at",
-        ])
+        channel.chzzk_refresh_token_encrypted = crypto.encrypt(
+            refreshed["refresh_token"]
+        )
+        channel.token_expires_at = timezone.now() + timedelta(
+            seconds=refreshed["expires_in"]
+        )
+        channel.save(
+            update_fields=[
+                "chzzk_access_token_encrypted",
+                "chzzk_refresh_token_encrypted",
+                "token_expires_at",
+            ]
+        )
         return refreshed["access_token"]
 
     return crypto.decrypt(channel.chzzk_access_token_encrypted)
@@ -104,9 +114,13 @@ async def connect_to_chat(channel_id):
     async with conn.connect_lock:
         if conn.sio is not None and getattr(conn.sio, "connected", False):
             return
-        token = await sync_to_async(_load_access_token_detached, thread_sensitive=False)(channel_id)
+        token = await sync_to_async(
+            _load_access_token_detached, thread_sensitive=False
+        )(channel_id)
         if not token:
-            logger.warning("[ingestor] no access token for %s; not connecting", channel_id)
+            logger.warning(
+                "[ingestor] no access token for %s; not connecting", channel_id
+            )
             return
 
         sio = socketio.AsyncClient(reconnection=False)
@@ -122,7 +136,9 @@ async def connect_to_chat(channel_id):
                     try:
                         await chzzk.subscribe_chat(token, key)
                     except Exception:
-                        logger.exception("[ingestor] subscribe failed for %s", channel_id)
+                        logger.exception(
+                            "[ingestor] subscribe failed for %s", channel_id
+                        )
 
         @sio.on("CHAT")
         async def on_chat(data):
@@ -147,11 +163,13 @@ async def connect_to_chat(channel_id):
 
 def schedule_reconnect(channel_id, delay=RECONNECT_DELAY):
     """Single fixed-delay reconnect iff subscribers remain (chat-proxy.ts:343-372)."""
+
     async def _later():
         await asyncio.sleep(delay)
         conn = registry.connections.get(channel_id)
         if conn and conn.subscribers and conn.sio is None:
             await connect_to_chat(channel_id)
+
     asyncio.create_task(_later())
 
 

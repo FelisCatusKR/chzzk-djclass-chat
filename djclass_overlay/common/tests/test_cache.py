@@ -13,9 +13,9 @@ def test_expiry():
     c = TTLCache(now=lambda: clock[0])
     c.set("k", "v", ttl_seconds=10)
     clock[0] = 1009.9
-    assert c.get("k") == "v"        # not yet expired
+    assert c.get("k") == "v"  # not yet expired
     clock[0] = 1010.1
-    assert c.get("k") is None       # expired, evicted
+    assert c.get("k") is None  # expired, evicted
 
 
 def test_invalidate():
@@ -30,6 +30,6 @@ def test_max_entries_eviction():
     c = TTLCache(max_entries=2, now=lambda: clock[0])
     c.set("a", 1, 100)
     c.set("b", 2, 100)
-    c.set("c", 3, 100)              # over capacity → one old entry dropped
+    c.set("c", 3, 100)  # over capacity → one old entry dropped
     present = [k for k in ("a", "b", "c") if c.get(k) is not None]
     assert present == ["c"] or len(present) == 2

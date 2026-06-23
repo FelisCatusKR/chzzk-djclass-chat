@@ -13,11 +13,11 @@ import asyncio
 @dataclass
 class ChannelConnection:
     channel_id: str
-    sio: object = None                      # socketio.AsyncClient | None
+    sio: object = None  # socketio.AsyncClient | None
     session_key: str | None = None
-    buffer: list = field(default_factory=list)          # raw CHAT message dicts
-    subscribers: set = field(default_factory=set)       # asyncio.Queue per widget
-    disconnect_task: asyncio.Task | None = None         # 30s teardown timer
+    buffer: list = field(default_factory=list)  # raw CHAT message dicts
+    subscribers: set = field(default_factory=set)  # asyncio.Queue per widget
+    disconnect_task: asyncio.Task | None = None  # 30s teardown timer
     connect_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
