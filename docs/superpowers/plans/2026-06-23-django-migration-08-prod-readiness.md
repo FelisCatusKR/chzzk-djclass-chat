@@ -106,6 +106,9 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # CSRF hardening. CSRF_TRUSTED_ORIGINS makes same-origin HTTPS POSTs pass the
 # Origin check behind the proxy; defaults to BASE_URL.
 CSRF_COOKIE_HTTPONLY = True  # token is delivered via {{ csrf_token }}, never JS-read
+# BASE_URL is REQUIRED in production (drives OAuth redirect_uri, widget URLs, CSRF
+# origin) — fail fast rather than inheriting base.py's http://localhost default.
+BASE_URL = env("BASE_URL")
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[BASE_URL])
 
 # We deliberately do NOT set SECURE_SSL_REDIRECT: Cloudflare serves HTTPS-only at
@@ -430,6 +433,7 @@ def test_production_uses_whitenoise_manifest_storage(monkeypatch):
     monkeypatch.setenv("CHZZK_CLIENT_SECRET", "x")
     monkeypatch.setenv("DATABASE_URL", "sqlite:////tmp/x.db")
     monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "example.com")
+    monkeypatch.setenv("BASE_URL", "https://example.com")  # required in production.py
     prod = importlib.import_module("config.settings.production")
     assert (
         prod.STORAGES["staticfiles"]["BACKEND"]
@@ -461,7 +465,7 @@ DJANGO_SETTINGS_MODULE=config.settings.production \
   DJANGO_SECRET_KEY=$(python -c "print('x'*50)") \
   VARCHIVE_TOKEN_KEY=$(python -c "print('k'*32)") \
   CHZZK_CLIENT_ID=x CHZZK_CLIENT_SECRET=x \
-  DATABASE_URL=sqlite:////tmp/x.db DJANGO_ALLOWED_HOSTS=example.com \
+  DATABASE_URL=sqlite:////tmp/x.db DJANGO_ALLOWED_HOSTS=example.com BASE_URL=https://example.com \
   uv run python manage.py collectstatic --noinput
 ```
 
@@ -506,7 +510,7 @@ COPY --from=builder /app /app
 RUN DJANGO_SECRET_KEY=build-only-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
     VARCHIVE_TOKEN_KEY=build-only-key-32-characters-okay \
     CHZZK_CLIENT_ID=build CHZZK_CLIENT_SECRET=build \
-    DATABASE_URL=sqlite:////tmp/build.db DJANGO_ALLOWED_HOSTS=localhost \
+    DATABASE_URL=sqlite:////tmp/build.db DJANGO_ALLOWED_HOSTS=localhost BASE_URL=https://build.local \
     python manage.py collectstatic --noinput
 
 EXPOSE 8000
