@@ -23,7 +23,12 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{css,md,json,jsonc,yml,yaml}": "prettier --write"
+    "*.{css,md,json,jsonc,yml,yaml}": "prettier --write",
+    "*.py": [
+      "uv run ruff format",
+      "uv run ruff check --fix"
+    ],
+    "*.html": "bash -c 'uv run djlint --reformat \"$@\" || true' --"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.13",
