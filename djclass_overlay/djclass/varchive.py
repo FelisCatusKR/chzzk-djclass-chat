@@ -5,6 +5,8 @@ the PUBLIC nickname endpoint, so no token is stored. Port of src/lib/varchive.ts
 Sync httpx with an 8s timeout, mirroring common/chzzk.py.
 """
 
+from typing import Any
+from typing import TypedDict
 from urllib.parse import quote
 
 import httpx
@@ -12,6 +14,19 @@ import httpx
 BASE_URL = "https://v-archive.net"
 TIMEOUT = 8.0
 BUTTONS = [4, 5, 6, 8]  # DJMAX button modes (there is no 7-button mode)
+
+
+class VarchiveUser(TypedDict):
+    user_no: int
+    nickname: str
+
+
+class VarchiveDjClass(TypedDict):
+    button: int
+    djClass: str
+    djPowerSum: float | None
+    maxDjPower: float | None
+    djPowerConversion: float | None
 
 
 class VarchiveError(Exception):
@@ -22,7 +37,7 @@ class InvalidTokenError(VarchiveError):
     """The 조회토큰 was rejected (HTTP 401 or success=false)."""
 
 
-def lookup_user(token):
+def lookup_user(token: str) -> VarchiveUser:
     """Verify a 조회토큰; return {"user_no": int, "nickname": str}.
 
     GET /api/v2/open-token/user with Authorization: Bearer <token>. Called ONCE at
@@ -50,7 +65,7 @@ def lookup_user(token):
     return {"user_no": user_no, "nickname": nickname}
 
 
-def get_dj_class(nickname, button):
+def get_dj_class(nickname: str, button: int) -> dict[str, Any]:
     """GET the public DJ CLASS for one button. Port of varchive.ts:getDjClass.
 
     GET /api/v2/archive/<nickname>/djClass/<button> (no token). Raises VarchiveError
@@ -64,10 +79,11 @@ def get_dj_class(nickname, button):
         resp.raise_for_status()
     except httpx.HTTPError as exc:
         raise VarchiveError(f"V-ARCHIVE DJ CLASS API error (button {button})") from exc
-    return resp.json()
+    data: dict[str, Any] = resp.json()
+    return data
 
 
-def get_all_dj_classes(nickname):
+def get_all_dj_classes(nickname: str) -> list[VarchiveDjClass]:
     """Fetch buttons [4,5,6,8] in turn, skipping any that fail or lack a class.
 
     Returns a list of dicts:
@@ -75,7 +91,7 @@ def get_all_dj_classes(nickname):
     A total failure (stale nickname / V-ARCHIVE down) yields [].
     Port of getAllDjClasses.
     """
-    out = []
+    out: list[VarchiveDjClass] = []
     for button in BUTTONS:
         try:
             result = get_dj_class(nickname, button)

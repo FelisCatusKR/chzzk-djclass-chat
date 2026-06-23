@@ -20,5 +20,5 @@ class DjClass(models.Model):
             ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.button}B {self.dj_class}"

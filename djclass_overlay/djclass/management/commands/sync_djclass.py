@@ -2,6 +2,8 @@
 18:00 UTC (= 03:00 KST), per the master design §4.7. Port of src/worker/sync-djclass.ts.
 """
 
+from typing import Any
+
 from django.core.management.base import BaseCommand
 
 from djclass_overlay.djclass.sync import sync_user
@@ -11,7 +13,7 @@ from djclass_overlay.viewers.models import VarchiveToken
 class Command(BaseCommand):
     help = "Sync DJ CLASS from V-ARCHIVE for every active link."
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         links = VarchiveToken.objects.filter(is_active=True).select_related("user")
         success = failed = 0
         for link in links:

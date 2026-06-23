@@ -6,6 +6,31 @@ its display mode, so the rank/level/threshold/theory rules live here once.
 
 import math
 import re
+from collections.abc import Sequence
+from typing import Protocol
+from typing import TypedDict
+
+
+class DjClassRow(Protocol):
+    """Structural type for a chosen DJ CLASS row (the DjClass model satisfies it)."""
+
+    button: int
+    dj_class: str
+    dj_power_conversion: float | None
+
+
+# `class` is a reserved word, so the badge dict MUST use functional TypedDict syntax.
+BadgeDict = TypedDict(
+    "BadgeDict",
+    {
+        "button": int,
+        "class": str,
+        "rank": str,
+        "power": int | None,
+        "threshold": int | None,
+        "isTheory": bool,
+    },
+)
 
 # --- theory thresholds (dj-class.ts:6, :17) ---
 THEORY_POWER_THRESHOLD = 10000
@@ -14,7 +39,7 @@ THEORY_POWER_THRESHOLD = 10000
 THEORY_POWER_CONVERSION_THRESHOLD = 9999.9847
 
 # --- rank ordering, best→worst (dj-class.ts:124) ---
-RANK_ORDER = [
+RANK_ORDER: list[str] = [
     "THE LORD OF DJMAX",
     "BEAT MAESTRO",
     "SHOWSTOPPER",
@@ -32,7 +57,7 @@ RANK_ORDER = [
 ]
 
 # --- approximate DJ POWER floor per rank/level (dj-class.ts:77) ---
-RANK_THRESHOLDS = {
+RANK_THRESHOLDS: dict[str, dict[str, int]] = {
     "THE LORD OF DJMAX": {"default": 9980},
     "BEAT MAESTRO": {"IV": 9900, "III": 9930, "II": 9950, "I": 9970},
     "SHOWSTOPPER": {"IV": 9700, "III": 9750, "II": 9800, "I": 9850},
@@ -50,7 +75,7 @@ RANK_THRESHOLDS = {
 }
 
 # --- short labels (dj-class.ts:59) ---
-SHORT_NAMES = {
+SHORT_NAMES: dict[str, str] = {
     "THE LORD OF DJMAX": "LoD",
     "BEAT MAESTRO": "BM",
     "SHOWSTOPPER": "SS",
@@ -69,23 +94,25 @@ SHORT_NAMES = {
 
 # Roman level → ordinal, higher is better (dj-class.ts:142).
 # Theory LoD = 5 (set in sort key).
-LEVEL_VALUES = {"I": 4, "II": 3, "III": 2, "IV": 1}
+LEVEL_VALUES: dict[str, int] = {"I": 4, "II": 3, "III": 2, "IV": 1}
 # Button display preference: 8 > 5 > 6 > 4 (dj-class.ts:145) — note 6 sits BELOW 5.
-BUTTON_PREFERENCE = {8: 3, 5: 2, 6: 1, 4: 0}
+BUTTON_PREFERENCE: dict[int, int] = {8: 3, 5: 2, 6: 1, 4: 0}
 
-_LEVEL_RE = re.compile(r"\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$", re.IGNORECASE)
-_PREFIX_RE = re.compile(r"^\d+B\s+")
+_LEVEL_RE: re.Pattern[str] = re.compile(
+    r"\s+(I|II|III|IV|V|VI|VII|VIII|IX|X)$", re.IGNORECASE
+)
+_PREFIX_RE: re.Pattern[str] = re.compile(r"^\d+B\s+")
 
 
-def is_theory_power(power_integer):
+def is_theory_power(power_integer: int | None) -> bool:
     return power_integer is not None and power_integer >= THEORY_POWER_THRESHOLD
 
 
-def is_theory_conversion(conversion):
+def is_theory_conversion(conversion: float | None) -> bool:
     return conversion is not None and conversion >= THEORY_POWER_CONVERSION_THRESHOLD
 
 
-def to_power_integer(conversion):
+def to_power_integer(conversion: float | None) -> int | None:
     if conversion is None:
         return None
     if is_theory_conversion(conversion):
@@ -93,7 +120,7 @@ def to_power_integer(conversion):
     return math.floor(conversion)
 
 
-def parse_rank_name(dj_class):
+def parse_rank_name(dj_class: str | None) -> str:
     if not dj_class:
         return "BEGINNER"
     stripped = _PREFIX_RE.sub("", dj_class)
@@ -101,14 +128,14 @@ def parse_rank_name(dj_class):
     return stripped or "BEGINNER"
 
 
-def extract_level(dj_class):
+def extract_level(dj_class: str | None) -> str | None:
     if not dj_class:
         return None
     match = _LEVEL_RE.search(dj_class)
     return match.group(1).upper() if match else None
 
 
-def get_threshold(rank_name, rank_level):
+def get_threshold(rank_name: str, rank_level: str | None) -> int | None:
     thresholds = RANK_THRESHOLDS.get(rank_name)
     if not thresholds:
         return None
@@ -119,7 +146,9 @@ def get_threshold(rank_name, rank_level):
     return None
 
 
-def get_class_sort_key(dj_class, dj_power_conversion, button):
+def get_class_sort_key(
+    dj_class: str | None, dj_power_conversion: float | None, button: int
+) -> tuple[int, int, int]:
     """Port of dj-class.ts:147. Returns (rank_ordinal, level_ordinal, button_pref);
     bigger is better at every position, compared lexicographically (tuple order)."""
     rank_name = parse_rank_name(dj_class)
@@ -139,7 +168,9 @@ def get_class_sort_key(dj_class, dj_power_conversion, button):
     return (rank_ordinal, level_ordinal, button_pref)
 
 
-def resolve_displayed_class(rows, preferred_button, sel):
+def resolve_displayed_class(
+    rows: Sequence[DjClassRow], preferred_button: int | None, sel: str
+) -> DjClassRow | None:
     """Port of dj-class.ts:212.
 
     `rows` = objects with .button / .dj_class / .dj_power_conversion."""
@@ -157,7 +188,7 @@ def resolve_displayed_class(rows, preferred_button, sel):
     )
 
 
-def build_badge(row):
+def build_badge(row: DjClassRow) -> BadgeDict:
     """Compose the atomic SSE badge fields (spec §4.4.1) from a chosen DJ CLASS row.
 
     `class` = short rank + level (e.g. "SS II", or "LoD" for level-less ranks);
@@ -177,7 +208,9 @@ def build_badge(row):
     }
 
 
-def validate_preferred_button(button, available_buttons):
+def validate_preferred_button(
+    button: int | None, available_buttons: Sequence[int]
+) -> int | None:
     """Port of dj-class.ts:246. None -> None; an int in `available_buttons` -> it;
     anything else -> ValueError."""
     if button is None:
