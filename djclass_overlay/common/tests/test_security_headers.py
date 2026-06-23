@@ -17,3 +17,14 @@ def test_csp_header(client):
     assert "https://chzzk-djclass-assets.pages.dev" in csp  # cover image
     assert "connect-src 'self'" in csp  # htmx + SSE
     assert "font-src https://cdn.jsdelivr.net" in csp  # Pretendard font
+
+
+def test_csp_img_src_allows_chzzk_emoji_cdn(client):
+    # Chzzk (a Naver service) serves chat emoticon images from Naver's image CDN
+    # (*.pstatic.net / *.naver.net); the overlay renders them as <img> in widget.js.
+    # img-src MUST allowlist those hosts or the browser blocks every emoji as a CSP
+    # violation. The legacy next.config.js allowed them; the Django port dropped them.
+    resp = client.get("/")
+    csp = resp["Content-Security-Policy"]
+    assert "https://*.pstatic.net" in csp
+    assert "https://*.naver.net" in csp

@@ -52,7 +52,16 @@ _CSP_POLICY = {
     "default-src": [CSP.SELF],
     "script-src": [CSP.SELF, CSP.UNSAFE_EVAL, "https://cdn.jsdelivr.net"],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE, "https://cdn.jsdelivr.net"],
-    "img-src": [CSP.SELF, "https://chzzk-djclass-assets.pages.dev", "data:"],
+    # *.pstatic.net / *.naver.net = Chzzk (Naver) chat emoticon CDN — without these
+    # the browser blocks every chat emoji <img> as a CSP violation (legacy parity:
+    # next.config.js img-src). pages.dev = cover image; data: = inline.
+    "img-src": [
+        CSP.SELF,
+        "https://chzzk-djclass-assets.pages.dev",
+        "https://*.pstatic.net",
+        "https://*.naver.net",
+        "data:",
+    ],
     "font-src": ["https://cdn.jsdelivr.net"],
     "connect-src": [CSP.SELF],
 }
