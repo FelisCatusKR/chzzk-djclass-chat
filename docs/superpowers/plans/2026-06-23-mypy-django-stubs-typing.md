@@ -4,7 +4,7 @@
 
 **Goal:** Add **comprehensive static typing** to the Django source — `mypy` + `django-stubs` (the mypy Django plugin), configured per cookiecutter-django plus strict "every function is annotated" flags — so the codebase is fully type-checked and gated in CI, completing the pre-cutover code-quality work (Plan ① ruff/djlint is already done).
 
-**Architecture:** One `[tool.mypy]` + `[tool.django-stubs]` config in `pyproject.toml`. The base config is **strict by default** (`disallow_untyped_defs`), with a single shrinking **"ratchet" override** that starts every app lenient and is emptied one app at a time — so *every task ends with `mypy` fully green*, and once the ratchet is empty all source is strict and future un-annotated code fails CI. Data-shape contracts (badge / V-ARCHIVE / sync / SSE payloads) become `TypedDict`s co-located with their producer; `djclass/badges.py` stays Django-free via a `Protocol` instead of importing the model. Annotation order is dependency-first (foundational `common`/`config` → leaf models → `djclass` core → `viewers` → async `overlay`).
+**Architecture:** One `[tool.mypy]` + `[tool.django-stubs]` config in `pyproject.toml`. The base config is **`strict = true`** (mypy's full strict preset), with a single shrinking **"ratchet" override** that starts every app lenient and is emptied one app at a time — so *every task ends with `mypy` fully green*, and once the ratchet is empty all source is strict and future un-annotated code fails CI. Data-shape contracts (badge / V-ARCHIVE / sync / SSE payloads) become `TypedDict`s co-located with their producer; `djclass/badges.py` stays Django-free via a `Protocol` instead of importing the model. Annotation order is dependency-first (foundational `common`/`config` → leaf models → `djclass` core → `viewers` → async `overlay`).
 
 **Tech Stack:** mypy 1.13–2.1 (via `django-stubs[compatible-mypy]`), django-stubs 6.0.5 (supports Django 4.2–6.0 — confirmed against our Django 6.0.6 / Python 3.13), GitHub Actions, the existing husky/lint-staged.
 
@@ -13,10 +13,10 @@
 ## Decisions baked in (from brainstorming + exploration, 2026-06-23)
 
 - **Tool = mypy + django-stubs**, NOT `ty` (Astral) — `ty` is beta and cannot type Django ORM models/managers until its stable 2026 release. django-stubs is the only production-ready Django type-checker.
-- **Ambition = comprehensive source typing** (owner-chosen): `disallow_untyped_defs = true` — every source function gets parameter + return annotations. Tests and migrations are relaxed.
-- **Config = cookiecutter-django base + strict additions, but NOT `strict = true`.** cookiecutter's base (`check_untyped_defs`, `ignore_missing_imports`, `warn_unused_ignores`, `warn_redundant_casts`, `warn_unused_configs`, the `*.migrations.*` ignore) + `disallow_untyped_defs` / `disallow_incomplete_defs` / `warn_return_any`. We deliberately AVOID `strict = true` / `disallow_untyped_decorators` / `disallow_subclassing_any` because they fight Django idioms (`@transaction.atomic`, `@property`, decorators returning `Any`, subclassing `models.Model`). **DROP the DRF plugin** — this project has no Django REST Framework, so only `mypy_django_plugin.main` is configured.
+- **Ambition = comprehensive source typing**: every source function gets parameter + return annotations, enforced by mypy's full `strict = true`. Tests and migrations are relaxed.
+- **Config = `strict = true`** (owner delegated the choice to best practice 2026-06-23; django-stubs is built to support strict). `strict` bundles `disallow_untyped_defs`, `disallow_incomplete_defs`, `disallow_untyped_calls`, `disallow_any_generics`, `disallow_untyped_decorators`, `warn_return_any`, `strict_equality`, `warn_unused_ignores`, `warn_redundant_casts`, `no_implicit_reexport`, `check_untyped_defs`, etc. **Targeted relaxations** — the only places strict fights Django: `*.tests.*` (no annotation / generic-parameterization requirement — tests stay readable, verified by *running*), and `config.settings.*` keeps `implicit_reexport = true` for its intentional `from .base import *`. `ignore_missing_imports = true` keeps untyped third-party libs (socketio / engineio / environ) as `Any`. **DROP the DRF plugin** — no Django REST Framework here, so only `mypy_django_plugin.main`. If `disallow_untyped_decorators` proves noisy on a Django decorator django-stubs doesn't type, relax it with a one-line documented reason — but plan for it staying on. Expect minor friction at httpx `.json()` boundaries (`warn_return_any`) — fix by binding to a typed local (`data: dict[str, Any] = resp.json(); return data`), not a blanket ignore.
 - **`django_settings_module = "config.settings.local"`** (matches pytest's `DJANGO_SETTINGS_MODULE`). The django-stubs plugin runs `django.setup()`, so **mypy needs the same environment as `manage.py check`** — locally `config.settings.base` reads `.env.django` (present in dev); in CI the env vars are set on the `build` job. No DB connection is made at setup, so no Postgres is needed for the mypy step.
-- **No `django-stubs-ext` / runtime monkeypatch** — verified there are no custom `Manager`/`QuerySet` subclasses, so nothing subscripts a Django generic at runtime. Each annotated module gets `from __future__ import annotations` (PEP 563) so annotations like `QuerySet[DjClass]` are never evaluated at runtime — **zero new production dependency**.
+- **No `from __future__ import annotations`, no `django-stubs-ext` / monkeypatch.** Verified there are no custom `Manager`/`QuerySet` subclasses, and on Python 3.13 the native generics (`X | None`, `list[X]`, `dict[K, V]`) plus Django's runtime-subscriptable `QuerySet[Model]` / `Manager[Model]` (since Django 3.1) evaluate fine at runtime — and the modules that annotate with models already import them for runtime use, so there are essentially no forced forward references. Where a type is needed ONLY for an annotation and importing it would create a cycle, use `if TYPE_CHECKING:` + a string-literal annotation (`def f(x: "DjClass") -> None`). (Note: PEP 563's `from __future__ import annotations` is NOT default on 3.13 — deferred-by-default annotations are PEP 649 in **Python 3.14** — so adding the future import would be real-but-redundant ceremony that becomes a no-op on the eventual 3.14 upgrade; we skip it.) **Zero new production dependency.**
 - **Ratchet rollout**: strict base + one shrinking lenient override, emptied app-by-app, so each task is independently green-gateable. Order: `common`+`config` → `streamers`+`users` → `djclass` → `viewers` → `overlay`.
 - **Enforcement**: a `mypy` step in the CI `build` job (it already has the Django env), plus optionally extend lint-staged.
 
@@ -39,31 +39,36 @@ Expected: `mypy` (1.13–2.1) and `django-stubs` (~6.0.5) added to `[dependency-
 ```toml
 [tool.mypy]
 python_version = "3.13"
+strict = true
 plugins = ["mypy_django_plugin.main"]
-# cookiecutter-django base:
-check_untyped_defs = true
+# `strict` already implies disallow_untyped_defs / disallow_incomplete_defs /
+# disallow_untyped_calls / disallow_any_generics / disallow_untyped_decorators /
+# warn_return_any / warn_unused_ignores / warn_redundant_casts / strict_equality /
+# no_implicit_reexport / check_untyped_defs / warn_unused_configs.
+# Keep untyped 3rd-party libs (socketio / engineio / environ) as Any:
 ignore_missing_imports = true
-warn_unused_ignores = true
-warn_redundant_casts = true
-warn_unused_configs = true
-# comprehensive source typing (NOT `strict = true` — that fights Django decorators/subclassing):
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-warn_return_any = true
 
 # Migrations are generated — never type-check them.
 [[tool.mypy.overrides]]
 module = "*.migrations.*"
 ignore_errors = true
 
-# Tests are relaxed (no annotation requirement; assert-heavy).
+# Tests stay readable (verified by running): no annotation / generic-parameterization requirement.
 [[tool.mypy.overrides]]
 module = "*.tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+check_untyped_defs = false
+
+# Settings use `from .base import *` — keep implicit re-export here (else no_implicit_reexport fires).
+[[tool.mypy.overrides]]
+module = "config.settings.*"
+implicit_reexport = true
 
 # RATCHET — every app starts lenient; each annotation task (2–6) deletes its globs
-# from this list until the list is empty, then this whole block is removed.
+# from this list until it is empty, then Task 6 removes this whole block.
 [[tool.mypy.overrides]]
 module = [
   "djclass_overlay.common.*",
@@ -74,9 +79,12 @@ module = [
   "djclass_overlay.viewers.*",
   "djclass_overlay.overlay.*",
 ]
+# turn off everything strict would fire on un-annotated code, so lenient apps stay green:
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
-check_untyped_defs = false   # lenient apps aren't body-checked until annotated → green baseline
+disallow_untyped_calls = false
+disallow_any_generics = false
+check_untyped_defs = false
 warn_return_any = false
 
 [tool.django-stubs]
@@ -87,7 +95,7 @@ django_settings_module = "config.settings.local"
 ```bash
 uv run mypy djclass_overlay config
 ```
-The plugin will run `django.setup()` (reads `.env.django`). Expected: **"Success: no issues found"** — every app is in the lenient ratchet (`disallow_untyped_defs=false` + `check_untyped_defs=false`), so no annotation is required and bodies aren't checked yet; mypy only confirms the plugin loads, settings import, and stub-level types resolve. If the plugin can't import settings, confirm `.env.django` exists locally (it does in dev). If any error DOES appear at baseline (a bad import, a settings name error), fix it now. Do NOT add annotations yet (that's Tasks 2–6).
+The plugin will run `django.setup()` (reads `.env.django`). Expected: **"Success: no issues found"** — every app is in the lenient ratchet (all annotation-requiring strict flags off + `check_untyped_defs=false`), so no annotation is required and bodies aren't checked yet; mypy only confirms the plugin loads, settings import, and stub-level types resolve. If the plugin can't import settings, confirm `.env.django` exists locally (it does in dev). If any error DOES appear at baseline (a bad import, a settings name error), fix it now. Do NOT add annotations yet (that's Tasks 2–6).
 
 - [ ] **Step 4: Verify suite still green** (any body-fix must not change behavior):
 ```bash
@@ -111,7 +119,7 @@ git commit -m "build: add mypy + django-stubs (strict base + ratchet, all apps l
 
 - [ ] **Step 1: Make `common` + `config` strict** — in `pyproject.toml`, DELETE `"djclass_overlay.common.*"` and `"config.*"` from the ratchet `module` list.
 
-- [ ] **Step 2: Annotate every function** in the files above. Add `from __future__ import annotations` as the first line of each module you annotate. Give each `def`/`async def` parameter types and a return type. Patterns:
+- [ ] **Step 2: Annotate every function** in the files above. Give each `def`/`async def` parameter types and a return type (native `X | None` / `list[X]` / `dict[K, V]` — NO `from __future__ import annotations`; see Decisions). Patterns:
   - `common/cache.py` (TTL cache): annotate the cache get/set helpers; a generic value is fine as `object` or a `TypeVar` if it's a typed wrapper — keep it simple (`str`/`object`).
   - `common/chzzk.py` (Chzzk OAuth/API httpx client): annotate request helpers `(...) -> dict[str, Any]` for the RAW external JSON (consumed defensively via `.get()`), but where the function returns an INTERNAL cleaned shape, define a `TypedDict` for it (e.g. the access-token result, the channel/user info) co-located at the top of the module. Use `httpx.Response` where a response is passed around.
   - `common/crypto.py`: `encrypt(value: str) -> str` / `decrypt(token: str) -> str` style.
@@ -144,7 +152,7 @@ git commit -m "types: annotate common/ + config/ (strict)"
 
 - [ ] **Step 1: Make them strict** — delete `"djclass_overlay.streamers.*"` and `"djclass_overlay.users.*"` from the ratchet list.
 
-- [ ] **Step 2: Annotate.** Add `from __future__ import annotations` per module. Patterns:
+- [ ] **Step 2: Annotate** (native generics; no future import). Patterns:
   - **Models** (`streamers/models.py` `Channel`, `users/models.py` `User`): Django fields are class attributes — django-stubs infers them; you do NOT annotate the field assignments. DO annotate methods: `def __str__(self) -> str:`, any `save(self, *args: Any, **kwargs: Any) -> None`, custom properties `-> str | None`, and any classmethod/manager helper. The custom `User` manager methods (e.g. `create_user`) take typed params and return `User`.
   - `users/backends.py` (`ChzzkBackend`): `authenticate(self, request: HttpRequest | None, **kwargs: Any) -> User | None`; `get_user(self, user_id: int) -> User | None`.
   - `users/views.py` (OAuth login/callback/logout): each view `(request: HttpRequest) -> HttpResponse` (or `HttpResponseRedirect`). Annotate helper functions with their real param/return types.
@@ -167,7 +175,7 @@ git add -A && git commit -m "types: annotate streamers/ + users/ (strict)"
 
 - [ ] **Step 2: Define the data-shape contracts** (exact — these are the design core).
 
-  In `djclass/badges.py` (KEEP IT DJANGO-FREE — use a `Protocol`, do not import the model). Add at the top (after `from __future__ import annotations`):
+  In `djclass/badges.py` (KEEP IT DJANGO-FREE — use a `Protocol`, do not import the model). Add at the top:
 ```python
 from typing import Protocol
 from typing import TypedDict
@@ -231,7 +239,7 @@ class SyncResult(TypedDict):
     stale: bool
     highest: DjClass | None
 ```
-  Signatures: `def persist_user_dj_classes(user: User, classes: list[VarchiveDjClass]) -> None:`; `def sync_user(link: VarchiveToken) -> SyncResult:`. (Import `User`, `DjClass`, `VarchiveToken`, `VarchiveDjClass` for the annotations; under `from __future__ import annotations` these are not evaluated at runtime, so import cycles are avoided — but if a runtime import cycle already exists, guard the type-only imports with `if TYPE_CHECKING:`.)
+  Signatures: `def persist_user_dj_classes(user: User, classes: list[VarchiveDjClass]) -> None:`; `def sync_user(link: VarchiveToken) -> SyncResult:`. (`sync.py` already imports `DjClass`/`VarchiveToken` at runtime, so annotating with them is free; import `User`/`VarchiveDjClass` too. If any one import would create a runtime cycle, move just that import under `if TYPE_CHECKING:` and quote its annotation — `def sync_user(link: "VarchiveToken") -> SyncResult:`.)
 
 - [ ] **Step 3: Annotate the rest** — `djclass/resolver.py` (the cache resolver + `invalidate_user(user: User) -> None`, `_resolve_uncached`, the `id:`/`nick:` cache helpers — return `list[BadgeDict]` or the SSE-facing shape; match the real returns), `djclass/models.py` (`DjClass` / `VarchiveToken` methods + `__str__ -> str`), and `sync_djclass.py` (`Command.handle(self, *args: Any, **options: Any) -> None`, plus the per-link loop helper).
 
@@ -250,7 +258,7 @@ git add -A && git commit -m "types: annotate djclass/ core + TypedDicts (BadgeDi
 
 - [ ] **Step 1: Make `viewers` strict** — delete `"djclass_overlay.viewers.*"` from the ratchet list.
 
-- [ ] **Step 2: Annotate.** `from __future__ import annotations` per module.
+- [ ] **Step 2: Annotate** (native generics; no future import).
   - `viewers/models.py` (`VarchiveToken`): `__str__ -> str`, any helpers; fields are inferred.
   - `viewers/views.py` (the htmx `/link` views — `link_page`, `link_connect`, `link_sync`, `link_unlink`, `link_preferred_button`, the `_render_card` helper): each view `(request: HttpRequest) -> HttpResponse`; `_render_card(request: HttpRequest, link: VarchiveToken | None, ...) -> HttpResponse`. Where a view consumes `sync_user`'s result, the `SyncResult` TypedDict from Task 4 types the access (`result["ok"]`, `result["highest"]`). The `options` list built for the preferred-button form is `list[dict[str, Any]]` (or a small `TypedDict` if you define one).
   - `viewers/urls.py`: `urlpatterns` global, no defs. `viewers/admin.py`: annotate methods.
@@ -270,7 +278,7 @@ git add -A && git commit -m "types: annotate viewers/ (strict)"
 
 - [ ] **Step 1: Make `overlay` strict + retire the ratchet** — `overlay` is the LAST app, so deleting `"djclass_overlay.overlay.*"` empties the ratchet `module` list. Do NOT leave an empty list (mypy's `warn_unused_configs` would flag it) — **delete the entire ratchet `[[tool.mypy.overrides]]` block**, leaving only the `*.migrations.*` and `*.tests.*` overrides. The whole source tree is now strict by default.
 
-- [ ] **Step 2: Annotate, with correct async/await types.** `from __future__ import annotations` per module. Use `from collections.abc import AsyncIterator, Awaitable, Coroutine` as needed.
+- [ ] **Step 2: Annotate, with correct async/await types.** Use `from collections.abc import AsyncIterator, Awaitable, Coroutine` as needed (no future import).
   - `overlay/registry.py`: the in-memory connection registry. Define a `TypedDict` or a small `@dataclass` for a connection record (the fields actually stored — buffer list, channel id, the per-connection asyncio objects). Annotate the register/unregister/lookup helpers with it. Module globals get explicit types (e.g. `_connections: dict[str, ConnState]`).
   - `overlay/flush.py`: `async def` flush helpers return `None` or `Coroutine`; the module task handle `_flush_task: asyncio.Task[None] | None`; `ensure_flush_loop() -> None`, `stop_flush_loop() -> None`, `async def flush_once(...) -> None`.
   - `overlay/ingestor.py`: the python-socketio handlers and `async def connect_to_chat(channel_id: str) -> None`; `_spawn(coro: Coroutine[Any, Any, None]) -> None`; `_background_tasks: set[asyncio.Task[Any]]`; the SYSTEM/CHAT payload parsing returns a typed dict (define a `ChatEvent`/`SystemEvent` `TypedDict` matching what `parse(...)` builds, or `dict[str, Any]` for the raw socket payload consumed defensively).
@@ -321,10 +329,10 @@ git commit -m "ci: gate mypy; whole source now strictly typed"
 
 ## Self-Review
 
-- **Decisions honored:** mypy + django-stubs (ty rejected) ✓; comprehensive `disallow_untyped_defs` with tests/migrations relaxed ✓; cookiecutter base, NOT `strict=true`, DRF plugin dropped ✓; `django_settings_module=config.settings.local` + CI env note ✓; no `django-stubs-ext`/monkeypatch, `from __future__ import annotations` instead ✓; ratchet rollout so every task is green-gateable ✓; CI gate + deliberate no-mypy-in-lint-staged ✓.
+- **Decisions honored:** mypy + django-stubs (ty rejected) ✓; comprehensive `strict = true` with tests/migrations/settings relaxations ✓; DRF plugin dropped ✓; `django_settings_module=config.settings.local` + CI env note ✓; no future-import / no `django-stubs-ext` (native 3.13 generics; `TYPE_CHECKING` for any cycle) ✓; ratchet rollout so every task is green-gateable ✓; CI gate + deliberate no-mypy-in-lint-staged ✓.
 - **Version safety:** django-stubs 6.0.5 ⇒ Django 4.2–6.0 (covers 6.0.6) + mypy 1.13–2.1 + Python 3.10–3.14 (covers 3.13) — confirmed via current docs, not assumed.
 - **Concreteness:** the design-bearing types are fully specified from the real code — `BadgeDict` (functional syntax, `class` key), `DjClassRow` Protocol (keeps `badges.py` Django-free), `VarchiveUser`/`VarchiveDjClass`, `SyncResult`, plus exact signatures for `djclass/badges.py`. For `common`/`overlay` payloads (chzzk/registry/sse) the plan specifies the *rule* (TypedDict for internal cleaned shapes, `dict[str, Any]` for raw external JSON) — the exact fields are read from the real return dicts during implementation, with `mypy --strict-on-that-module` as the precise done-gate.
 - **Per-task green gate:** the ratchet (strict base + shrinking lenient override, `check_untyped_defs=false` while lenient) means `uv run mypy djclass_overlay config` is "Success" at the end of EVERY task (1 = green baseline, nothing body-checked; 2–6 each flip one app strict and annotate to green; 6 removes the now-empty ratchet block; 7 confirms + proves strictness with a throwaway probe). No task leaves mypy red.
-- **Behavior safety:** annotations are inert (PEP 563 strings); the only runtime edits are occasional real-bug fixes surfaced when an app's bodies first get strict-checked — each task re-runs `pytest -q` (must stay 131 green).
-- **Name consistency:** `BadgeDict`/`DjClassRow`/`VarchiveUser`/`VarchiveDjClass`/`SyncResult` are produced in Task 4 and consumed by name in Tasks 5–6; `from __future__ import annotations` is added per module uniformly; the ratchet globs removed in Tasks 2–6 exactly match the list seeded in Task 1.
+- **Behavior safety:** annotations are inert (evaluated once at def-time, no behavior change); the only runtime edits are occasional real-bug fixes surfaced when an app's bodies first get strict-checked — each task re-runs `pytest -q` (must stay 131 green).
+- **Name consistency:** `BadgeDict`/`DjClassRow`/`VarchiveUser`/`VarchiveDjClass`/`SyncResult` are produced in Task 4 and consumed by name in Tasks 5–6; the ratchet globs removed in Tasks 2–6 exactly match the list seeded in Task 1; any `TYPE_CHECKING`-guarded forward ref is quoted.
 - **Deliverable:** a comprehensively, strictly type-checked Django source tree, mypy-gated in CI — completing the pre-cutover code-quality track (Plan ① + Plan ②), ready for Plan 9 (cutover).
