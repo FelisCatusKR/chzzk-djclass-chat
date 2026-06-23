@@ -46,7 +46,8 @@ SECURE_REFERRER_POLICY = "same-origin"
 # Static allowlist: Alpine needs 'unsafe-eval' (script), @tailwindcss/browser
 # injects <style> at runtime needing 'unsafe-inline' (style) — so no nonces.
 # Shipped report-only; a later task flips it to enforcing (SECURE_CSP) after a
-# clean browser check. The CDN-free OBS overlay only uses 'self', unaffected.
+# clean browser check. The CDN-free OBS overlay (self CSS/JS + same-origin SSE +
+# an inline layout <style> under 'unsafe-inline'; no inline script) is covered too.
 _CSP_POLICY = {
     "default-src": [CSP.SELF],
     "script-src": [CSP.SELF, CSP.UNSAFE_EVAL, "https://cdn.jsdelivr.net"],

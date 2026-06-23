@@ -125,7 +125,7 @@
     }, 250)
   }
 
-  var es = new EventSource('/widget/' + window.CHANNEL_ID + '/stream')
+  var es = new EventSource('/widget/' + chat.dataset.channelId + '/stream')
   es.onopen = function () {
     statusEl.textContent = ''
   }

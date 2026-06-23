@@ -19,10 +19,7 @@
   </head>
   <body>
     <div id="status">채팅 연결 중…</div>
-    <div id="chat"></div>
-    <script>
-      window.CHANNEL_ID = "{{ channel_id|escapejs }}";
-    </script>
+    <div id="chat" data-channel-id="{{ channel_id }}"></div>
     <script src="{% static 'overlay/widget.js' %}"></script>
   </body>
 </html>
