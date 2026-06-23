@@ -79,5 +79,5 @@ jobs:
           ssh -o StrictHostKeyChecking=accept-new \
               -o ProxyCommand="cloudflared access ssh --hostname %h" \
               dokku@"$DOKKU_HOST" -- \
-              git:sync --build chatoverlay \
+              git:sync --build chatoverlay-django \
               https://github.com/FelisCatusKR/chzzk-djclass-chat.git main
