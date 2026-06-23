@@ -71,7 +71,7 @@ ignore = [
 force-single-line = true
 
 [tool.ruff.lint.per-file-ignores]
-"*/tests/*" = ["PT011", "B017", "PT018"]  # broad pytest.raises / composite asserts are fine in tests
+"**/tests/**" = ["PT011", "B017", "PT018"]  # broad pytest.raises / composite asserts are fine in tests
 ```
 
 - [ ] **Step 3: Add the djlint config** to `pyproject.toml`:
