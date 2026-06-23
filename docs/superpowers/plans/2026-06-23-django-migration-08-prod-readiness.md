@@ -709,7 +709,7 @@ docker run --rm -p 8000:8000 \
   djclass-overlay:test
 ```
 
-Walk `/` and `/login/` in a browser; **open the devtools console** and confirm the page works with **no CSP *Report-Only* violations** for the daisyUI/Tailwind/htmx/Alpine/Pretendard CDNs, the cover image, or the inline styles. (Report-only means nothing is blocked yet — you're checking the allowlist is complete.)
+Walk `/`, `/login/`, `/dashboard/` (logged in), and **especially `/widget/<channel-id>/`** (the OBS overlay) in a browser; **open the devtools console** on each and confirm **no CSP *Report-Only* violations** for the daisyUI/Tailwind/htmx/Alpine/Pretendard CDNs, the cover image, the inline styles, or any inline script. (Report-only means nothing is blocked yet — you're checking the allowlist is complete. The overlay is the page most likely to surface a script violation — the inline-script gap was fixed in commit `2fac20d`.)
 
 - [ ] **Step 3: Flip CSP to enforcing.** Once Step 2 shows no violations, in `config/settings/base.py` change the one line:
 
