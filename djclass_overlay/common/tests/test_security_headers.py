@@ -8,9 +8,9 @@ def test_security_headers_present(client):
     assert resp["Permissions-Policy"] == "geolocation=(), microphone=(), camera=()"
 
 
-def test_csp_report_only_header(client):
+def test_csp_header(client):
     resp = client.get("/")
-    csp = resp["Content-Security-Policy-Report-Only"]
+    csp = resp["Content-Security-Policy"]
     assert "default-src 'self'" in csp
     assert "script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net" in csp
     assert "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net" in csp
