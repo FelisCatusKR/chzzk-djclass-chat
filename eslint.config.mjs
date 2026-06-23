@@ -31,6 +31,8 @@ const config = [
     ignores: [
       '.next/',
       'node_modules/',
+      '.venv/', // Python virtualenv — don't lint third-party deps' bundled JS (Django admin)
+      'staticfiles/', // collectstatic output (copies of the above)
       'out/',
       'dist/',
       'data/',
