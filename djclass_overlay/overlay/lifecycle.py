@@ -14,6 +14,7 @@ import logging
 
 from djclass_overlay.overlay import flush
 from djclass_overlay.overlay import registry
+from djclass_overlay.overlay import scheduler
 
 logger = logging.getLogger(__name__)
 
@@ -44,5 +45,8 @@ async def shutdown() -> None:
                 await conn.sio.disconnect()
             except Exception:
                 logger.exception("[lifecycle] error disconnecting %s", channel_id)
+
+    # Stop the in-process daily-sync scheduler.
+    await scheduler.stop_scheduler()
 
     logger.info("[lifecycle] realtime shutdown complete")

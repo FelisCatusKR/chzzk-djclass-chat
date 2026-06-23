@@ -34,6 +34,22 @@ def test_shutdown_sets_event_and_wakes_subscribers():
     async_to_sync(scenario)()
 
 
+def test_shutdown_stops_scheduler():
+    from djclass_overlay.overlay import lifecycle
+    from djclass_overlay.overlay import scheduler
+
+    async def scenario():
+        scheduler.ensure_scheduler()
+        task = scheduler._scheduler_task  # noqa: SLF001 — asserting the internal handle
+        assert task is not None and not task.done()
+        await lifecycle.shutdown()
+        return task
+
+    task = async_to_sync(scenario)()
+    assert scheduler._scheduler_task is None  # noqa: SLF001 — asserting the internal handle
+    assert task.cancelled() or task.done()
+
+
 def test_stream_generator_exits_promptly_on_shutdown():
     """A stream blocked waiting for messages must end when shutdown() fires —
     this is what lets the connection close so uvicorn shuts down without hanging."""

@@ -36,6 +36,7 @@ class Command(BaseCommand):
         import uvicorn
 
         from djclass_overlay.overlay import lifecycle
+        from djclass_overlay.overlay import scheduler
 
         config = uvicorn.Config(
             "config.asgi:application",
@@ -57,6 +58,7 @@ class Command(BaseCommand):
                 await lifecycle.shutdown()
 
             watcher = asyncio.create_task(_watch_exit())
+            scheduler.ensure_scheduler()  # daily V-ARCHIVE sync, in-process
             try:
                 await server.serve()
             finally:
