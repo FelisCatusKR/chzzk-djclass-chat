@@ -16,6 +16,13 @@ def test_seconds_until_next_run(now_h: int, now_m: int, expect_h: float) -> None
     assert scheduler._seconds_until(18, now) == pytest.approx(expect_h * 3600)  # noqa: SLF001 — testing internal helper directly
 
 
+def test_seconds_until_crosses_month_boundary() -> None:
+    # 30 Jun 23:00 UTC -> next 18:00 is 1 Jul 18:00 = 19h. Guards the timedelta(days=1)
+    # roll-over against a naive `.replace(day=now.day)` that would stay in the month.
+    now = datetime(2026, 6, 30, 23, 0, tzinfo=UTC)
+    assert scheduler._seconds_until(18, now) == pytest.approx(19 * 3600)  # noqa: SLF001 — testing internal helper directly
+
+
 def test_run_sync_invokes_sync_all(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, bool] = {}
 
