@@ -5,7 +5,7 @@ Port of src/lib/safe-redirect.ts. Rejects absolute and protocol-relative URLs
 """
 
 
-def safe_next_path(next_path, fallback="/dashboard/"):
+def safe_next_path(next_path: str, fallback: str = "/dashboard/") -> str:
     if not next_path:
         return fallback
     if not next_path.startswith("/"):

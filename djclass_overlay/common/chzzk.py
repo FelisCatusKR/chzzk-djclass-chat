@@ -3,6 +3,8 @@
 Request bodies use Chzzk's camelCase keys; returned dicts use snake_case.
 """
 
+from typing import Any
+from typing import TypedDict
 from urllib.parse import urlencode
 
 import httpx
@@ -14,11 +16,22 @@ API_URL = "https://openapi.chzzk.naver.com/open/v1"
 TIMEOUT = 8.0
 
 
-def redirect_uri():
+class TokenResult(TypedDict):
+    access_token: str
+    refresh_token: str
+    expires_in: int
+
+
+class UserInfo(TypedDict):
+    user_id: str
+    nickname: str
+
+
+def redirect_uri() -> str:
     return f"{settings.BASE_URL}/api/auth/chzzk/callback"
 
 
-def get_oauth_url(state):
+def get_oauth_url(state: str) -> str:
     params = {
         "clientId": settings.CHZZK_CLIENT_ID,
         "redirectUri": redirect_uri(),
@@ -27,8 +40,8 @@ def get_oauth_url(state):
     return f"{AUTH_URL}?{urlencode(params)}"
 
 
-def _token_payload(data):
-    content = data.get("content") or data
+def _token_payload(data: dict[str, Any]) -> TokenResult:
+    content: dict[str, Any] = data.get("content") or data
     return {
         "access_token": content["accessToken"],
         "refresh_token": content["refreshToken"],
@@ -36,7 +49,7 @@ def _token_payload(data):
     }
 
 
-def exchange_code_for_token(code, state):
+def exchange_code_for_token(code: str, state: str) -> TokenResult:
     resp = httpx.post(
         TOKEN_URL,
         json={
@@ -49,10 +62,11 @@ def exchange_code_for_token(code, state):
         timeout=TIMEOUT,
     )
     resp.raise_for_status()
-    return _token_payload(resp.json())
+    data: dict[str, Any] = resp.json()
+    return _token_payload(data)
 
 
-def refresh_access_token(refresh_token):
+def refresh_access_token(refresh_token: str) -> TokenResult:
     resp = httpx.post(
         TOKEN_URL,
         json={
@@ -64,22 +78,23 @@ def refresh_access_token(refresh_token):
         timeout=TIMEOUT,
     )
     resp.raise_for_status()
-    return _token_payload(resp.json())
+    data: dict[str, Any] = resp.json()
+    return _token_payload(data)
 
 
-def get_user_info(access_token):
+def get_user_info(access_token: str) -> UserInfo:
     resp = httpx.get(
         f"{API_URL}/users/me",
         headers={"Authorization": f"Bearer {access_token}"},
         timeout=TIMEOUT,
     )
     resp.raise_for_status()
-    data = resp.json()
-    content = data.get("content") or data
+    data: dict[str, Any] = resp.json()
+    content: dict[str, Any] = data.get("content") or data
     return {"user_id": content["channelId"], "nickname": content["channelName"]}
 
 
-async def get_session_url(access_token):
+async def get_session_url(access_token: str) -> str:
     """GET the Chzzk chat session URL and append the auth token as a query param.
 
     Port of chat-proxy.ts:38 + :206 (and ~/chzzk-spike/chzzk.py). Don't double-append.
@@ -90,14 +105,14 @@ async def get_session_url(access_token):
             headers={"Authorization": f"Bearer {access_token}"},
         )
         resp.raise_for_status()
-        data = resp.json()
-        url = (data.get("content") or data)["url"]
+        data: dict[str, Any] = resp.json()
+        url: str = (data.get("content") or data)["url"]
     if "?auth=" not in url:
         url += ("&" if "?" in url else "?") + f"auth={access_token}"
     return url
 
 
-async def subscribe_chat(access_token, session_key):
+async def subscribe_chat(access_token: str, session_key: str) -> None:
     """POST to subscribe the session to CHAT events. Port of chat-proxy.ts:59."""
     async with httpx.AsyncClient(timeout=TIMEOUT) as client:
         resp = await client.post(

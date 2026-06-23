@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -11,18 +12,18 @@ from djclass_overlay.users.models import User
 from djclass_overlay.viewers.models import VarchiveToken
 
 
-def _enc(value):
+def _enc(value: str) -> str | None:
     return crypto.encrypt(value) if value else None
 
 
 class Command(BaseCommand):
     help = "Import legacy data from the Node export JSON (re-encrypts tokens)."
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: Any) -> None:
         parser.add_argument("json_path")
 
     @transaction.atomic
-    def handle(self, *args, **opts):
+    def handle(self, *args: Any, **opts: Any) -> None:
         with Path(opts["json_path"]).open(encoding="utf-8") as f:
             data = json.load(f)
 

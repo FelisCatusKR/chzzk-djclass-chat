@@ -18,6 +18,8 @@ Note: auto-reload is not supported here (use plain `uvicorn --reload` for that).
 
 import asyncio
 import contextlib
+from argparse import ArgumentParser
+from typing import Any
 
 from django.core.management.base import BaseCommand
 
@@ -25,12 +27,12 @@ from django.core.management.base import BaseCommand
 class Command(BaseCommand):
     help = "Run the ASGI server (uvicorn) with graceful realtime shutdown."
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument("--host", default="127.0.0.1")
         parser.add_argument("--port", type=int, default=8000)
         parser.add_argument("--log-level", default="info")
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
         import uvicorn
 
         from djclass_overlay.overlay import lifecycle
@@ -46,13 +48,13 @@ class Command(BaseCommand):
         )
         server = uvicorn.Server(config)
 
-        async def _serve():
-            async def _watch_exit():
+        async def _serve() -> None:
+            async def _watch_exit() -> None:
                 # uvicorn's own signal handler flips should_exit; react before it
                 # starts force-cancelling the (otherwise endless) SSE streams.
                 while not server.should_exit:  # noqa: ASYNC110 — poll uvicorn's should_exit flag (no asyncio.Event exposed)
                     await asyncio.sleep(0.1)
-                await lifecycle.shutdown()
+                await lifecycle.shutdown()  # type: ignore[no-untyped-call]  # overlay.lifecycle is annotated in Task 6
 
             watcher = asyncio.create_task(_watch_exit())
             try:
