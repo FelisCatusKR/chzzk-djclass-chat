@@ -73,3 +73,24 @@ def test_sync_user_empty_keeps_existing_rows_and_flags_stale(monkeypatch):
     result = sync.sync_user(link)
     assert result == {"ok": False, "stale": True, "highest": None}
     assert DjClass.objects.filter(user=u).count() == 1  # NOT wiped
+
+
+@pytest.mark.django_db
+def test_sync_all_active_links_tallies_and_isolates_failures(monkeypatch):
+    from djclass_overlay.djclass import sync as sync_mod
+
+    u1 = User.objects.create_user(chzzk_id="a", chzzk_nickname="A")
+    u2 = User.objects.create_user(chzzk_id="b", chzzk_nickname="B")
+    u3 = User.objects.create_user(chzzk_id="d", chzzk_nickname="D")
+    VarchiveToken.objects.create(user=u1, varchive_nickname="n1", is_active=True)
+    VarchiveToken.objects.create(user=u2, varchive_nickname="n2", is_active=True)
+    VarchiveToken.objects.create(user=u3, varchive_nickname="off", is_active=False)
+
+    def fake_sync_user(link: VarchiveToken) -> sync.SyncResult:
+        if link.varchive_nickname == "n2":
+            raise RuntimeError("boom")
+        return {"ok": True, "stale": False, "highest": None}
+
+    monkeypatch.setattr(sync_mod, "sync_user", fake_sync_user)
+    success, failed = sync_mod.sync_all_active_links()
+    assert (success, failed) == (1, 1)  # n1 ok, n2 raised, inactive skipped

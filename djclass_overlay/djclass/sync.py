@@ -6,6 +6,7 @@ failure or a stale nickname never wipes good data. The management command and th
 on-demand /link sync both call sync_user.
 """
 
+import logging
 from typing import TypedDict
 from typing import cast
 
@@ -18,6 +19,8 @@ from djclass_overlay.djclass.resolver import invalidate_user
 from djclass_overlay.djclass.varchive import VarchiveDjClass
 from djclass_overlay.users.models import User
 from djclass_overlay.viewers.models import VarchiveToken
+
+logger = logging.getLogger(__name__)
 
 
 class SyncResult(TypedDict):
@@ -75,3 +78,28 @@ def sync_user(link: VarchiveToken) -> SyncResult:
         "stale": False,
         "highest": highest,
     }
+
+
+def sync_all_active_links() -> tuple[int, int]:
+    """Sync every active link by its V-ARCHIVE nickname; return (success, failed).
+
+    One bad link never stops the batch. Shared by the `sync_djclass` command and the
+    in-process daily scheduler (overlay.scheduler).
+    """
+    links = VarchiveToken.objects.filter(is_active=True).select_related("user")
+    success = failed = 0
+    for link in links:
+        try:
+            result = sync_user(link)
+        except Exception:  # one bad link must not stop the batch
+            failed += 1
+            logger.exception("[sync] %s failed", link.varchive_nickname)
+            continue
+        if result["ok"]:
+            success += 1
+        else:
+            failed += 1
+            logger.warning(
+                "[sync] %s: no data (stale=%s)", link.varchive_nickname, result["stale"]
+            )
+    return success, failed
