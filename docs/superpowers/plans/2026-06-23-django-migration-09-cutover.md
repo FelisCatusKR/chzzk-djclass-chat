@@ -300,25 +300,15 @@ The `import_legacy` command expects a JSON array of users in this exact shape (o
   }
 ]
 ```
-- [ ] Produce `export.json` from the Node SQLite. Adapt this template (run against the live DB, or a copy) to your actual Node schema/column names:
+- [ ] Produce `export.json` with the committed **`scripts/export-legacy.ts`** (validated against the dev DB 2026-06-23 — it reads all four tables, **decrypts** the channel tokens via the Node `src/lib/crypto` `decrypt()`, and **drops** the V-ARCHIVE token to nickname-only). Run it WHILE the Node app still exists (it imports `src/lib/crypto`), against a **copy** of the production sqlite:
 ```bash
-# On the Node host, with the production sqlite file:
-node -e '
-const db = require("better-sqlite3")("/path/to/prod.sqlite", {readonly:true});
-const users = db.prepare("SELECT * FROM users").all();
-const out = users.map(u => ({
-  chzzk_id: u.chzzk_id,
-  chzzk_nickname: u.chzzk_nickname,
-  preferred_button: u.preferred_button ?? null,
-  channel: /* SELECT the channel row for this user, or null */ null,
-  varchive_token: /* {varchive_nickname, is_active} or null */ null,
-  dj_classes: db.prepare("SELECT button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion FROM dj_classes WHERE user_id=?").all(u.id),
-}));
-require("fs").writeFileSync("export.json", JSON.stringify(out, null, 2));
-console.log("exported", out.length, "users");
-'
+# VARCHIVE_TOKEN_KEY = the key the Node app used to encrypt channel tokens (so decrypt works).
+# DATABASE_URL       = path to the copied production sqlite file (defaults to ./data/app.db).
+VARCHIVE_TOKEN_KEY='<node-key>' DATABASE_URL=/path/to/prod-copy.db \
+  npx tsx scripts/export-legacy.ts
+# -> writes export.json + prints: Exported N users -> export.json (M channels, K V-ARCHIVE links)
 ```
-- [ ] Verify: `export.json` parses, the user count matches the Node app, and a spot-checked user has the right `dj_classes` + `varchive_token.varchive_nickname`.
+- [ ] Verify: the printed user count matches the Node app, `export.json` parses, and a spot-checked user has a **plaintext** `channel.access_token` (NOT a base64 blob), the right `dj_classes`, and `varchive_token.varchive_nickname`. (Note: Django's `import_legacy` re-encrypts `access_token`/`refresh_token` with ITS `VARCHIVE_TOKEN_KEY`, which may differ from the Node key — the plaintext is the bridge.)
 
 ### B2 — Provision the Django app + Postgres on Dokku
 - [ ] `dokku apps:create chatoverlay-django`
