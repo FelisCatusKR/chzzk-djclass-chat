@@ -3,6 +3,7 @@ build one batch event, fan out to subscriber queues. New behavior per spec Decis
 6 & 7 (the Node app forwarded per-message over WebSocket; here we batch over SSE)."""
 
 import asyncio
+import contextlib
 import itertools
 import json
 import logging
@@ -61,7 +62,7 @@ def _build_batch_detached(raw_messages):
 
 async def flush_once():
     """One flush tick across all channels."""
-    for channel_id, conn in list(registry.connections.items()):
+    for _channel_id, conn in list(registry.connections.items()):
         if not conn.buffer:
             continue
         raw = conn.buffer
@@ -73,10 +74,8 @@ async def flush_once():
         )
         data = f"event: chat\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
         for q in list(conn.subscribers):
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 q.put_nowait(data)
-            except asyncio.QueueFull:
-                pass
 
 
 async def flush_loop():
@@ -90,19 +89,17 @@ async def flush_loop():
 
 def ensure_flush_loop():
     """Start the single global flush loop on first use (idempotent)."""
-    global _flush_task
+    global _flush_task  # noqa: PLW0603 — single process-wide flush loop handle
     if _flush_task is None or _flush_task.done():
         _flush_task = asyncio.create_task(flush_loop())
 
 
 async def stop_flush_loop():
     """Cancel the global flush loop on shutdown (idempotent)."""
-    global _flush_task
+    global _flush_task  # noqa: PLW0603 — single process-wide flush loop handle
     task = _flush_task
     _flush_task = None
     if task is not None and not task.done():
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass

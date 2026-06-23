@@ -26,6 +26,7 @@ class Command(BaseCommand):
             else:
                 failed += 1
                 self.stderr.write(
-                    f"[sync_djclass] {link.varchive_nickname}: no data (stale={result['stale']})"
+                    f"[sync_djclass] {link.varchive_nickname}: "
+                    f"no data (stale={result['stale']})"
                 )
         self.stdout.write(f"[sync_djclass] synced={success} failed={failed}")

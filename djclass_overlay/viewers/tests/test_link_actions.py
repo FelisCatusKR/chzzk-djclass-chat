@@ -50,7 +50,7 @@ def test_connect_invalid_token_shows_error(client, monkeypatch):
     client.force_login(u, backend=BACKEND)
 
     def _raise(tok):
-        raise varchive.InvalidToken()
+        raise varchive.InvalidTokenError
 
     monkeypatch.setattr(varchive, "lookup_user", _raise)
     resp = client.post("/link/connect/", {"token": "bad"})
@@ -64,7 +64,7 @@ def test_connect_network_error_shows_error(client, monkeypatch):
     client.force_login(u, backend=BACKEND)
 
     def _raise(tok):
-        raise varchive.VarchiveError()
+        raise varchive.VarchiveError
 
     monkeypatch.setattr(varchive, "lookup_user", _raise)
     resp = client.post("/link/connect/", {"token": "x"})

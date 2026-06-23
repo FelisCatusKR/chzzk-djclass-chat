@@ -1,4 +1,3 @@
-import asyncio
 from datetime import timedelta
 
 import pytest
@@ -6,7 +5,8 @@ from asgiref.sync import async_to_sync
 from django.utils import timezone
 
 from djclass_overlay.common import crypto
-from djclass_overlay.overlay import ingestor, registry
+from djclass_overlay.overlay import ingestor
+from djclass_overlay.overlay import registry
 from djclass_overlay.streamers.models import Channel
 from djclass_overlay.users.models import User
 

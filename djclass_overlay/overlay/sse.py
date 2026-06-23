@@ -8,13 +8,22 @@ import asyncio
 from django.http import StreamingHttpResponse
 from django.shortcuts import render
 
-from djclass_overlay.overlay import flush, ingestor, lifecycle, registry
+from djclass_overlay.overlay import flush
+from djclass_overlay.overlay import ingestor
+from djclass_overlay.overlay import lifecycle
+from djclass_overlay.overlay import registry
+
+# Holds fire-and-forget connect tasks so they aren't garbage-collected before they
+# finish (asyncio keeps only a weak reference); each task removes itself on done.
+_background_tasks: set[asyncio.Task] = set()
 
 
 def _ensure_ingestor(channel_id):
     conn = registry.connections.get(channel_id)
     if conn and conn.sio is None:
-        asyncio.create_task(ingestor.connect_to_chat(channel_id))
+        task = asyncio.create_task(ingestor.connect_to_chat(channel_id))
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
 
 def _ensure_flush():
@@ -52,7 +61,7 @@ async def widget_stream(request, channel_id):
                     item = await asyncio.wait_for(
                         q.get(), timeout=flush.KEEPALIVE_TIMEOUT
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     yield ": keepalive\n\n"  # survive proxy idle timeouts
                     continue
                 if item is None:  # shutdown wake-up sentinel

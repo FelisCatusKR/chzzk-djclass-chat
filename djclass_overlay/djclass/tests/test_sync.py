@@ -1,6 +1,7 @@
 import pytest
 
-from djclass_overlay.djclass import sync, varchive
+from djclass_overlay.djclass import sync
+from djclass_overlay.djclass import varchive
 from djclass_overlay.djclass.models import DjClass
 from djclass_overlay.users.models import User
 from djclass_overlay.viewers.models import VarchiveToken

@@ -8,7 +8,8 @@ on-demand /link sync both call sync_user.
 
 from django.db import transaction
 
-from djclass_overlay.djclass import badges, varchive
+from djclass_overlay.djclass import badges
+from djclass_overlay.djclass import varchive
 from djclass_overlay.djclass.models import DjClass
 from djclass_overlay.djclass.resolver import invalidate_user
 

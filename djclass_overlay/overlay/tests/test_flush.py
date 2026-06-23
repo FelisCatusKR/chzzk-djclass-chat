@@ -6,7 +6,8 @@ from asgiref.sync import async_to_sync
 
 from djclass_overlay.djclass import resolver
 from djclass_overlay.djclass.models import DjClass
-from djclass_overlay.overlay import flush, registry
+from djclass_overlay.overlay import flush
+from djclass_overlay.overlay import registry
 from djclass_overlay.users.models import User
 from djclass_overlay.viewers.models import VarchiveToken
 

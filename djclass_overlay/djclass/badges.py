@@ -67,7 +67,8 @@ SHORT_NAMES = {
     "BEGINNER": "BG",
 }
 
-# Roman level → ordinal, higher is better (dj-class.ts:142). Theory LoD = 5 (set in sort key).
+# Roman level → ordinal, higher is better (dj-class.ts:142).
+# Theory LoD = 5 (set in sort key).
 LEVEL_VALUES = {"I": 4, "II": 3, "III": 2, "IV": 1}
 # Button display preference: 8 > 5 > 6 > 4 (dj-class.ts:145) — note 6 sits BELOW 5.
 BUTTON_PREFERENCE = {8: 3, 5: 2, 6: 1, 4: 0}
@@ -120,7 +121,7 @@ def get_threshold(rank_name, rank_level):
 
 def get_class_sort_key(dj_class, dj_power_conversion, button):
     """Port of dj-class.ts:147. Returns (rank_ordinal, level_ordinal, button_pref);
-    bigger is better at every position, compared lexicographically (Python tuple order)."""
+    bigger is better at every position, compared lexicographically (tuple order)."""
     rank_name = parse_rank_name(dj_class)
     try:
         rank_index = RANK_ORDER.index(rank_name)
@@ -139,7 +140,9 @@ def get_class_sort_key(dj_class, dj_power_conversion, button):
 
 
 def resolve_displayed_class(rows, preferred_button, sel):
-    """Port of dj-class.ts:212. `rows` = objects with .button/.dj_class/.dj_power_conversion."""
+    """Port of dj-class.ts:212.
+
+    `rows` = objects with .button / .dj_class / .dj_power_conversion."""
     if not rows:
         return None
     if sel == "viewer" and preferred_button is not None:

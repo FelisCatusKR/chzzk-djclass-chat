@@ -17,6 +17,7 @@ Note: auto-reload is not supported here (use plain `uvicorn --reload` for that).
 """
 
 import asyncio
+import contextlib
 
 from django.core.management.base import BaseCommand
 
@@ -40,7 +41,8 @@ class Command(BaseCommand):
             port=options["port"],
             log_level=options["log_level"],
             lifespan="off",  # Django's ASGI app doesn't speak lifespan
-            timeout_graceful_shutdown=5,  # backstop; the watcher normally closes streams first
+            # backstop; the watcher normally closes streams first
+            timeout_graceful_shutdown=5,
         )
         server = uvicorn.Server(config)
 
@@ -48,7 +50,7 @@ class Command(BaseCommand):
             async def _watch_exit():
                 # uvicorn's own signal handler flips should_exit; react before it
                 # starts force-cancelling the (otherwise endless) SSE streams.
-                while not server.should_exit:
+                while not server.should_exit:  # noqa: ASYNC110 — poll uvicorn's should_exit flag (no asyncio.Event exposed)
                     await asyncio.sleep(0.1)
                 await lifecycle.shutdown()
 
@@ -58,11 +60,9 @@ class Command(BaseCommand):
             finally:
                 watcher.cancel()
 
-        try:
+        # The realtime shutdown already ran in _watch_exit (it reacts to uvicorn's
+        # should_exit flag); asyncio.run() nonetheless re-raises the Ctrl+C
+        # KeyboardInterrupt after the loop finishes, so swallow it here for a
+        # clean, traceback-free exit.
+        with contextlib.suppress(KeyboardInterrupt):
             asyncio.run(_serve())
-        except KeyboardInterrupt:
-            # The realtime shutdown already ran in _watch_exit (it reacts to uvicorn's
-            # should_exit flag); asyncio.run() nonetheless re-raises the Ctrl+C
-            # KeyboardInterrupt after the loop finishes, so swallow it here for a
-            # clean, traceback-free exit.
-            pass

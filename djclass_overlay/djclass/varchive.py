@@ -18,7 +18,7 @@ class VarchiveError(Exception):
     """A V-ARCHIVE request failed (network, timeout, or unexpected status)."""
 
 
-class InvalidToken(VarchiveError):
+class InvalidTokenError(VarchiveError):
     """The 조회토큰 was rejected (HTTP 401 or success=false)."""
 
 
@@ -37,7 +37,7 @@ def lookup_user(token):
     except httpx.HTTPError as exc:
         raise VarchiveError("V-ARCHIVE request failed") from exc
     if resp.status_code == 401:
-        raise InvalidToken()
+        raise InvalidTokenError
     try:
         resp.raise_for_status()
     except httpx.HTTPError as exc:
@@ -46,7 +46,7 @@ def lookup_user(token):
     user_no = data.get("userNo")
     nickname = data.get("nickname")
     if not data.get("success") or user_no is None or nickname is None:
-        raise InvalidToken()
+        raise InvalidTokenError
     return {"user_no": user_no, "nickname": nickname}
 
 
@@ -70,8 +70,10 @@ def get_dj_class(nickname, button):
 def get_all_dj_classes(nickname):
     """Fetch buttons [4,5,6,8] in turn, skipping any that fail or lack a class.
 
-    Returns a list of dicts: {button, djClass, djPowerSum, maxDjPower, djPowerConversion}.
-    A total failure (stale nickname / V-ARCHIVE down) yields []. Port of getAllDjClasses.
+    Returns a list of dicts:
+    {button, djClass, djPowerSum, maxDjPower, djPowerConversion}.
+    A total failure (stale nickname / V-ARCHIVE down) yields [].
+    Port of getAllDjClasses.
     """
     out = []
     for button in BUTTONS:

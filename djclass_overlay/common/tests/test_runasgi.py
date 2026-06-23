@@ -11,7 +11,7 @@ from djclass_overlay.common.management.commands import runasgi
 def test_runasgi_swallows_keyboard_interrupt_on_shutdown(monkeypatch):
     def _fake_run(coro):
         coro.close()  # the real _serve() coroutine is never awaited under the mock
-        raise KeyboardInterrupt()  # what asyncio.run() does after a Ctrl+C shutdown
+        raise KeyboardInterrupt  # what asyncio.run() does after a Ctrl+C shutdown
 
     monkeypatch.setattr(runasgi.asyncio, "run", _fake_run)
     # Must return without propagating KeyboardInterrupt.

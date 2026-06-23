@@ -4,6 +4,7 @@ Faithful port of src/lib/chat-proxy.ts and the validated spike ~/chzzk-spike/.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from datetime import timedelta
@@ -13,13 +14,26 @@ from asgiref.sync import sync_to_async
 from django.db import close_old_connections
 from django.utils import timezone
 
-from djclass_overlay.common import chzzk, crypto
+from djclass_overlay.common import chzzk
+from djclass_overlay.common import crypto
 from djclass_overlay.overlay import registry
 
 logger = logging.getLogger(__name__)
 
 RECONNECT_DELAY = 5  # chat-proxy.ts:367
 TEARDOWN_DELAY = 30  # chat-proxy.ts:484
+
+# Holds fire-and-forget reconnect tasks so they aren't garbage-collected mid-flight
+# (asyncio keeps only a weak reference to bare create_task results); each task
+# removes itself on completion. The teardown timer is held on conn.disconnect_task.
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _spawn(coro):
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task
 
 
 def parse(data):
@@ -28,7 +42,7 @@ def parse(data):
     if isinstance(data, str):
         try:
             return json.loads(data)
-        except Exception:
+        except Exception:  # noqa: BLE001 — any malformed SYSTEM/CHAT payload falls back to {} (chat-proxy.ts parity)
             return {}
     return data if isinstance(data, dict) else {}
 
@@ -107,7 +121,7 @@ def _load_access_token_detached(channel_id):
         close_old_connections()
 
 
-async def connect_to_chat(channel_id):
+async def connect_to_chat(channel_id):  # noqa: C901 — cohesive socket setup + inline SYSTEM/CHAT/disconnect handlers that close over conn/token
     """Connect a channel's Chzzk chat socket and wire CHAT → buffer.
     Dedup via the per-channel lock (port of the connectingPromise pattern)."""
     conn = registry.get_or_create(channel_id)
@@ -170,7 +184,7 @@ def schedule_reconnect(channel_id, delay=RECONNECT_DELAY):
         if conn and conn.subscribers and conn.sio is None:
             await connect_to_chat(channel_id)
 
-    asyncio.create_task(_later())
+    _spawn(_later())
 
 
 def schedule_teardown(channel_id, delay=TEARDOWN_DELAY):
@@ -206,7 +220,5 @@ async def teardown(channel_id):
         return
     cancel_teardown(conn)
     if conn.sio is not None:
-        try:
+        with contextlib.suppress(Exception):
             await conn.sio.disconnect()
-        except Exception:
-            pass

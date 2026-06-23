@@ -5,9 +5,9 @@ buffer, the set of SSE subscriber queues, and the teardown timer. Mirrors the No
 `connections` Map in src/lib/chat-proxy.ts.
 """
 
-from dataclasses import dataclass, field
-
 import asyncio
+from dataclasses import dataclass
+from dataclasses import field
 
 
 @dataclass

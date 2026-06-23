@@ -18,3 +18,6 @@ class VarchiveToken(models.Model):
 
     class Meta:
         db_table = "varchive_tokens"
+
+    def __str__(self):
+        return self.varchive_nickname

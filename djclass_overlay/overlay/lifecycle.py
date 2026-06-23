@@ -9,9 +9,11 @@ nothing orphaned left to force-cancel (which is what produced the CancelledError
 """
 
 import asyncio
+import contextlib
 import logging
 
-from djclass_overlay.overlay import flush, registry
+from djclass_overlay.overlay import flush
+from djclass_overlay.overlay import registry
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +29,8 @@ async def shutdown():
     # Wake every SSE subscriber so its generator returns and the response finishes.
     for conn in list(registry.connections.values()):
         for q in list(conn.subscribers):
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 q.put_nowait(None)
-            except asyncio.QueueFull:
-                pass
 
     # Stop the global batch flush loop.
     await flush.stop_flush_loop()

@@ -19,3 +19,6 @@ class DjClass(models.Model):
                 condition=models.Q(button__in=[4, 5, 6, 8]), name="button_valid"
             ),
         ]
+
+    def __str__(self):
+        return f"{self.button}B {self.dj_class}"

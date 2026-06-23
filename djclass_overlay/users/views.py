@@ -4,15 +4,19 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
-from django.contrib.auth import login, logout
+from django.contrib.auth import login
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect
+from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from djclass_overlay.common import chzzk, crypto, ratelimit
+from djclass_overlay.common import chzzk
+from djclass_overlay.common import crypto
+from djclass_overlay.common import ratelimit
 from djclass_overlay.common.safe_redirect import safe_next_path
 from djclass_overlay.streamers.models import Channel
 

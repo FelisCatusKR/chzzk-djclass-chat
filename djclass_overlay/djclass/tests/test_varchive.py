@@ -17,7 +17,7 @@ def test_lookup_user_401_is_invalid(httpx_mock):
     httpx_mock.add_response(
         url="https://v-archive.net/api/v2/open-token/user", status_code=401
     )
-    with pytest.raises(varchive.InvalidToken):
+    with pytest.raises(varchive.InvalidTokenError):
         varchive.lookup_user("bad")
 
 
@@ -26,7 +26,7 @@ def test_lookup_user_success_false_is_invalid(httpx_mock):
         url="https://v-archive.net/api/v2/open-token/user",
         json={"success": False},
     )
-    with pytest.raises(varchive.InvalidToken):
+    with pytest.raises(varchive.InvalidTokenError):
         varchive.lookup_user("tok")
 
 
@@ -36,7 +36,7 @@ def test_lookup_user_missing_fields_is_invalid(httpx_mock):
         url="https://v-archive.net/api/v2/open-token/user",
         json={"success": True},
     )
-    with pytest.raises(varchive.InvalidToken):
+    with pytest.raises(varchive.InvalidTokenError):
         varchive.lookup_user("tok")
 
 

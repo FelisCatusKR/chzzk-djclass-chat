@@ -15,4 +15,4 @@ def test_varchive_token_is_tokenless():
     assert link.varchive_user_no == 4242
     # The encrypted token field is gone from the model (token-less design).
     with pytest.raises(FieldDoesNotExist):
-        VarchiveToken._meta.get_field("token_encrypted")
+        VarchiveToken._meta.get_field("token_encrypted")  # noqa: SLF001 — Django Meta API; test asserts the field was removed

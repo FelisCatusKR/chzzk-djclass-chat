@@ -47,10 +47,11 @@ def test_link_linked_state_shows_actions_and_buttons(client):
 
 @pytest.mark.django_db
 def test_link_card_scopes_swaps_to_itself(client):
-    # The #link-card forms must NOT inherit the <body> app-shell hx-select="#content":
-    # their hx-post responses are #link-card fragments with no #content, so htmx would
-    # build an empty fragment and EMPTY the card. The container re-declares hx-select
-    # to itself (+ opts out of boost). Regression guard for that swap bug.
+    # The #link-card forms must NOT inherit the app-shell body-level hx-select that
+    # targets #content. Their hx-post responses are #link-card fragments with no
+    # #content, so htmx would build an empty fragment and EMPTY the card. The
+    # container re-declares hx-select to itself (+ opts out of boost).
+    # Regression guard for that swap bug.
     u = User.objects.create_user(chzzk_id="v3", chzzk_nickname="Viewer3")
     client.force_login(u, backend=BACKEND)
     body = client.get("/link/").content.decode()

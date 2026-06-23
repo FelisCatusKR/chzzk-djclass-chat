@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -22,7 +23,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **opts):
-        with open(opts["json_path"], encoding="utf-8") as f:
+        with Path(opts["json_path"]).open(encoding="utf-8") as f:
             data = json.load(f)
 
         for row in data:

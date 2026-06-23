@@ -3,7 +3,9 @@ import asyncio
 import pytest
 from asgiref.sync import async_to_sync
 
-from djclass_overlay.overlay import lifecycle, registry, sse
+from djclass_overlay.overlay import lifecycle
+from djclass_overlay.overlay import registry
+from djclass_overlay.overlay import sse
 
 
 @pytest.fixture(autouse=True)

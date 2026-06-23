@@ -1,6 +1,7 @@
 import pytest
 
-from djclass_overlay.common import chzzk, crypto
+from djclass_overlay.common import chzzk
+from djclass_overlay.common import crypto
 from djclass_overlay.streamers.models import Channel
 from djclass_overlay.users.models import User
 

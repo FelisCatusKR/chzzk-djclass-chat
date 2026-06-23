@@ -4,7 +4,8 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from djclass_overlay.common import ratelimit
-from djclass_overlay.djclass import badges, varchive
+from djclass_overlay.djclass import badges
+from djclass_overlay.djclass import varchive
 from djclass_overlay.djclass.models import DjClass
 from djclass_overlay.djclass.resolver import invalidate_user
 from djclass_overlay.djclass.sync import sync_user
@@ -28,15 +29,15 @@ def _link_context(user, message=None, message_type=None):
                 "checked": user.preferred_button is None,
             }
         )
-        for row in rows:
-            options.append(
-                {
-                    "label": f"{row.button}버튼",
-                    "value": str(row.button),
-                    "badge": badges.build_badge(row),
-                    "checked": user.preferred_button == row.button,
-                }
-            )
+        options.extend(
+            {
+                "label": f"{row.button}버튼",
+                "value": str(row.button),
+                "badge": badges.build_badge(row),
+                "checked": user.preferred_button == row.button,
+            }
+            for row in rows
+        )
     return {
         "link": link,
         "varchive_nickname": link.varchive_nickname if link else None,
@@ -72,7 +73,7 @@ def link_connect(request):
         return _render_card(request, "조회토큰을 입력하세요.", "error")
     try:
         info = varchive.lookup_user(token)
-    except varchive.InvalidToken:
+    except varchive.InvalidTokenError:
         return _render_card(
             request, "조회토큰이 유효하지 않습니다. 다시 확인해주세요.", "error"
         )
@@ -109,7 +110,8 @@ def link_sync(request):
         if result["stale"]:
             return _render_card(
                 request,
-                "DJ CLASS 정보를 찾을 수 없습니다. V-ARCHIVE 닉네임이 바뀌었다면 다시 연동해주세요.",
+                "DJ CLASS 정보를 찾을 수 없습니다. "
+                "V-ARCHIVE 닉네임이 바뀌었다면 다시 연동해주세요.",
                 "error",
             )
         return _render_card(request, "동기화할 DJ CLASS 정보가 없습니다.", "error")
