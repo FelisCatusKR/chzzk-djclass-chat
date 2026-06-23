@@ -58,4 +58,11 @@ class Command(BaseCommand):
             finally:
                 watcher.cancel()
 
-        asyncio.run(_serve())
+        try:
+            asyncio.run(_serve())
+        except KeyboardInterrupt:
+            # The realtime shutdown already ran in _watch_exit (it reacts to uvicorn's
+            # should_exit flag); asyncio.run() nonetheless re-raises the Ctrl+C
+            # KeyboardInterrupt after the loop finishes, so swallow it here for a
+            # clean, traceback-free exit.
+            pass
