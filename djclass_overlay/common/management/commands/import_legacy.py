@@ -54,7 +54,9 @@ class Command(BaseCommand):
                 VarchiveToken.objects.update_or_create(
                     user=user,
                     defaults={
-                        "token_encrypted": crypto.encrypt(vt["token"]),
+                        # Token-less (Plan 7): the legacy V-ARCHIVE token is dropped,
+                        # not re-encrypted — sync uses the public nickname endpoint.
+                        # (userNo isn't in the legacy export, so it stays null.)
                         "varchive_nickname": vt["varchive_nickname"],
                         "is_active": vt["is_active"],
                     },

@@ -23,7 +23,7 @@ def _reset():
 @pytest.mark.django_db
 def test_build_batch_resolves_and_dedups(django_assert_num_queries):
     u = User.objects.create_user(chzzk_id="s1", chzzk_nickname="N")
-    VarchiveToken.objects.create(user=u, token_encrypted="x", varchive_nickname="v", is_active=True)
+    VarchiveToken.objects.create(user=u, varchive_nickname="v", is_active=True)
     DjClass.objects.create(user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9810)
     raw = [
         {"senderChannelId": "s1", "nickname": "N", "content": "hi", "emojis": {}},

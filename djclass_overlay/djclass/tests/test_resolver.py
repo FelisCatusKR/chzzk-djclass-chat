@@ -29,7 +29,7 @@ def test_unlinked_when_no_active_varchive_token():
 @pytest.mark.django_db
 def test_unsynced_when_linked_but_no_rows():
     u = User.objects.create_user(chzzk_id="c2", chzzk_nickname="N")
-    VarchiveToken.objects.create(user=u, token_encrypted="x", varchive_nickname="v", is_active=True)
+    VarchiveToken.objects.create(user=u, varchive_nickname="v", is_active=True)
     out = resolver.resolve_sender_badges("c2", "N")
     assert out == {"status": "unsynced", "badge": None}
 
@@ -37,7 +37,7 @@ def test_unsynced_when_linked_but_no_rows():
 @pytest.mark.django_db
 def test_linked_emits_auto_and_viewer():
     u = User.objects.create_user(chzzk_id="c3", chzzk_nickname="N", preferred_button=8)
-    VarchiveToken.objects.create(user=u, token_encrypted="x", varchive_nickname="v", is_active=True)
+    VarchiveToken.objects.create(user=u, varchive_nickname="v", is_active=True)
     DjClass.objects.create(user=u, button=4, dj_class="SHOWSTOPPER II", dj_power_conversion=9810)
     DjClass.objects.create(user=u, button=8, dj_class="HEADLINER I", dj_power_conversion=9660)
     out = resolver.resolve_sender_badges("c3", "N")
@@ -49,7 +49,7 @@ def test_linked_emits_auto_and_viewer():
 @pytest.mark.django_db
 def test_result_is_cached(django_assert_num_queries):
     u = User.objects.create_user(chzzk_id="c4", chzzk_nickname="N")
-    VarchiveToken.objects.create(user=u, token_encrypted="x", varchive_nickname="v", is_active=True)
+    VarchiveToken.objects.create(user=u, varchive_nickname="v", is_active=True)
     DjClass.objects.create(user=u, button=4, dj_class="ROOKIE I", dj_power_conversion=4900)
     first = resolver.resolve_sender_badges("c4", "N")
     # Second call hits the cache — zero DB queries.
