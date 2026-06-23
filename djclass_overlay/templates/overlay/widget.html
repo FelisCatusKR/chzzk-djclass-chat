@@ -1,0 +1,52 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DJ CLASS Overlay</title>
+    <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
+    <style>
+      /* Layout-only rules. Badge/row/glint styling → badge.css */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+      }
+
+      #chat {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        height: 100vh;
+        padding: 8px;
+        gap: 4px;
+        box-sizing: border-box;
+        font-family: system-ui, sans-serif;
+        color: #fff;
+        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+      }
+
+      .emoji {
+        height: 1em;
+        vertical-align: text-bottom;
+      }
+
+      #status {
+        position: fixed;
+        top: 4px;
+        left: 4px;
+        font-size: 12px;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status">채팅 연결 중…</div>
+    <div id="chat" data-channel-id="{{ channel_id }}"></div>
+    <script src="{% static 'overlay/widget.js' %}"></script>
+  </body>
+</html>

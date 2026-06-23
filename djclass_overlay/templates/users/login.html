@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}로그인{% endblock title %}
+{% block content %}
+  <main class="flex min-h-screen items-center justify-center px-4 py-8 sm:py-12">
+    <div class="frosted-card w-full max-w-sm p-8 text-center">
+      <div class="mb-4 text-4xl">🔒</div>
+      <h1 class="mb-2 text-xl font-bold text-gray-900">로그인이 필요해요</h1>
+      <p class="mb-6 text-sm leading-relaxed text-gray-600">
+        {% if context %}
+          <b class="text-gray-900">{{ context }}</b>
+          <br />
+        {% endif %}
+        Chzzk 계정으로 로그인해주세요.
+      </p>
+      <a href="{% url 'chzzk_login' %}?next={{ next|urlencode }}"
+         hx-boost="false"
+         class="btn-chzzk">Chzzk로 로그인</a>
+      <a href="/" class="mt-4 block text-xs text-gray-500 hover:text-gray-700">← 메인으로 돌아가기</a>
+    </div>
+  </main>
+{% endblock content %}

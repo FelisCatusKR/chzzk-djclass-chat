@@ -1,0 +1,115 @@
+[project]
+name = "chzzk-djclass-chat"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "cryptography>=49.0.0",
+    "django==6.0.6",
+    "django-environ>=0.14.0",
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.3.4",
+    "python-engineio~=3.14",
+    "python-socketio[asyncio-client]~=4.6",
+    "uvicorn>=0.49.0",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "django-stubs[compatible-mypy]>=6.0.5",
+    "djlint>=1.39.2",
+    "mypy>=2.1.0",
+    "pytest>=9.1.1",
+    "pytest-django>=4.12.0",
+    "pytest-httpx>=0.36.2",
+    "ruff>=0.15.18",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.local"
+python_files = ["test_*.py"]
+
+[tool.ruff]
+# Runtime is Python 3.14, but pin ruff's SYNTAX target to 3.13 so the formatter
+# doesn't rewrite `except (A, B):` into PEP 758's parens-free `except A, B:` —
+# valid on 3.14 but it reads like the removed Py2 `except E, e:` form (confusing
+# + non-portable). Bump this once that syntax is idiomatic.
+target-version = "py313"
+extend-exclude = ["*/migrations/*.py", "staticfiles/*"]
+# line-length defaults to 88 (cookiecutter-django convention).
+
+[tool.ruff.lint]
+select = [
+  "A", "ASYNC", "B", "BLE", "C4", "C90", "COM", "DJ", "DTZ", "E",
+  "EM", "ERA", "EXE", "F", "FA", "FBT", "FLY", "G", "I", "ICN",
+  "INP", "INT", "ISC", "N", "PD", "PERF", "PGH", "PIE", "PL", "PT",
+  "PTH", "PYI", "Q", "RET", "RSE", "RUF", "S", "SIM", "SLF",
+  "SLOT", "T10", "T20", "TC", "TID", "TRY", "UP", "W", "YTT",
+]
+ignore = [
+  "RUF012",   # cookiecutter: mutable class attrs without ClassVar
+  "S101",     # cookiecutter: assert (used throughout tests)
+  "SIM102",   # cookiecutter: nested-if collapsing
+  "COM812",   # conflicts with the ruff formatter (it manages trailing commas)
+  "PLR2004",  # magic-value comparison — domain numbers (buttons 4/5/6/8, limits, thresholds)
+  "TRY003",   # long messages in raise — fine for this app
+  "EM101",    # string literal in exception — low-value churn
+  "EM102",    # f-string in exception
+  "S105",     # hardcoded-password false positives on *_KEY / token var names
+  "S106",     # same, in call args (test dummies)
+  "DJ001",    # nullable string fields are intentional (a Channel may have no tokens yet)
+  "PLC0415",  # lazy / test-isolation local imports are intentional here
+]
+
+[tool.ruff.lint.isort]
+force-single-line = true
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["PT011", "B017", "PT018"]  # broad pytest.raises / composite asserts are fine in tests
+
+[tool.djlint]
+profile = "django"
+indent = 2
+blank_line_after_tag = "load,extends"
+close_void_tags = true
+format_css = true
+format_js = true
+max_line_length = 119
+# cookiecutter ignores + H021 (the SiteBackground / widget inline styles are deliberate).
+ignore = "H006,H030,H031,T002,H021,D018"  # D018: app intentionally uses literal paths (consistent with htmx hx-post/hx-get) — not migrating to {% url %} in a lint pass
+include = "H017,H035"
+css.indent_size = 2
+js.indent_size = 2
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["mypy_django_plugin.main"]
+# `strict` already implies disallow_untyped_defs / disallow_incomplete_defs /
+# disallow_untyped_calls / disallow_any_generics / disallow_untyped_decorators /
+# warn_return_any / warn_unused_ignores / warn_redundant_casts / strict_equality /
+# no_implicit_reexport / check_untyped_defs / warn_unused_configs.
+# Keep untyped 3rd-party libs (socketio / engineio / environ) as Any:
+ignore_missing_imports = true
+
+# Migrations are generated — never type-check them.
+[[tool.mypy.overrides]]
+module = "*.migrations.*"
+ignore_errors = true
+
+# Tests stay readable (verified by running): no annotation / generic-parameterization requirement.
+[[tool.mypy.overrides]]
+module = "*.tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+check_untyped_defs = false
+
+# Settings use `from .base import *` — keep implicit re-export here (else no_implicit_reexport fires).
+[[tool.mypy.overrides]]
+module = "config.settings.*"
+implicit_reexport = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.local"

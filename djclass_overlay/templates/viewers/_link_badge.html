@@ -1,0 +1,10 @@
+{% comment %}Compact DJ CLASS chip for the /link page: class / threshold+ / power.
+Port of src/components/LinkClassBadge.tsx. `badge` is a djclass.badges.build_badge dict.
+Uses `is not None` so a 0 threshold/power still renders.{% endcomment %}
+{% if badge %}
+  <span class="inline-flex flex-wrap items-center gap-1">
+    <span class="inline-flex items-center rounded bg-gray-200 px-1.5 py-0.5 text-xs font-bold text-gray-800">{{ badge.class }}</span>
+    {% if badge.threshold is not None %}<span class="inline-flex items-center rounded bg-gray-700 px-1.5 py-0.5 text-xs font-bold text-white">{{ badge.threshold }}+</span>{% endif %}
+    {% if badge.power is not None %}<span class="inline-flex items-center rounded bg-black px-1.5 py-0.5 text-xs font-bold text-white">{{ badge.power }}</span>{% endif %}
+  </span>
+{% endif %}
