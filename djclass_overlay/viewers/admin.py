@@ -4,7 +4,7 @@ from .models import VarchiveToken
 
 
 @admin.register(VarchiveToken)
-class VarchiveTokenAdmin(admin.ModelAdmin):
+class VarchiveTokenAdmin(admin.ModelAdmin):  # type: ignore[type-arg]
     list_display = (
         "varchive_nickname",
         "varchive_user_no",
