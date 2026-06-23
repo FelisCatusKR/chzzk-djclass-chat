@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from django.utils.csp import CSP
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
@@ -26,6 +27,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -40,6 +42,20 @@ MIDDLEWARE = [
 X_FRAME_OPTIONS = "DENY"
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
+
+# Static allowlist: Alpine needs 'unsafe-eval' (script), @tailwindcss/browser
+# injects <style> at runtime needing 'unsafe-inline' (style) — so no nonces.
+# Shipped report-only; a later task flips it to enforcing (SECURE_CSP) after a
+# clean browser check. The CDN-free OBS overlay only uses 'self', unaffected.
+_CSP_POLICY = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, CSP.UNSAFE_EVAL, "https://cdn.jsdelivr.net"],
+    "style-src": [CSP.SELF, CSP.UNSAFE_INLINE, "https://cdn.jsdelivr.net"],
+    "img-src": [CSP.SELF, "https://chzzk-djclass-assets.pages.dev", "data:"],
+    "font-src": ["https://cdn.jsdelivr.net"],
+    "connect-src": [CSP.SELF],
+}
+SECURE_CSP_REPORT_ONLY = _CSP_POLICY
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
