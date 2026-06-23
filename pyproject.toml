@@ -111,19 +111,5 @@ check_untyped_defs = false
 module = "config.settings.*"
 implicit_reexport = true
 
-# RATCHET — every app starts lenient; later annotation tasks delete its globs
-# from this list until it is empty. DO NOT remove any here in Task 1.
-[[tool.mypy.overrides]]
-module = [
-  "djclass_overlay.overlay.*",
-]
-# turn off everything strict would fire on un-annotated code, so lenient apps stay green:
-disallow_untyped_defs = false
-disallow_incomplete_defs = false
-disallow_untyped_calls = false
-disallow_any_generics = false
-check_untyped_defs = false
-warn_return_any = false
-
 [tool.django-stubs]
 django_settings_module = "config.settings.local"

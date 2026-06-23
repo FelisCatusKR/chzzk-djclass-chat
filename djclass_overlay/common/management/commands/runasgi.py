@@ -54,7 +54,7 @@ class Command(BaseCommand):
                 # starts force-cancelling the (otherwise endless) SSE streams.
                 while not server.should_exit:  # noqa: ASYNC110 — poll uvicorn's should_exit flag (no asyncio.Event exposed)
                     await asyncio.sleep(0.1)
-                await lifecycle.shutdown()  # type: ignore[no-untyped-call]  # overlay.lifecycle is annotated in Task 6
+                await lifecycle.shutdown()
 
             watcher = asyncio.create_task(_watch_exit())
             try:

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 shutting_down = asyncio.Event()
 
 
-async def shutdown():
+async def shutdown() -> None:
     """Close streams and tear down realtime background tasks (idempotent)."""
     shutting_down.set()
 
@@ -36,10 +36,7 @@ async def shutdown():
     await flush.stop_flush_loop()
 
     # Disconnect chat sockets and cancel pending teardown timers.
-    for channel_id in list(registry.connections.keys()):
-        conn = registry.connections.get(channel_id)
-        if conn is None:
-            continue
+    for channel_id, conn in list(registry.connections.items()):
         if conn.disconnect_task:
             conn.disconnect_task.cancel()
         if conn.sio is not None:

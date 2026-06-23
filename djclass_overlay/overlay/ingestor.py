@@ -7,7 +7,9 @@ import asyncio
 import contextlib
 import json
 import logging
+from collections.abc import Coroutine
 from datetime import timedelta
+from typing import Any
 
 import socketio
 from asgiref.sync import sync_to_async
@@ -17,6 +19,8 @@ from django.utils import timezone
 from djclass_overlay.common import chzzk
 from djclass_overlay.common import crypto
 from djclass_overlay.overlay import registry
+from djclass_overlay.overlay.registry import ChannelConnection
+from djclass_overlay.overlay.registry import ChatMessage
 
 logger = logging.getLogger(__name__)
 
@@ -26,28 +30,29 @@ TEARDOWN_DELAY = 30  # chat-proxy.ts:484
 # Holds fire-and-forget reconnect tasks so they aren't garbage-collected mid-flight
 # (asyncio keeps only a weak reference to bare create_task results); each task
 # removes itself on completion. The teardown timer is held on conn.disconnect_task.
-_background_tasks: set[asyncio.Task] = set()
+_background_tasks: set[asyncio.Task[Any]] = set()
 
 
-def _spawn(coro):
+def _spawn(coro: Coroutine[Any, Any, None]) -> asyncio.Task[None]:
     task = asyncio.create_task(coro)
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
     return task
 
 
-def parse(data):
+def parse(data: object) -> dict[str, Any]:
     """SYSTEM/CHAT payloads arrive as a JSON string or an already-decoded dict
     (chat-proxy.ts:275-285). Fall back to {} on anything else."""
     if isinstance(data, str):
         try:
-            return json.loads(data)
+            decoded: Any = json.loads(data)
         except Exception:  # noqa: BLE001 — any malformed SYSTEM/CHAT payload falls back to {} (chat-proxy.ts parity)
             return {}
+        return decoded if isinstance(decoded, dict) else {}
     return data if isinstance(data, dict) else {}
 
 
-def extract_chat(parsed, channel_id):
+def extract_chat(parsed: dict[str, Any], channel_id: str) -> ChatMessage:
     """Port of chat-proxy.ts:287-321. Reads exactly the fields the Node app reads,
     with the same fallbacks and coercions; drops non-string emoji values."""
     profile = parsed.get("profile") or {}
@@ -69,7 +74,7 @@ def extract_chat(parsed, channel_id):
     }
 
 
-def get_channel_access_token(channel_id):
+def get_channel_access_token(channel_id: str) -> str | None:
     """Read the channel's access token, refreshing (and re-persisting) if expired.
     Plain sync (tested directly); connect_to_chat calls it via sync_to_async.
     Port of chat-proxy.ts:145-201."""
@@ -109,7 +114,7 @@ def get_channel_access_token(channel_id):
     return crypto.decrypt(channel.chzzk_access_token_encrypted)
 
 
-def _load_access_token_detached(channel_id):
+def _load_access_token_detached(channel_id: str) -> str | None:
     """get_channel_access_token for the detached ingestor/reconnect task: runs in a
     NON-thread-sensitive pool thread (must not ride the spawning request's
     CurrentThreadExecutor, which quits when that request ends) + connection hygiene.
@@ -121,7 +126,7 @@ def _load_access_token_detached(channel_id):
         close_old_connections()
 
 
-async def connect_to_chat(channel_id):  # noqa: C901 — cohesive socket setup + inline SYSTEM/CHAT/disconnect handlers that close over conn/token
+async def connect_to_chat(channel_id: str) -> None:  # noqa: C901 — cohesive socket setup + inline SYSTEM/CHAT/disconnect handlers that close over conn/token
     """Connect a channel's Chzzk chat socket and wire CHAT → buffer.
     Dedup via the per-channel lock (port of the connectingPromise pattern)."""
     conn = registry.get_or_create(channel_id)
@@ -140,8 +145,8 @@ async def connect_to_chat(channel_id):  # noqa: C901 — cohesive socket setup +
         sio = socketio.AsyncClient(reconnection=False)
         conn.sio = sio
 
-        @sio.on("SYSTEM")
-        async def on_system(data):
+        @sio.on("SYSTEM")  # type: ignore[untyped-decorator]  # python-socketio @sio.on is untyped (no stubs)
+        async def on_system(data: object) -> None:
             parsed = parse(data)
             if parsed.get("type") == "connected":
                 key = (parsed.get("data") or {}).get("sessionKey")
@@ -154,12 +159,12 @@ async def connect_to_chat(channel_id):  # noqa: C901 — cohesive socket setup +
                             "[ingestor] subscribe failed for %s", channel_id
                         )
 
-        @sio.on("CHAT")
-        async def on_chat(data):
+        @sio.on("CHAT")  # type: ignore[untyped-decorator]  # python-socketio @sio.on is untyped (no stubs)
+        async def on_chat(data: object) -> None:
             conn.buffer.append(extract_chat(parse(data), channel_id))
 
-        @sio.on("disconnect")
-        async def on_disconnect():
+        @sio.on("disconnect")  # type: ignore[untyped-decorator]  # python-socketio @sio.on is untyped (no stubs)
+        async def on_disconnect() -> None:
             conn.sio = None
             conn.session_key = None
             if conn.subscribers:
@@ -175,10 +180,10 @@ async def connect_to_chat(channel_id):  # noqa: C901 — cohesive socket setup +
             conn.sio = None
 
 
-def schedule_reconnect(channel_id, delay=RECONNECT_DELAY):
+def schedule_reconnect(channel_id: str, delay: float = RECONNECT_DELAY) -> None:
     """Single fixed-delay reconnect iff subscribers remain (chat-proxy.ts:343-372)."""
 
-    async def _later():
+    async def _later() -> None:
         await asyncio.sleep(delay)
         conn = registry.connections.get(channel_id)
         if conn and conn.subscribers and conn.sio is None:
@@ -187,7 +192,7 @@ def schedule_reconnect(channel_id, delay=RECONNECT_DELAY):
     _spawn(_later())
 
 
-def schedule_teardown(channel_id, delay=TEARDOWN_DELAY):
+def schedule_teardown(channel_id: str, delay: float = TEARDOWN_DELAY) -> None:
     """Arm the 30s teardown after the last subscriber leaves (chat-proxy.ts:472-492)."""
     conn = registry.connections.get(channel_id)
     if conn is None:
@@ -195,7 +200,7 @@ def schedule_teardown(channel_id, delay=TEARDOWN_DELAY):
     if conn.disconnect_task:
         conn.disconnect_task.cancel()
 
-    async def _later():
+    async def _later() -> None:
         try:
             await asyncio.sleep(delay)
         except asyncio.CancelledError:
@@ -207,14 +212,14 @@ def schedule_teardown(channel_id, delay=TEARDOWN_DELAY):
     conn.disconnect_task = asyncio.create_task(_later())
 
 
-def cancel_teardown(conn):
+def cancel_teardown(conn: ChannelConnection) -> None:
     """Cancel a pending teardown when a widget rejoins (chat-proxy.ts:460-464)."""
     if conn.disconnect_task:
         conn.disconnect_task.cancel()
         conn.disconnect_task = None
 
 
-async def teardown(channel_id):
+async def teardown(channel_id: str) -> None:
     conn = registry.connections.pop(channel_id, None)
     if conn is None:
         return
