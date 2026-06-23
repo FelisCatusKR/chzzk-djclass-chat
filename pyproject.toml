@@ -1,7 +1,7 @@
 [project]
 name = "chzzk-djclass-chat"
 version = "0.1.0"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "cryptography>=49.0.0",
     "django==6.0.6",
@@ -28,6 +28,11 @@ DJANGO_SETTINGS_MODULE = "config.settings.local"
 python_files = ["test_*.py"]
 
 [tool.ruff]
+# Runtime is Python 3.14, but pin ruff's SYNTAX target to 3.13 so the formatter
+# doesn't rewrite `except (A, B):` into PEP 758's parens-free `except A, B:` —
+# valid on 3.14 but it reads like the removed Py2 `except E, e:` form (confusing
+# + non-portable). Bump this once that syntax is idiomatic.
+target-version = "py313"
 extend-exclude = ["*/migrations/*.py", "staticfiles/*"]
 # line-length defaults to 88 (cookiecutter-django convention).
 

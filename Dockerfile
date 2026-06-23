@@ -1,5 +1,5 @@
 # Build stage — install deps + project into /app/.venv via uv
-FROM python:3.13-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
@@ -9,7 +9,7 @@ COPY . .
 RUN uv sync --frozen --no-dev
 
 # Runtime stage
-FROM python:3.13-slim-bookworm AS runner
+FROM python:3.14-slim-bookworm AS runner
 WORKDIR /app
 ENV PATH="/app/.venv/bin:$PATH" \
     DJANGO_SETTINGS_MODULE=config.settings.production \
