@@ -170,3 +170,16 @@ def test_preferred_button_invalid_rejected(client):
     assert "잘못된 버튼 선택입니다." in resp.content.decode()
     u.refresh_from_db()
     assert u.preferred_button is None
+
+
+@pytest.mark.django_db
+def test_link_sync_rate_limited(client, monkeypatch):
+    from djclass_overlay.common import ratelimit
+
+    u = User.objects.create_user(chzzk_id="rl1", chzzk_nickname="RL")
+    VarchiveToken.objects.create(user=u, varchive_nickname="VA", varchive_user_no=7)
+    client.force_login(u, backend=BACKEND)
+    monkeypatch.setattr(ratelimit, "allow", lambda *a, **k: False)
+    resp = client.post("/link/sync/")
+    assert resp.status_code == 200                       # htmx-swappable fragment
+    assert "요청이 너무 많습니다" in resp.content.decode()

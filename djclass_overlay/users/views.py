@@ -7,11 +7,12 @@ from django.conf import settings
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from djclass_overlay.common import chzzk, crypto
+from djclass_overlay.common import chzzk, crypto, ratelimit
 from djclass_overlay.common.safe_redirect import safe_next_path
 from djclass_overlay.streamers.models import Channel
 
@@ -30,6 +31,8 @@ def chzzk_login(request):
 
 
 def chzzk_callback(request):
+    if not ratelimit.allow(request, scope="auth", limit=10, window=60):
+        return HttpResponse("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", status=429)
     code = request.GET.get("code")
     state = request.GET.get("state")
     stored = request.session.get("oauth_state")

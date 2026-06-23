@@ -3,6 +3,7 @@ from django.db import transaction
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
+from djclass_overlay.common import ratelimit
 from djclass_overlay.djclass import badges, varchive
 from djclass_overlay.djclass.models import DjClass
 from djclass_overlay.djclass.resolver import invalidate_user
@@ -52,6 +53,8 @@ def link_page(request):
 @login_required
 @require_POST
 def link_connect(request):
+    if not ratelimit.allow(request, scope="link", limit=5, window=60):
+        return _render_card(request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error")
     token = (request.POST.get("token") or "").strip()
     if not token:
         return _render_card(request, "조회토큰을 입력하세요.", "error")
@@ -73,6 +76,8 @@ def link_connect(request):
 @login_required
 @require_POST
 def link_sync(request):
+    if not ratelimit.allow(request, scope="sync", limit=3, window=60):
+        return _render_card(request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error")
     link = VarchiveToken.objects.filter(user=request.user, is_active=True).first()
     if link is None:
         return _render_card(request, "먼저 V-ARCHIVE를 연동해주세요.", "error")
@@ -110,6 +115,8 @@ def link_unlink(request):
 @login_required
 @require_POST
 def link_preferred_button(request):
+    if not ratelimit.allow(request, scope="pref", limit=10, window=60):
+        return _render_card(request, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", "error")
     raw = request.POST.get("button")
     available = list(
         DjClass.objects.filter(user=request.user).values_list("button", flat=True)
