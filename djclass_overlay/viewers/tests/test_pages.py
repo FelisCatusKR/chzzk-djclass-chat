@@ -41,3 +41,18 @@ def test_link_linked_state_shows_actions_and_buttons(client):
     assert "4버튼" in body
     assert "SS II" in body                  # compact rank chip (build_badge "class")
     assert "9823" in body                   # power chip
+
+
+@pytest.mark.django_db
+def test_link_card_scopes_swaps_to_itself(client):
+    # The #link-card forms must NOT inherit the <body> app-shell hx-select="#content":
+    # their hx-post responses are #link-card fragments with no #content, so htmx would
+    # build an empty fragment and EMPTY the card. The container re-declares hx-select
+    # to itself (+ opts out of boost). Regression guard for that swap bug.
+    u = User.objects.create_user(chzzk_id="v3", chzzk_nickname="Viewer3")
+    client.force_login(u, backend=BACKEND)
+    body = client.get("/link/").content.decode()
+    assert 'id="link-card"' in body
+    assert 'hx-select="#link-card"' in body
+    # The explanatory note must be a real (stripped) template comment, not leaked text.
+    assert "pin the forms below" not in body

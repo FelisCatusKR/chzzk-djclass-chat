@@ -16,7 +16,11 @@
     </div>
 
     {% partialdef link_card inline %}
-    <div id="link-card" class="space-y-6">
+    {% comment %}hx-boost/hx-select pin the forms below to LOCAL #link-card swaps:
+       each hx-post returns a #link-card fragment with no #content, so without this
+       they'd inherit the <body> app-shell hx-select="#content" → htmx finds no match
+       → empties the card (and hx-boost="true" would push the URL like a navigation).{% endcomment %}
+    <div id="link-card" class="space-y-6" hx-boost="false" hx-select="#link-card">
       <!-- V-ARCHIVE card -->
       <div class="frosted-card p-6">
         <h2 class="text-lg font-bold text-gray-900">V-ARCHIVE 토큰 입력</h2>
