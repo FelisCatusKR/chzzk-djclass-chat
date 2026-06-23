@@ -59,10 +59,11 @@ def chzzk_callback(request):
                     "token_expires_at": expires_at,
                 },
             )
-        # NOTE(plan-7): the Node callback also auto-syncs DJ CLASS here when the
-        # user already has an active V-ARCHIVE token. That depends on the sync
-        # subsystem and is wired in Plan 7; migrated users keep their imported
-        # classes meanwhile.
+        # NOTE: unlike the Node callback, login deliberately does NOT auto-sync DJ
+        # CLASS — token-less sync makes up to 4 sequential V-ARCHIVE calls (per
+        # button), too slow for the login hot path. Freshness is covered by the
+        # daily sync_djclass cron, the first sync at link time (link_connect), and
+        # the manual "동기화" button on /link. Migrated users keep their classes.
 
         next_path = safe_next_path(request.session.pop("oauth_next", None))
         request.session.pop("oauth_state", None)

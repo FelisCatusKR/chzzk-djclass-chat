@@ -43,9 +43,11 @@ def lookup_user(token):
     except httpx.HTTPError as exc:
         raise VarchiveError(f"V-ARCHIVE API error: {resp.status_code}") from exc
     data = resp.json()
-    if not data.get("success"):
+    user_no = data.get("userNo")
+    nickname = data.get("nickname")
+    if not data.get("success") or user_no is None or nickname is None:
         raise InvalidToken()
-    return {"user_no": data["userNo"], "nickname": data["nickname"]}
+    return {"user_no": user_no, "nickname": nickname}
 
 
 def get_dj_class(nickname, button):

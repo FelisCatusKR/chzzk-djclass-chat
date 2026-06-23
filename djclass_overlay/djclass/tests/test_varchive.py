@@ -30,6 +30,16 @@ def test_lookup_user_success_false_is_invalid(httpx_mock):
         varchive.lookup_user("tok")
 
 
+def test_lookup_user_missing_fields_is_invalid(httpx_mock):
+    # success=true but no userNo/nickname (API-contract violation) must not 500.
+    httpx_mock.add_response(
+        url="https://v-archive.net/api/v2/open-token/user",
+        json={"success": True},
+    )
+    with pytest.raises(varchive.InvalidToken):
+        varchive.lookup_user("tok")
+
+
 def test_get_all_dj_classes_skips_failures(httpx_mock):
     base = "https://v-archive.net/api/v2/archive/VA-Nick/djClass"
     httpx_mock.add_response(
