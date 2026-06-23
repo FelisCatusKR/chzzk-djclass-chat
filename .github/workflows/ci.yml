@@ -36,6 +36,7 @@ jobs:
       - run: uv run ruff format --check djclass_overlay config manage.py
       - run: uv run djlint djclass_overlay/templates --check
       - run: uv run djlint djclass_overlay/templates --lint
+      - run: uv run mypy djclass_overlay config
       - run: uv run python manage.py check
       - run: uv run python manage.py makemigrations --check --dry-run
       - run: uv run pytest -q
