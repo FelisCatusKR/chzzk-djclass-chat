@@ -1,42 +1,49 @@
 {% extends "base.html" %}
-{% block title %}Chzzk DJ CLASS 채팅 위젯{% endblock %}
+
+{% block title %}Chzzk DJ CLASS 채팅 위젯{% endblock title %}
 {% block content %}
-<main class="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:py-12">
-  <div class="w-full max-w-3xl space-y-8 text-center">
-    <div class="space-y-2">
-      <h1 class="text-4xl font-bold text-gray-900">Chzzk DJ CLASS 채팅 위젯</h1>
-      <p class="text-lg text-gray-600">V-ARCHIVE의 DJ CLASS를 채팅에 표시하는 OBS 위젯 서비스입니다.</p>
-    </div>
-
-    <div class="flex flex-col gap-5 md:flex-row">
-      <a href="/dashboard/" class="frosted-card flex-1 p-7 text-center transition-transform hover:-translate-y-1">
-        <div class="mb-2 text-4xl">🎛️</div>
-        <span class="mb-3 inline-block rounded-full bg-gray-900 px-3 py-1 text-xs font-bold tracking-wide text-yellow-400">STREAMER</span>
-        <h2 class="mb-2 text-xl font-bold text-gray-900">스트리머이신가요?</h2>
-        <p class="mb-5 min-h-[3rem] text-sm leading-relaxed text-gray-600">
-          내 채팅에 시청자들의 DJ CLASS 뱃지를 표시하는 위젯을 OBS에 추가하려면 이 쪽을 클릭해주세요.
-        </p>
-        <span class="btn-chzzk">채팅 위젯 얻기 →</span>
-      </a>
-
-      <a href="/link/" class="frosted-card flex-1 p-7 text-center transition-transform hover:-translate-y-1">
-        <div class="mb-2 text-4xl">🎧</div>
-        <span class="mb-3 inline-block rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold tracking-wide text-gray-900">VIEWER</span>
-        <h2 class="mb-2 text-xl font-bold text-gray-900">시청자이신가요?</h2>
-        <p class="mb-5 min-h-[3rem] text-sm leading-relaxed text-gray-600">
-          스트리머의 채팅에서 DJ CLASS를 연동하려면 이 쪽을 클릭해주세요.
-        </p>
-        <span class="btn-chzzk-alt">DJ CLASS 연동하기 →</span>
-      </a>
-    </div>
-
-    <footer class="space-y-2 pt-8 text-sm text-gray-500">
-      <div>Special Thanks to
-        <a href="https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9" target="_blank" rel="noopener noreferrer" hx-boost="false" class="underline hover:text-gray-700">똘똘똘이 님</a>
+  <main class="flex min-h-screen flex-col items-center justify-center px-4 py-8 sm:py-12">
+    <div class="w-full max-w-3xl space-y-8 text-center">
+      <div class="space-y-2">
+        <h1 class="text-4xl font-bold text-gray-900">Chzzk DJ CLASS 채팅 위젯</h1>
+        <p class="text-lg text-gray-600">V-ARCHIVE의 DJ CLASS를 채팅에 표시하는 OBS 위젯 서비스입니다.</p>
       </div>
-      <a href="https://github.com/FelisCatusKR/chzzk-djclass-chat" target="_blank" rel="noopener noreferrer" hx-boost="false" class="hover:text-gray-700">GitHub</a>
-      <p class="pt-2 text-xs text-gray-400">본 프로젝트는 DJMAX RESPECT V와 공식적인 연관이 없는 비공식 팬 프로젝트입니다.</p>
-    </footer>
-  </div>
-</main>
-{% endblock %}
+      <div class="flex flex-col gap-5 md:flex-row">
+        <a href="/dashboard/"
+           class="frosted-card flex-1 p-7 text-center transition-transform hover:-translate-y-1">
+          <div class="mb-2 text-4xl">🎛️</div>
+          <span class="mb-3 inline-block rounded-full bg-gray-900 px-3 py-1 text-xs font-bold tracking-wide text-yellow-400">STREAMER</span>
+          <h2 class="mb-2 text-xl font-bold text-gray-900">스트리머이신가요?</h2>
+          <p class="mb-5 min-h-[3rem] text-sm leading-relaxed text-gray-600">
+            내 채팅에 시청자들의 DJ CLASS 뱃지를 표시하는 위젯을 OBS에 추가하려면 이 쪽을 클릭해주세요.
+          </p>
+          <span class="btn-chzzk">채팅 위젯 얻기 →</span>
+        </a>
+        <a href="/link/"
+           class="frosted-card flex-1 p-7 text-center transition-transform hover:-translate-y-1">
+          <div class="mb-2 text-4xl">🎧</div>
+          <span class="mb-3 inline-block rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold tracking-wide text-gray-900">VIEWER</span>
+          <h2 class="mb-2 text-xl font-bold text-gray-900">시청자이신가요?</h2>
+          <p class="mb-5 min-h-[3rem] text-sm leading-relaxed text-gray-600">스트리머의 채팅에서 DJ CLASS를 연동하려면 이 쪽을 클릭해주세요.</p>
+          <span class="btn-chzzk-alt">DJ CLASS 연동하기 →</span>
+        </a>
+      </div>
+      <footer class="space-y-2 pt-8 text-sm text-gray-500">
+        <div>
+          Special Thanks to
+          <a href="https://chzzk.naver.com/1906dd57f578c255feca54700bcccfc9"
+             target="_blank"
+             rel="noopener noreferrer"
+             hx-boost="false"
+             class="underline hover:text-gray-700">똘똘똘이 님</a>
+        </div>
+        <a href="https://github.com/FelisCatusKR/chzzk-djclass-chat"
+           target="_blank"
+           rel="noopener noreferrer"
+           hx-boost="false"
+           class="hover:text-gray-700">GitHub</a>
+        <p class="pt-2 text-xs text-gray-400">본 프로젝트는 DJMAX RESPECT V와 공식적인 연관이 없는 비공식 팬 프로젝트입니다.</p>
+      </footer>
+    </div>
+  </main>
+{% endblock content %}
