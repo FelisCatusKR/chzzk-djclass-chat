@@ -16,7 +16,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "django-stubs[compatible-mypy]>=6.0.5",
     "djlint>=1.39.2",
+    "mypy>=2.1.0",
     "pytest>=9.1.1",
     "pytest-django>=4.12.0",
     "pytest-httpx>=0.36.2",
@@ -78,3 +80,56 @@ ignore = "H006,H030,H031,T002,H021,D018"  # D018: app intentionally uses literal
 include = "H017,H035"
 css.indent_size = 2
 js.indent_size = 2
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["mypy_django_plugin.main"]
+# `strict` already implies disallow_untyped_defs / disallow_incomplete_defs /
+# disallow_untyped_calls / disallow_any_generics / disallow_untyped_decorators /
+# warn_return_any / warn_unused_ignores / warn_redundant_casts / strict_equality /
+# no_implicit_reexport / check_untyped_defs / warn_unused_configs.
+# Keep untyped 3rd-party libs (socketio / engineio / environ) as Any:
+ignore_missing_imports = true
+
+# Migrations are generated — never type-check them.
+[[tool.mypy.overrides]]
+module = "*.migrations.*"
+ignore_errors = true
+
+# Tests stay readable (verified by running): no annotation / generic-parameterization requirement.
+[[tool.mypy.overrides]]
+module = "*.tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+check_untyped_defs = false
+
+# Settings use `from .base import *` — keep implicit re-export here (else no_implicit_reexport fires).
+[[tool.mypy.overrides]]
+module = "config.settings.*"
+implicit_reexport = true
+
+# RATCHET — every app starts lenient; later annotation tasks delete its globs
+# from this list until it is empty. DO NOT remove any here in Task 1.
+[[tool.mypy.overrides]]
+module = [
+  "djclass_overlay.common.*",
+  "config.*",
+  "djclass_overlay.streamers.*",
+  "djclass_overlay.users.*",
+  "djclass_overlay.djclass.*",
+  "djclass_overlay.viewers.*",
+  "djclass_overlay.overlay.*",
+]
+# turn off everything strict would fire on un-annotated code, so lenient apps stay green:
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+check_untyped_defs = false
+warn_return_any = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings.local"

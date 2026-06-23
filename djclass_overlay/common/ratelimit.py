@@ -6,7 +6,7 @@ real client IP arrives in CF-Connecting-IP, not REMOTE_ADDR.
 import time
 
 _MAX_KEYS = 10000
-_buckets = {}  # (scope, ip) -> [window_start, count, window]
+_buckets = {}  # type: ignore[var-annotated]  # (scope, ip) -> [window_start, count, window]; annotated in Task 2
 
 
 def reset():
