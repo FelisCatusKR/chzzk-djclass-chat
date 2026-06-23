@@ -1,45 +1,33 @@
-# Build stage
-FROM node:24-bookworm-slim AS builder
+# Build stage — install deps + project into /app/.venv via uv
+FROM python:3.13-slim-bookworm AS builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=0
 WORKDIR /app
-
-# Toolchain for native modules (better-sqlite3) — only present in the build stage
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ \
-  && rm -rf /var/lib/apt/lists/*
-
-COPY package*.json ./
-RUN npm ci
-
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
 COPY . .
+RUN uv sync --frozen --no-dev
 
-# NEXT_PUBLIC_* vars are inlined by Next at build time, so the public base URL
-# must be present during `next build`. Provided by Dokku via docker-options build-arg.
-ARG NEXT_PUBLIC_BASE_URL
-ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
-
-RUN npm run build
-
-# Drop dev dependencies but keep the already-compiled native binaries
-RUN npm prune --omit=dev
-
-# Production stage
-FROM node:24-bookworm-slim AS runner
+# Runtime stage
+FROM python:3.13-slim-bookworm AS runner
 WORKDIR /app
-ENV NODE_ENV=production
+ENV PATH="/app/.venv/bin:$PATH" \
+    DJANGO_SETTINGS_MODULE=config.settings.production \
+    PYTHONUNBUFFERED=1
+COPY --from=builder /app /app
 
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/server.ts ./
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/next.config.js ./
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
+# Bake collected static into the image (build-time dummies — collectstatic needs
+# settings to import but touches no DB or real secret).
+RUN DJANGO_SECRET_KEY=build-only-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+    VARCHIVE_TOKEN_KEY=build-only-key-32-characters-okay \
+    CHZZK_CLIENT_ID=build CHZZK_CLIENT_SECRET=build \
+    DATABASE_URL=sqlite:////tmp/build.db DJANGO_ALLOWED_HOSTS=localhost BASE_URL=https://build.local \
+    python manage.py collectstatic --noinput
 
-RUN mkdir -p /app/data
-
-EXPOSE 3000
+EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://localhost:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/').status==200 else 1)"
 
-CMD ["npm", "start"]
+# Default command; Dokku overrides it with the Procfile `web` process.
+CMD ["python", "manage.py", "runasgi", "--host", "0.0.0.0", "--port", "8000"]

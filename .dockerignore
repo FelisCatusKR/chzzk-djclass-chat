@@ -1,9 +1,12 @@
+.git
 node_modules
-.next/cache
+.next
+.venv
+staticfiles
 data
 test-data
+*.sqlite3
 .env
-.env.local
-.git
-docs
-*.log
+.env.*
+__pycache__
+.pytest_cache
