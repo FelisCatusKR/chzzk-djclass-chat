@@ -56,3 +56,16 @@ def test_result_is_cached(django_assert_num_queries):
     with django_assert_num_queries(0):
         second = resolver.resolve_sender_badges("c4", "N")
     assert first == second
+
+
+@pytest.mark.django_db
+def test_invalidate_user_clears_both_keys():
+    from djclass_overlay.djclass import resolver
+    from djclass_overlay.users.models import User
+
+    u = User.objects.create_user(chzzk_id="cid", chzzk_nickname="nick")
+    resolver.badge_cache.set("id:cid", {"status": "linked"}, 300)
+    resolver.badge_cache.set("nick:nick", {"status": "linked"}, 300)
+    resolver.invalidate_user(u)
+    assert resolver.badge_cache.get("id:cid") is None
+    assert resolver.badge_cache.get("nick:nick") is None

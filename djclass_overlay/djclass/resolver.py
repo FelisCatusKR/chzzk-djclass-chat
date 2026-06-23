@@ -48,3 +48,11 @@ def _resolve_uncached(sender_channel_id, nickname):
         "status": "linked",
         "badge": {"auto": badges.build_badge(auto), "viewer": badges.build_badge(viewer)},
     }
+
+
+def invalidate_user(user):
+    """Drop any cached badge result for a user, under both possible sender keys
+    (matches the keys built in resolve_sender_badges). Called after link/sync/
+    unlink/preferred-button changes."""
+    badge_cache.invalidate(f"id:{user.chzzk_id}")
+    badge_cache.invalidate(f"nick:{user.chzzk_nickname}")

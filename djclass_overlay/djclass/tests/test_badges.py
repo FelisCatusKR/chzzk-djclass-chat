@@ -1,3 +1,5 @@
+import pytest
+
 from djclass_overlay.djclass import badges
 
 
@@ -56,3 +58,10 @@ def test_get_threshold():
     assert badges.get_threshold("BEGINNER", None) == 0               # default
     assert badges.get_threshold("UNKNOWN RANK", "II") is None        # unknown rank
     assert badges.get_threshold("SHOWSTOPPER", None) is None         # rank needs a level, none given
+
+
+def test_validate_preferred_button():
+    assert badges.validate_preferred_button(None, [4, 8]) is None
+    assert badges.validate_preferred_button(8, [4, 8]) == 8
+    with pytest.raises(ValueError):
+        badges.validate_preferred_button(5, [4, 8])

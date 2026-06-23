@@ -172,3 +172,13 @@ def build_badge(row):
         "threshold": get_threshold(rank_name, level),
         "isTheory": is_theory_power(power),
     }
+
+
+def validate_preferred_button(button, available_buttons):
+    """Port of dj-class.ts:246. None -> None; an int in `available_buttons` -> it;
+    anything else -> ValueError."""
+    if button is None:
+        return None
+    if isinstance(button, int) and button in available_buttons:
+        return button
+    raise ValueError("Invalid preferred button")
