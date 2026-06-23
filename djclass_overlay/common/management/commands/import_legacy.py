@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any
 
 from django.core.management.base import BaseCommand
+from django.core.management.base import CommandParser
 from django.db import transaction
 
 from djclass_overlay.common import crypto
@@ -19,7 +20,7 @@ def _enc(value: str) -> str | None:
 class Command(BaseCommand):
     help = "Import legacy data from the Node export JSON (re-encrypts tokens)."
 
-    def add_arguments(self, parser: Any) -> None:
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("json_path")
 
     @transaction.atomic

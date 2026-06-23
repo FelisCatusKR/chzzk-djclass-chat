@@ -30,7 +30,7 @@ TEARDOWN_DELAY = 30  # chat-proxy.ts:484
 # Holds fire-and-forget reconnect tasks so they aren't garbage-collected mid-flight
 # (asyncio keeps only a weak reference to bare create_task results); each task
 # removes itself on completion. The teardown timer is held on conn.disconnect_task.
-_background_tasks: set[asyncio.Task[Any]] = set()
+_background_tasks: set[asyncio.Task[None]] = set()
 
 
 def _spawn(coro: Coroutine[Any, Any, None]) -> asyncio.Task[None]:

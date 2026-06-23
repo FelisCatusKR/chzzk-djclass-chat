@@ -18,16 +18,16 @@ Note: auto-reload is not supported here (use plain `uvicorn --reload` for that).
 
 import asyncio
 import contextlib
-from argparse import ArgumentParser
 from typing import Any
 
 from django.core.management.base import BaseCommand
+from django.core.management.base import CommandParser
 
 
 class Command(BaseCommand):
     help = "Run the ASGI server (uvicorn) with graceful realtime shutdown."
 
-    def add_arguments(self, parser: ArgumentParser) -> None:
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("--host", default="127.0.0.1")
         parser.add_argument("--port", type=int, default=8000)
         parser.add_argument("--log-level", default="info")

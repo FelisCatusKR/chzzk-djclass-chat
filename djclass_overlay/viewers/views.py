@@ -1,4 +1,5 @@
 from typing import Any
+from typing import TypedDict
 from typing import cast
 
 from django.contrib.auth.decorators import login_required
@@ -19,6 +20,15 @@ from djclass_overlay.users.models import User
 from .models import VarchiveToken
 
 
+class ButtonOption(TypedDict):
+    """One preferred-button picker option (auto + one per synced button)."""
+
+    label: str
+    value: str
+    badge: badges.BadgeDict
+    checked: bool
+
+
 def _link_context(
     user: User,
     message: str | None = None,
@@ -32,7 +42,7 @@ def _link_context(
     rows: list[DjClass] = (
         list(DjClass.objects.filter(user=user).order_by("button")) if link else []
     )
-    options: list[dict[str, Any]] = []
+    options: list[ButtonOption] = []
     if rows:
         auto = badges.resolve_displayed_class(rows, None, "auto")
         if auto is not None:
