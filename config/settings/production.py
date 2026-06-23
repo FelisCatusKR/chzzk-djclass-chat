@@ -34,3 +34,14 @@ SILENCED_SYSTEM_CHECKS = [
     "security.W008",  # no SECURE_SSL_REDIRECT — Cloudflare handles HTTPS at edge
     "security.W021",  # no SECURE_HSTS_PRELOAD — preload is a hard-to-undo commitment
 ]
+
+# Hashed + compressed static for cache-busting; served by WhiteNoise.
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
+# In prod, collectstatic + the manifest serve static; finders are a dev-only
+# convenience (base.py enables them) and add startup overhead here.
+WHITENOISE_USE_FINDERS = False
