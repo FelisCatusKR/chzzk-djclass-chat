@@ -16,7 +16,6 @@
   var TEXT_STYLE = params.get('textStyle') === 'outline' ? 'outline' : 'shadow'
   var NICK_ON = params.get('nickname') === 'on'
   var DIM_UNVERIFIED = params.get('dimUnverified') !== 'off'
-  var FONT = parseFont(params.get('font'))
 
   // Korean web fonts on jsDelivr (CSP already allows the host). Pretendard is the
   // default and is loaded via @font-face in widget.html, so its css is null.
@@ -68,6 +67,10 @@
     '#c4abe9',
   ]
   var nickColorIdx = 0
+  // Resolve the font AFTER FONT_MAP is initialized: parseFont reads FONT_MAP, so
+  // calling it up in the param block would hit FONT_MAP while still `undefined`
+  // (var-initialization order) and throw "convert undefined to object".
+  var FONT = parseFont(params.get('font'))
 
   var chat = document.getElementById('chat')
   var statusEl = document.getElementById('status')
