@@ -1,7 +1,6 @@
 /* Functional DJ CLASS overlay widget (vanilla JS, no build).
    Consumes the SSE batch stream; assembles badge text per mode from the atomic
-   fields the server pre-resolved. Visual polish (gradient colors, theory glint,
-   opacity tiers, daisyUI) is deferred to Plan 6. Parity helpers ported from
+   fields the server pre-resolved. Parity helpers ported from
    src/lib/{font-size,fadeout,emoji}.ts and the badge-text rules in dj-class.ts. */
 ;(function () {
   'use strict'
@@ -14,10 +13,86 @@
   var BUTTON_SEL = params.get('buttonSel') === 'viewer' ? 'viewer' : 'auto'
   var FONT_SIZE = parseFontSize(params.get('fontSize'))
   var FADEOUT_SEC = parseFadeout(params.get('fadeout'))
+  var TEXT_STYLE = params.get('textStyle') === 'outline' ? 'outline' : 'shadow'
+  var NICK_ON = params.get('nickname') === 'on'
+  var DIM_UNVERIFIED = params.get('dimUnverified') !== 'off'
+  var FONT = parseFont(params.get('font'))
+
+  // Korean web fonts on jsDelivr (CSP already allows the host). Pretendard is the
+  // default and is loaded via @font-face in widget.html, so its css is null.
+  var FONT_MAP = {
+    pretendard: { family: 'Pretendard', css: null },
+    'gothic-a1': {
+      family: 'Gothic A1',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/gothic-a1/index.css',
+    },
+    'nanum-gothic': {
+      family: 'Nanum Gothic',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-gothic/index.css',
+    },
+    'do-hyeon': {
+      family: 'Do Hyeon',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/do-hyeon/index.css',
+    },
+    'black-han-sans': {
+      family: 'Black Han Sans',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/black-han-sans/index.css',
+    },
+    jua: {
+      family: 'Jua',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/jua/index.css',
+    },
+    'nanum-pen-script': {
+      family: 'Nanum Pen Script',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-pen-script/index.css',
+    },
+    'gamja-flower': {
+      family: 'Gamja Flower',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/gamja-flower/index.css',
+    },
+    'nanum-myeongjo': {
+      family: 'Nanum Myeongjo',
+      css: 'https://cdn.jsdelivr.net/npm/@fontsource/nanum-myeongjo/index.css',
+    },
+  }
+
+  // Mid-tone pastels in spectrum order; assigned by message arrival (feature 4).
+  var NICK_PALETTE = [
+    '#f1a7b4',
+    '#f0c68a',
+    '#f2d97e',
+    '#a7d99b',
+    '#8ed9c4',
+    '#8fc9ec',
+    '#a3b6ef',
+    '#c4abe9',
+  ]
+  var nickColorIdx = 0
 
   var chat = document.getElementById('chat')
   var statusEl = document.getElementById('status')
   chat.style.fontSize = FONT_SIZE + 'px'
+  chat.classList.remove('ts-shadow', 'ts-outline')
+  chat.classList.add(TEXT_STYLE === 'outline' ? 'ts-outline' : 'ts-shadow')
+  if (!DIM_UNVERIFIED) chat.classList.remove('dim-unverified')
+  applyFont(FONT)
+
+  function parseFont(raw) {
+    return Object.prototype.hasOwnProperty.call(FONT_MAP, raw)
+      ? raw
+      : 'pretendard'
+  }
+  function applyFont(key) {
+    var f = FONT_MAP[key]
+    if (f.css) {
+      var link = document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = f.css
+      document.head.appendChild(link)
+    }
+    chat.style.fontFamily =
+      '"' + f.family + '", "Pretendard", system-ui, "Apple SD Gothic Neo", sans-serif'
+  }
 
   function parseFontSize(raw) {
     // font-size.ts: 12–28, default 14
@@ -102,6 +177,14 @@
       u.className = 'dj-badge unverified'
       u.textContent = '미인증'
       row.appendChild(u)
+    }
+
+    if (NICK_ON && msg.nickname) {
+      var nick = document.createElement('span')
+      nick.className = 'nick'
+      nick.style.color = NICK_PALETTE[nickColorIdx++ % NICK_PALETTE.length]
+      nick.textContent = msg.nickname + ':'
+      row.appendChild(nick)
     }
 
     var text = document.createElement('span')

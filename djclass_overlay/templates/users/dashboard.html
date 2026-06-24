@@ -6,11 +6,34 @@
     <div class="w-full max-w-5xl space-y-6"
          x-data="widgetConfig('{{ widget_base_url|escapejs }}')">
       <h1 class="text-center text-3xl font-bold text-gray-900">채팅 위젯 설정</h1>
-      <div class="grid gap-6 lg:grid-cols-[1.7fr_1fr] lg:items-start">
+      <!-- Sticky full-width URL bar (feature 5): changing any option updates it live -->
+      <div class="sticky top-0 z-20 py-2">
+        <div class="frosted-card p-4">
+          <div class="mb-2 flex items-center justify-between gap-2">
+            <h2 class="text-base font-bold text-gray-900">위젯 URL</h2>
+            <p class="text-xs text-gray-500">옵션을 바꾸면 즉시 반영됩니다 · OBS 브라우저 소스에 사용</p>
+          </div>
+          <div class="flex gap-2">
+            <input type="text"
+                   class="input input-bordered input-sm flex-1 font-mono"
+                   :value="widgetUrl()"
+                   readonly />
+            <button class="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-bold text-yellow-400"
+                    @click="copy()"
+                    x-text="copied ? '복사됨!' : 'URL 복사'"></button>
+            <a :href="widgetUrl()"
+               target="_blank"
+               rel="noopener noreferrer"
+               hx-boost="false"
+               class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100">열기</a>
+          </div>
+        </div>
+      </div>
+      <div class="grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:items-start">
         <!-- LEFT: config (masonry) -->
         <div class="columns-1 gap-4 sm:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">
           <div class="frosted-card p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">뱃지 모드</h2>
+            <h2 class="mb-1 text-base font-bold text-gray-900">뱃지 모드</h2>
             <p class="mb-2 text-sm text-gray-600">위젯에 표시할 DJ CLASS 뱃지 스타일을 선택하세요.</p>
             <div class="space-y-2">
               <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-base-300 p-3">
@@ -40,18 +63,7 @@
             </div>
           </div>
           <div class="frosted-card p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">글자 크기</h2>
-            <p class="mb-2 text-sm text-gray-600">위젯 채팅 글자 크기를 선택하세요.</p>
-            <input type="range"
-                   min="12"
-                   max="28"
-                   step="1"
-                   class="range range-sm"
-                   x-model.number="fontSize" />
-            <p class="mt-2 text-xs text-gray-600">현재: <span class="font-semibold" x-text="fontSize + 'px'"></span></p>
-          </div>
-          <div class="frosted-card p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">버튼 선택 모드</h2>
+            <h2 class="mb-1 text-base font-bold text-gray-900">버튼 선택 모드</h2>
             <p class="mb-2 text-sm text-gray-600">시청자별 DJ CLASS를 어떤 버튼 기준으로 표시할지 선택하세요.</p>
             <div class="space-y-2">
               <label class="flex cursor-pointer items-center justify-between rounded-lg border border-base-300 p-3">
@@ -73,7 +85,55 @@
             </div>
           </div>
           <div class="frosted-card p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">비활성 채팅 페이드아웃</h2>
+            <h2 class="mb-1 text-base font-bold text-gray-900">글자 크기</h2>
+            <p class="mb-2 text-sm text-gray-600">위젯 채팅 글자 크기를 선택하세요.</p>
+            <input type="range"
+                   min="12"
+                   max="28"
+                   step="1"
+                   class="range range-sm"
+                   x-model.number="fontSize" />
+            <p class="mt-2 text-xs text-gray-600">현재: <span class="font-semibold" x-text="fontSize + 'px'"></span></p>
+          </div>
+          <div class="frosted-card p-5">
+            <h2 class="mb-1 text-base font-bold text-gray-900">폰트</h2>
+            <p class="mb-2 text-sm text-gray-600">채팅 글꼴을 선택하세요 (한글 지원).</p>
+            <select class="select select-bordered select-sm w-full" x-model="font">
+              <option value="pretendard">Pretendard (기본)</option>
+              <option value="gothic-a1">Gothic A1</option>
+              <option value="nanum-gothic">나눔고딕</option>
+              <option value="do-hyeon">도현</option>
+              <option value="black-han-sans">검은고딕 (Black Han Sans)</option>
+              <option value="jua">주아</option>
+              <option value="nanum-pen-script">나눔손글씨 펜</option>
+              <option value="gamja-flower">감자꽃</option>
+              <option value="nanum-myeongjo">나눔명조</option>
+            </select>
+          </div>
+          <div class="frosted-card p-5">
+            <h2 class="mb-1 text-base font-bold text-gray-900">가독성 (외곽선)</h2>
+            <p class="mb-2 text-sm text-gray-600">밝은 방송 화면에서도 잘 보이도록 글자에 효과를 줍니다.</p>
+            <div class="space-y-2">
+              <label class="flex cursor-pointer items-center justify-between rounded-lg border border-base-300 p-3">
+                <span class="text-sm font-medium">그림자 (기본)</span>
+                <input type="radio"
+                       name="textStyle"
+                       value="shadow"
+                       class="radio radio-sm"
+                       x-model="textStyle" />
+              </label>
+              <label class="flex cursor-pointer items-center justify-between rounded-lg border border-base-300 p-3">
+                <span class="text-sm font-medium">외곽선</span>
+                <input type="radio"
+                       name="textStyle"
+                       value="outline"
+                       class="radio radio-sm"
+                       x-model="textStyle" />
+              </label>
+            </div>
+          </div>
+          <div class="frosted-card p-5">
+            <h2 class="mb-1 text-base font-bold text-gray-900">비활성 채팅 페이드아웃</h2>
             <p class="mb-2 text-sm text-gray-600">일정 시간이 지난 메시지를 서서히 사라지게 합니다.</p>
             <div class="mb-2 flex items-center justify-between">
               <span class="text-sm font-medium">페이드아웃 사용</span>
@@ -88,18 +148,34 @@
                    :disabled="!fadeoutOn" />
             <p class="mt-2 text-xs text-gray-600">현재: <span class="font-semibold" x-text="fadeoutOn ? fadeoutSec + '초' : '꺼짐'"></span></p>
           </div>
+          <div class="frosted-card p-5">
+            <h2 class="mb-1 text-base font-bold text-gray-900">표시 옵션</h2>
+            <p class="mb-2 text-sm text-gray-600">채팅에 표시할 요소를 선택하세요.</p>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium">치지직 닉네임 표시</span>
+                <input type="checkbox" class="toggle toggle-sm" x-model="nicknameOn" />
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium">미인증 채팅 반투명</span>
+                <input type="checkbox" class="toggle toggle-sm" x-model="dimUnverified" />
+              </div>
+            </div>
+          </div>
         </div>
-        <!-- RIGHT: output (sticky) -->
-        <div class="space-y-6 lg:sticky lg:top-8">
+        <!-- RIGHT: preview + obs (sticky, offset below the URL bar) -->
+        <div class="space-y-6 lg:sticky lg:top-32">
           {% block preview_card %}
             <div class="frosted-card p-5">
-              <h2 class="text-base font-bold text-gray-900 mb-1">위젯 미리보기</h2>
-              <p class="mb-3 text-sm text-gray-600">실제 위젯 화면 미리보기 (400×200)</p>
+              <h2 class="mb-1 text-base font-bold text-gray-900">위젯 미리보기</h2>
+              <p class="mb-3 text-sm text-gray-600">실제 위젯 화면 미리보기 (400×340)</p>
               <div x-data="widgetPreview()"
                    x-init="init()"
-                   class="mx-auto flex h-[200px] w-[400px] flex-col justify-end gap-1 overflow-hidden rounded-lg bg-gray-900 text-white p-2"
+                   x-effect="loadFont(font)"
+                   class="mx-auto flex h-[340px] w-full max-w-[400px] flex-col justify-end gap-1 overflow-hidden rounded-lg bg-gray-900 p-2 text-white"
+                   :class="{ 'ts-outline': textStyle === 'outline', 'ts-shadow': textStyle !== 'outline', 'dim-unverified': dimUnverified }"
                    x-ref="preview"
-                   :style="`font-size:${fontSize}px`">
+                   :style="{ fontSize: fontSize + 'px', fontFamily: fontFamily(font) }">
                 <template x-for="(m, idx) in rows" :key="idx">
                   <div class="row"
                        :class="m.status === 'unverified' ? 'unverified-row' : ''">
@@ -111,6 +187,11 @@
                             :class="'rank-' + m.rank + (m.isTheory ? ' shiny' : '')"
                             x-text="badgeText(m, mode)"></span>
                     </template>
+                    <template x-if="nicknameOn">
+                      <span class="nick"
+                            :style="{ color: m._nickColor }"
+                            x-text="m.nickname + ':'"></span>
+                    </template>
                     <span x-text="m.text"></span>
                   </div>
                 </template>
@@ -118,26 +199,6 @@
               <p class="mt-3 text-center text-xs text-gray-500">가짜 채팅 메시지가 500~1200ms 간격으로 자동으로 표시됩니다</p>
             </div>
           {% endblock preview_card %}
-          <div class="frosted-card p-5">
-            <h2 class="text-base font-bold text-gray-900 mb-1">위젯 URL</h2>
-            <p class="mb-3 text-sm text-gray-600">OBS Browser Source에 이 URL을 사용하세요.</p>
-            <div class="flex gap-2">
-              <input type="text"
-                     class="input input-bordered input-sm flex-1"
-                     :value="widgetUrl()"
-                     readonly />
-              <button class="rounded-lg bg-gray-900 px-3 py-1.5 text-sm font-bold text-yellow-400"
-                      @click="copy()"
-                      x-text="copied ? '복사됨!' : 'URL 복사'"></button>
-            </div>
-            <p class="mt-2 text-xs text-gray-500">
-              미리보기: <a :href="widgetUrl()"
-    target="_blank"
-    rel="noopener noreferrer"
-    hx-boost="false"
-    class="underline hover:text-gray-700">위젯 열기</a>
-            </p>
-          </div>
           <div class="frosted-card p-5">
             <div class="collapse-arrow collapse">
               <input type="checkbox" />

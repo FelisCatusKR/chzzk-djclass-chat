@@ -88,6 +88,12 @@ def test_dashboard_shows_config_and_widget_base_url(client, settings):
     assert "버튼 선택 모드" in body and "비활성 채팅 페이드아웃" in body
     assert "OBS 설정 방법" in body
     assert "https://app.test/widget/chanX/" in body  # widget base URL for Alpine
+    # 2026-06 widget customization: new font / readability / display-option cards
+    assert "폰트" in body and "가독성" in body and "표시 옵션" in body
+    assert 'value="do-hyeon"' in body  # one of the 9 curated font options
+    assert 'x-model="textStyle"' in body
+    assert 'x-model="nicknameOn"' in body and 'x-model="dimUnverified"' in body
+    assert "옵션을 바꾸면 즉시 반영됩니다" in body  # sticky live-URL bar copy
 
 
 @pytest.mark.django_db

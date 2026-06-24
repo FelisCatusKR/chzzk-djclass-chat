@@ -97,6 +97,34 @@
   opacity: 0;
   transition: opacity 0.5s;
 }
-.row.unverified-row {
+/* Dimmed only when #chat carries .dim-unverified (the default). The builder can
+   disable it via ?dimUnverified=off (feature 2). */
+.dim-unverified .row.unverified-row {
   opacity: 0.75;
+}
+
+/* Chat text readability (feature 1). text-shadow is an inherited property, so
+   setting it on #chat reaches both nickname and message; badges keep their own. */
+.ts-shadow {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 1),
+    0 0 4px rgba(0, 0, 0, 0.9);
+}
+.ts-outline {
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    -1px 0 0 #000,
+    1px 0 0 #000,
+    0 -1px 0 #000,
+    0 1px 0 #000,
+    0 0 4px rgba(0, 0, 0, 0.55);
+}
+
+/* Rainbow-cycled nickname (feature 4); color is set inline per message. */
+.nick {
+  font-weight: 700;
+  margin-right: 4px;
 }

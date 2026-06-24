@@ -36,6 +36,7 @@ class BatchMessage(TypedDict):
     emojis: dict[str, str]
     status: str  # mirrors BadgeResult["status"]: linked / unsynced / unlinked
     badge: dict[str, BadgeDict] | None  # mirrors BadgeResult["badge"]
+    nickname: str  # raw Chzzk nickname (feature 4; client shows it when nickname=on)
 
 
 class BatchPayload(TypedDict):
@@ -61,6 +62,7 @@ def build_batch(raw_messages: list[ChatMessage]) -> BatchPayload:
                 "emojis": m["emojis"],
                 "status": res["status"],
                 "badge": res["badge"],
+                "nickname": m["nickname"],
             }
         )
     return {"messages": messages}

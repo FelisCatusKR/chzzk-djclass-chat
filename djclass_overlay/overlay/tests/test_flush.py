@@ -48,6 +48,9 @@ def test_build_batch_resolves_and_dedups(django_assert_num_queries):
     assert msgs[1]["emojis"] == {"a": "u"}
     assert msgs[2]["status"] == "unlinked"
     assert msgs[2]["badge"] is None
+    # nickname is forwarded from the raw message (feature 4)
+    assert msgs[0]["nickname"] == "N"
+    assert msgs[2]["nickname"] == "G"
     # ids are unique within the batch
     assert len({m["id"] for m in msgs}) == 3
 
