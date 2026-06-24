@@ -1,2 +1,5 @@
 # Tool-generated design docs (superpowers specs & plans) — not hand-maintained code
 docs/superpowers/
+
+# npm lockfile — managed by npm, not prettier
+package-lock.json

@@ -1,44 +1,32 @@
-import { dirname } from 'path'
-import { fileURLToPath } from 'url'
-import { FlatCompat } from '@eslint/eslintrc'
 import js from '@eslint/js'
-import tseslint from 'typescript-eslint'
+import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
-
+// The Next.js app is gone; the only first-party JS left is the two hand-written,
+// no-build browser scripts served by WhiteNoise (the OBS overlay widget + the
+// htmx/Alpine page glue). Lint just those — plus this config — as plain browser JS.
 const config = [
   js.configs.recommended,
-  ...tseslint.configs.recommended,
-  ...compat.extends('next/core-web-vitals'),
   prettier,
   {
-    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.mjs'],
+    files: ['djclass_overlay/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'script',
+      // Alpine is declared per-file via `/* global Alpine */` (only components.js
+      // needs it; the overlay widget doesn't); htmx is accessed off `window`.
+      globals: globals.browser,
+    },
     rules: {
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   {
     ignores: [
-      '.next/',
       'node_modules/',
       '.venv/', // Python virtualenv — don't lint third-party deps' bundled JS (Django admin)
       'staticfiles/', // collectstatic output (copies of the above)
-      'out/',
-      'dist/',
       'data/',
-      'coverage/',
-      'next-env.d.ts',
-      'scripts/',
     ],
   },
 ]
