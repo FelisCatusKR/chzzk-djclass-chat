@@ -22,8 +22,21 @@ const config = [
     },
   },
   {
+    // Node-run smoke tests for the browser scripts (CommonJS, runs under `node`).
+    files: ['tests/**/*.{js,cjs,mjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: globals.node,
+    },
+    rules: {
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+  {
     ignores: [
       'node_modules/',
+      '.next/', // stale legacy Next.js build output (gitignored; absent in CI)
       '.venv/', // Python virtualenv — don't lint third-party deps' bundled JS (Django admin)
       'staticfiles/', // collectstatic output (copies of the above)
       'data/',
