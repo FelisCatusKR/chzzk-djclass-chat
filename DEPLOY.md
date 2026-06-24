@@ -1,18 +1,19 @@
 # Deployment (Dokku)
 
-This service runs as a **single Dokku app with two process types** (`web` + `worker`,
-see [`Procfile`](./Procfile)) that **share one SQLite database** on a mounted volume.
-They must live in the same app — do not split them into two apps, or they would no
-longer share `data/app.db`.
+This service runs as a **single Dokku app** (`chatoverlay-django`) with one `web`
+process (see [`Procfile`](./Procfile)). There is **no worker process** — the daily
+DJ CLASS sync runs in-process inside the ASGI server (an asyncio scheduler task that
+fires at 18:00 UTC). Persistent data lives in a **Dokku-managed PostgreSQL** service
+linked via `DATABASE_URL`.
 
-The image is built from the multi-stage [`Dockerfile`](./Dockerfile) (Node 24).
-`NEXT_PUBLIC_BASE_URL` is consumed by Next.js at **build time**, so it is passed as a
-Docker `--build-arg` (via `dokku docker-options`), not only as a runtime config var.
+The image is built from the multi-stage [`Dockerfile`](./Dockerfile) (Python 3.14 +
+uv). It needs no build args — there is no client bundle to inline; `collectstatic`
+runs at build time and WhiteNoise serves the hashed static files.
 
 ## Prerequisites
 
-- A Dokku host with the `docker-options` and `storage` plugins (bundled with Dokku).
-- TLS is terminated upstream (e.g. a Cloudflare tunnel → `http://localhost:80`), so
+- A Dokku host with the `postgres` plugin (`dokku plugin:install https://github.com/dokku/dokku-postgres.git postgres`).
+- TLS is terminated upstream (e.g. a Cloudflare Tunnel → `http://localhost:80`), so
   Dokku serves plain HTTP on port 80 and routes by vhost. No Let's Encrypt needed.
 
 ## First-time setup
@@ -20,7 +21,7 @@ Docker `--build-arg` (via `dokku docker-options`), not only as a runtime config 
 Run on the Dokku host (replace the secret values):
 
 ```bash
-APP=chatoverlay
+APP=chatoverlay-django
 DOMAIN=chatoverlay.felis.kr
 REPO=https://github.com/FelisCatusKR/chzzk-djclass-chat.git
 BRANCH=main
@@ -28,44 +29,48 @@ BRANCH=main
 # 1. App
 dokku apps:create $APP
 
-# 2. Persistent storage for SQLite (shared by web + worker)
-dokku storage:ensure-directory $APP
-dokku storage:mount $APP /var/lib/dokku/data/storage/$APP:/app/data
+# 2. PostgreSQL + link (exposes DATABASE_URL to the app)
+dokku postgres:create ${APP}-db
+dokku postgres:link ${APP}-db $APP
 
 # 3. Runtime config + secrets
 dokku config:set --no-restart $APP \
-  NODE_ENV=production \
+  DJANGO_SETTINGS_MODULE=config.settings.production \
+  DJANGO_SECRET_KEY=<50+-char-random> \
+  VARCHIVE_TOKEN_KEY=<32-char-random> \
   CHZZK_CLIENT_ID=<your-prod-client-id> \
   CHZZK_CLIENT_SECRET=<your-prod-client-secret> \
-  VARCHIVE_TOKEN_KEY=<32-char-random> \
-  SESSION_SECRET=<32-char-random> \
-  DATABASE_URL=./data/app.db \
-  NEXT_PUBLIC_BASE_URL=https://$DOMAIN
+  BASE_URL=https://$DOMAIN \
+  DJANGO_ALLOWED_HOSTS=$DOMAIN,localhost,127.0.0.1
+  # DJANGO_CSRF_TRUSTED_ORIGINS defaults to BASE_URL; set it only for extra origins.
 
-# 4. Build-time arg (Next inlines NEXT_PUBLIC_* during `next build`)
-dokku docker-options:add $APP build '--build-arg NEXT_PUBLIC_BASE_URL=https://chatoverlay.felis.kr'
-
-# 5. Domain + proxy port (external 80 -> container 3000)
+# 4. Domain + proxy port (external 80 -> container 8000)
 dokku domains:set $APP $DOMAIN
-dokku ports:set $APP http:80:3000
+dokku ports:set $APP http:80:8000
 
-# 6. Build & deploy from GitHub
+# 5. Build & deploy from GitHub (the Procfile `release` phase runs `migrate`)
 dokku git:sync --build $APP $REPO $BRANCH
 
-# 7. Scale to 1 web + 1 worker
-dokku ps:scale $APP web=1 worker=1
+# 6. Scale to a single web process (the daily scheduler rides inside it)
+dokku ps:scale $APP web=1
 ```
 
 > Generate secrets with e.g. `head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32`.
-> Changing `VARCHIVE_TOKEN_KEY` later invalidates all previously-encrypted V-ARCHIVE/Chzzk
-> tokens in the DB, forcing users to re-link — so set it once at first deploy.
+> Changing `VARCHIVE_TOKEN_KEY` later invalidates every previously-encrypted Chzzk
+> channel token in the DB, forcing streamers to re-authenticate — so set it once.
+> `localhost,127.0.0.1` in `DJANGO_ALLOWED_HOSTS` lets the container HEALTHCHECK pass.
+
+## Database migrations
+
+Migrations run automatically on every deploy via the Procfile `release` phase
+(`python manage.py migrate --noinput`) — no manual step.
 
 ## Redeploying after pushing new code
 
 Manual:
 
 ```bash
-dokku git:sync --build chatoverlay https://github.com/FelisCatusKR/chzzk-djclass-chat.git main
+dokku git:sync --build chatoverlay-django https://github.com/FelisCatusKR/chzzk-djclass-chat.git main
 ```
 
 ## Automatic deploy on push to `main`
@@ -130,8 +135,13 @@ it instead by committing a known_hosts entry.
 ## Operations
 
 ```bash
-dokku logs chatoverlay -t          # tail logs (web + worker)
-dokku ps:report chatoverlay        # process / scale status
-dokku config:show chatoverlay      # current env (secrets visible — run privately)
-dokku ps:restart chatoverlay       # restart all processes
+dokku logs chatoverlay-django -t           # tail logs (web; includes the scheduler)
+dokku ps:report chatoverlay-django         # process / scale status
+dokku config:show chatoverlay-django       # current env (secrets visible — run privately)
+dokku ps:restart chatoverlay-django        # restart
+dokku postgres:info chatoverlay-django-db  # database status
+
+# Confirm the in-process daily sync fired (18:00 UTC / 03:00 KST):
+dokku logs chatoverlay-django | grep -i scheduler
+# → [scheduler] daily sync done: synced=X failed=Y
 ```

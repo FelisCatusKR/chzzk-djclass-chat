@@ -11,227 +11,182 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 - **Target Users:** Korean Chzzk streamers and viewers who play DJMAX RESPECT V
 - **UI Language:** Korean ONLY. All user-facing text must be written in Korean.
 - **Repository:** `chzzk-djclass-overlay`
+- **History:** originally a Next.js/Node app; rewritten to Python/Django in 2026-06. The legacy code has been removed — do NOT reintroduce a Node/Next.js app.
 
 ---
 
 ## 2. Technology Stack
 
-| Technology       | Version          | Purpose                                                |
-| ---------------- | ---------------- | ------------------------------------------------------ |
-| Node.js          | 24               | Runtime (engines field, .nvmrc, Dockerfile base image) |
-| Next.js          | 15+ (App Router) | Web server, API routes, pages                          |
-| TypeScript       | 5.7+             | Entire codebase                                        |
-| Tailwind CSS     | 3.4+             | Styling                                                |
-| shadcn/ui        | —                | UI component system                                    |
-| SQLite           | —                | File-based DB via `better-sqlite3`                     |
-| Socket.IO-client | **v2.0.3**       | Chzzk chat server integration (NOT compatible with v4) |
-| Vitest           | 3.0+             | Unit tests                                             |
+| Technology               | Version         | Purpose                                                     |
+| ------------------------ | --------------- | ----------------------------------------------------------- |
+| Python                   | 3.14            | Runtime (`.python-version`, `requires-python`, Docker base) |
+| Django                   | 6.0             | Web framework: HTTP, ORM, auth, sessions, built-in CSP      |
+| uv                       | —               | Dependency + venv management (`uv.lock`)                    |
+| PostgreSQL               | —               | Database (`psycopg`); dev via `docker compose`              |
+| uvicorn                  | —               | ASGI server, launched by `manage.py runasgi`                |
+| python-socketio          | **~4.6** (EIO3) | Chzzk chat ingestor (async client) — **NOT 5.x**            |
+| httpx                    | —               | Chzzk / V-ARCHIVE REST (sync, 8s timeout)                   |
+| WhiteNoise               | —               | Static file serving                                         |
+| daisyUI + Tailwind (CDN) | 5 / 4           | Config-page styling (no build step)                         |
+| htmx + Alpine.js         | —               | Config-page interactivity (`hx-boost` app shell)            |
+| pytest                   | —               | Tests (`pytest-django`, `pytest-httpx`)                     |
+| ruff / djlint / mypy     | —               | Lint, format, template lint, strict typing                  |
 
 ---
 
 ## 3. UI and Component Rules
 
-### 3.1 Mandatory shadcn/ui Usage
+### 3.1 Styling & interactivity
 
-- **Always check shadcn/ui first when a new UI component is needed.**
-- If the component exists, install it via `npx shadcn add <component>` and use it.
-- If it does NOT exist in shadcn/ui, build it on top of **Radix UI primitives** + Tailwind CSS, and place it in `src/components/ui/`.
-- Avoid writing ad-hoc custom `<div>`-based UI components.
+- **Config pages** (landing, login, dashboard, `/link`) use **daisyUI + raw Tailwind utilities via the official CDN** (`@tailwindcss/browser@4` + `daisyui@5`) — **no build step, no Node bundle**. Interactivity is **htmx** (`hx-boost` app shell, `{% partialdef %}` fragment swaps) + **Alpine.js** (components registered globally in `static/js/components.js` via the `alpine:init` event).
+- The **OBS overlay widget** (`/widget/<channelId>`) is intentionally **CDN-free**: hand-written `overlay/static/overlay/widget.js` + `static/css/badge.css`, served by WhiteNoise.
+- Do NOT reintroduce a JS build toolchain (Next.js, bundlers) or shadcn/React.
 
 ### 3.2 Korean UI Language
 
-- All user-facing text MUST be written in **Korean**.
-- This includes error messages, button labels, tooltips, alerts, and any other UI copy.
+- All user-facing text MUST be written in **Korean** (errors, labels, tooltips, alerts).
 - Code comments may be in Korean or English.
-
-### 3.3 Tailwind Class Ordering
-
-- `prettier-plugin-tailwindcss` automatically sorts Tailwind CSS classes.
-- Do NOT manually reorder classes. Leave it to Prettier formatting.
 
 ---
 
 ## 4. Directory Structure and Conventions
 
 ```
-src/
-  app/                    # Next.js App Router pages and API routes
-    page.tsx              # Landing page
-    layout.tsx            # Root layout
-    globals.css           # Global styles and Tailwind directives
-    (route)/              # Route groups (when sharing layouts)
-    api/                  # API routes (route.ts)
-    widget/[channelId]/   # OBS widget page
-    dashboard/            # Streamer dashboard
-    link/                 # Viewer linking page
-  components/
-    ui/                   # shadcn/ui components ONLY
-    *.tsx                 # Page-specific components
-  lib/                    # Business logic, utilities, DB, API clients
-    db.ts                 # SQLite initialization and migrations
-    crypto.ts             # AES-256-GCM encryption / decryption
-    session.ts            # Session cookie signing / verification
-    chzzk.ts              # Chzzk API client
-    varchive.ts           # V-ARCHIVE API client
-    chat-proxy.ts         # Chzzk chat proxy (Socket.IO v2)
-    cache.ts              # LRU cache
-    logger.ts             # Leveled logger (debug suppressed in production)
-    rate-limit.ts         # In-memory per-IP rate limiting
-    types.ts              # Shared TypeScript types
-    utils.ts              # Utilities like cn()
-  worker/                 # Cron workers (node-cron based)
-    index.ts
-    sync-djclass.ts
-scripts/                  # Utility scripts
-tests/                    # Vitest test files
+config/                   # Django project
+  settings/{base,local,production}.py
+  urls.py, asgi.py, wsgi.py
+djclass_overlay/
+  common/                 # crypto (AES-GCM), Chzzk OAuth client, cache, middleware,
+                          #   ratelimit, import_legacy command
+  users/                  # custom User (keyed on chzzk_id), Chzzk OAuth backend, session views
+  streamers/              # Channel model, dashboard
+  viewers/                # V-ARCHIVE linking (/link) + link actions
+  djclass/                # pure badge logic (badges.py), resolver, sync, varchive client
+  overlay/                # realtime: ingestor (socket.io), flush loop, SSE, registry,
+                          #   scheduler, runasgi command, static/overlay/widget.js
+  templates/              # Django templates
+  static/                 # css/badge.css, js/components.js
+manage.py
 ```
 
 ### 4.1 Adding / Moving Rules
 
-- **New pages** go under `src/app/` following App Router conventions.
-- **New API endpoints** go under `src/app/api/` as `route.ts` files.
-- **New shared utilities** go in `src/lib/`.
-- **New shadcn/ui components** MUST be placed in `src/components/ui/`.
+- **New pages:** a function-based view + URLconf entry in the relevant app, with a template under `djclass_overlay/templates/<app>/`.
+- **New shared utilities / external clients:** `djclass_overlay/common/`.
+- **Pure DJ CLASS logic** stays Django-free in `djclass_overlay/djclass/badges.py`.
+- **htmx partials** use Django 6.0 `{% partialdef name inline %}`, fetched standalone as `app/template.html#name`.
 
 ---
 
 ## 5. Architecture and Key Constraints
 
-### 5.1 Chat Proxy
+### 5.1 Single ASGI process
 
-- Widgets **cannot connect directly to Chzzk**. The server acts as a middle proxy.
-- The server connects to Chzzk using Socket.IO-client **v2.0.3**. **v4.x is NOT compatible.**
-- The server encrypts Chzzk tokens with AES-256-GCM and stores them in the `channels` table.
-- A `connectingPromise` prevents race conditions when multiple widgets connect simultaneously.
-- When all widgets disconnect, the server waits 30 seconds before cleaning up the Chzzk connection.
+- One uvicorn process (`manage.py runasgi`, `--workers 1`) holds Django HTTP + the SSE endpoint + the Chzzk Socket.IO ingestor + a ~250 ms batch/flush loop + an in-memory registry. **No Channels, no Redis.** Use `runasgi` (NOT `runserver`) so the persistent event loop / ingestor survives.
+- Detached `asyncio.create_task` work (ingestor, flush, scheduler) must use `sync_to_async(..., thread_sensitive=False)` + `close_old_connections()` — it must not ride the SSE request's `CurrentThreadExecutor` (which dies when the view returns).
 
-### 5.2 Widget Rendering
+### 5.2 Chat ingest + widget
 
-- The widget page (`/widget/[channelId]`) uses a **transparent background**. It is meant for OBS overlay use.
-- The widget connects to our server via raw WebSocket (`/ws/chat?channelId=xxx`).
-- Message format: `[{button}B {DJ CLASS}]: message text` — the Chzzk nickname is NOT displayed.
-- Unlinked viewers are shown at 25% opacity.
+- Widgets **cannot connect directly to Chzzk** — the server ingests via **python-socketio 4.6.1 (EIO3)**. **5.x is NOT compatible** (the 4.x↔5.x API diverged; `python-socketio-stubs` tracks 5.x only — do not add it).
+- The server computes DJ CLASS badges; the widget makes **zero network calls** beyond the SSE stream (`/widget/<channelId>/stream`). It renders `[{button}B {DJ CLASS}] message` — the Chzzk nickname is NOT shown; unverified viewers get a `미인증` badge.
+- A per-channel connect lock prevents duplicate connections; the ingestor tears down 30 s after the last subscriber leaves.
 
-### 5.3 Token Encryption
+### 5.3 Tokens & sessions
 
-- V-ARCHIVE tokens: `AES-256-GCM` + `VARCHIVE_TOKEN_KEY` environment variable; each record uses a **random per-record salt**
-- Chzzk tokens: stored in the `channels` table using the same encryption method
-- Session cookies: `HMAC-SHA256` signed (`SESSION_SECRET`) with a **server-verified 7-day expiry** embedded in the payload
+- **Chzzk channel tokens:** `AES-256-GCM` via `common/crypto.py` (key = `VARCHIVE_TOKEN_KEY`, random per-record salt), stored on the `Channel` model.
+- **V-ARCHIVE is token-less:** the 조회토큰 is used **once** (`djclass/varchive.py` → open-token endpoint → `{userNo, nickname}`) then **discarded, never stored**. Ongoing sync hits the **public** nickname endpoint; `VarchiveToken` keeps `varchive_user_no` + nickname only.
+- **Sessions:** Django's DB-backed session framework (signed by `SECRET_KEY`), 7-day cookie. There is no `SESSION_SECRET`.
 
 ### 5.4 Caching
 
-- Server-side DJ CLASS lookups use an LRU cache:
-  - Linked user with DJ CLASS data → 5 minutes
-  - Linked user without DJ CLASS → 15 seconds
-  - Unlinked user → 10 seconds
-- `updateAgeOnGet: false` — active chatters do NOT extend their TTL.
+- `common/cache.py` — in-memory per-entry-TTL cache for DJ CLASS lookups: linked w/ data → 5 min, linked w/o data → 15 s, unlinked → 10 s. Active chatters do NOT extend their TTL. A user's entries are invalidated on sync via `transaction.on_commit`.
 
-### 5.5 Rate Limiting
+### 5.5 Rate limiting
 
-- `src/lib/rate-limit.ts` provides in-memory per-IP rate limiting.
-- Applied to the auth, link-varchive, and sync-djclass routes; violations return **HTTP 429**.
+- `common/ratelimit.py` — in-memory per-IP limiter keyed on `CF-Connecting-IP` (link 5 / sync 3 / pref 10 / auth 10 per 60 s); violations return **HTTP 429**.
 
-### 5.6 Security Headers
+### 5.6 Security headers
 
-- Security headers (including **CSP**) are injected on all responses via `next.config.js` `headers()`.
+- Set by Django's `SecurityMiddleware` (HSTS, nosniff, Referrer-Policy), `XFrameOptionsMiddleware` (DENY), a small `common/middleware.py` (Permissions-Policy), and **Django 6.0's built-in CSP** (`SECURE_CSP` + `ContentSecurityPolicyMiddleware`). The CSP `img-src` MUST allowlist Naver's emoji CDN (`*.pstatic.net` / `*.naver.net`) and the cover-image host — dropping them blocks chat emoji.
 
-### 5.7 Outbound Fetch Timeouts
+### 5.7 Outbound timeouts
 
-- All outbound HTTP calls to Chzzk and V-ARCHIVE use an **8-second `AbortSignal` timeout**.
+- All Chzzk / V-ARCHIVE httpx calls use an **8-second timeout**.
 
-### 5.8 Logging
+### 5.8 Daily sync
 
-- All server-side logging goes through `src/lib/logger.ts`.
-- `debug` level is suppressed in production (`NODE_ENV=production`).
-- **Never log tokens, session keys, or other secrets**, regardless of log level.
+- An in-process asyncio scheduler (`overlay/scheduler.py`) runs `sync_all_active_links()` at **18:00 UTC** in a pool thread. There is **no worker container / external cron**.
+
+### 5.9 Logging
+
+- Use the `djclass_overlay` logger (see `LOGGING` in settings). **Never log tokens, session keys, or other secrets.**
 
 ---
 
-## 6. API Route Patterns
+## 6. Views & URLs
 
-- All API routes are written in `src/app/api/.../route.ts`.
-- Use standard HTTP methods as `export async function`.
-
-```ts
-// Example: GET /api/example
-export async function GET(request: Request) {
-  // ...
-  return Response.json({ data })
-}
-```
+- Function-based Django views + per-app `urls.py`, wired through `config/urls.py`.
+- htmx endpoints return `{% partialdef %}` fragments for `hx-target` swaps. A nested `hx-post` form inside the `hx-boost` shell MUST set `hx-boost="false"` + its own `hx-select` (e.g. `#link-card`) so it does a local swap instead of inheriting the body's `hx-select="#content"`.
 
 ---
 
 ## 7. Testing
 
-- **Test Framework:** Vitest
-- **Test Location:** `tests/` directory or co-located as `*.test.ts` alongside the file under test
-- **Run Tests:** `npm test`
-- **Current Test Coverage:**
-  - `tests/crypto.test.ts` — Encryption / decryption round-trip
-  - `tests/db.test.ts` — DB schema initialization and constraints
-  - `tests/oauth.test.ts` — Chzzk OAuth URL generation and token exchange
-  - `tests/varchive.test.ts` — DJ CLASS API response parsing and button selection
-  - `tests/session.test.ts` — Session cookie signing and tamper resistance
-  - `tests/worker.test.ts` — Daily DJ CLASS sync worker batch logic
+- **Framework:** pytest (`pytest-django`, `pytest-httpx`); settings module `config.settings.local`.
+- **Location:** `djclass_overlay/<app>/tests/test_*.py`. All external I/O (Chzzk, V-ARCHIVE) is mocked.
+- **Run:** `uv run pytest`.
 
 ---
 
-## 8. Linter and Formatter
+## 8. Linter, Formatter, Types
 
-- **ESLint:** Next.js + TypeScript + Prettier integrated flat config
-- **Prettier:** Code formatting + automatic Tailwind CSS class sorting
-- **Config Files:**
-  - `eslint.config.mjs` — ESLint flat config
-  - `.prettierrc` — Prettier settings
-  - `.editorconfig` — Editor settings mirroring Prettier (indent, line endings, trailing newline)
+- **ruff** — lint + format (config in `pyproject.toml`; ruff syntax target pinned to `py313`).
+- **djlint** — Django template lint/format (`profile = django`).
+- **mypy** — `strict` + `django-stubs`.
+- **eslint + prettier** — for the two first-party browser scripts only (`widget.js`, `components.js`); enforced by **local Git hooks, NOT CI**.
 
-### 8.1 Mandatory Commands
+### 8.1 Mandatory commands
 
-**After finishing code changes, you MUST run:**
+**After Python changes:**
 
 ```bash
-npm run lint:fix
-npm run format
+uv run ruff format
+uv run ruff check --fix
+uv run mypy djclass_overlay config
 ```
 
-**Available Scripts:**
+**After JS changes:**
 
-| Script                 | Description                 |
-| ---------------------- | --------------------------- |
-| `npm run lint`         | Run linter                  |
-| `npm run lint:fix`     | Auto-fix linter errors      |
-| `npm run format`       | Format code with Prettier   |
-| `npm run format:check` | Check formatting compliance |
+```bash
+npm run lint:fix && npm run format
+```
 
 ---
 
 ## 9. Environment Variables
 
-Required variables in `.env`:
+`.env.django` (see `.env.example`):
 
-| Variable               | Description                              |
-| ---------------------- | ---------------------------------------- |
-| `CHZZK_CLIENT_ID`      | Chzzk OAuth client ID                    |
-| `CHZZK_CLIENT_SECRET`  | Chzzk OAuth client secret                |
-| `NEXT_PUBLIC_BASE_URL` | Public base URL (for OAuth callbacks)    |
-| `VARCHIVE_TOKEN_KEY`   | AES-256-GCM encryption key (32+ bytes)   |
-| `SESSION_SECRET`       | Session cookie HMAC-SHA256 signing key   |
-| `DATABASE_URL`         | SQLite file path (e.g., `./data/app.db`) |
-| `NODE_ENV`             | `development` or `production`            |
+| Variable                                  | Description                                           |
+| ----------------------------------------- | ----------------------------------------------------- |
+| `DJANGO_SECRET_KEY`                       | Django secret key (50+ chars)                         |
+| `VARCHIVE_TOKEN_KEY`                      | AES-256-GCM key for Chzzk channel tokens (32 chars)   |
+| `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET` | Chzzk OAuth credentials                               |
+| `BASE_URL`                                | Public origin (OAuth redirect_uri, widget URLs, CSRF) |
+| `DATABASE_URL`                            | PostgreSQL DSN (Dokku link provides it)               |
+| `DJANGO_ALLOWED_HOSTS`                    | Comma-separated allowed hosts                         |
+| `DJANGO_CSRF_TRUSTED_ORIGINS`             | Optional; defaults to `BASE_URL`                      |
+| `DJANGO_SETTINGS_MODULE`                  | `config.settings.local` (dev) / `.production`         |
 
 ---
 
 ## 10. Deployment
 
-- **Platform:** Dokku (or similar PaaS). Full setup steps in [`DEPLOY.md`](./DEPLOY.md).
-- **Containers:** 1 web + 1 worker — **one app, two process types** via `Procfile` (NOT two apps; they share the SQLite volume)
-- **Database:** SQLite file mounted as a Dokku volume at `/app/data`, shared by both process types
-- **Docker:** Multi-stage `Dockerfile`
-  - Base image: **Node.js 24** (`bookworm-slim`; build stage installs `python3 make g++` for `better-sqlite3`)
-  - Runtime: `tsx server.ts` (no `output: 'standalone'`)
-  - Includes a **HEALTHCHECK** that fetches `http://localhost:3000/` via Node's global `fetch` (web only; the worker container reports unhealthy since it serves no HTTP — Dokku uses its own checks, so this is cosmetic)
-  - `NEXT_PUBLIC_BASE_URL` is inlined by Next at **build time** — must be passed as a Docker `--build-arg` (Dokku: `docker-options:add <app> build`)
+- **Platform:** Dokku. Full steps in [`DEPLOY.md`](./DEPLOY.md).
+- **Single `web` process** (`Procfile`); **no worker** — the daily sync is in-process.
+- **Database:** Dokku-managed PostgreSQL, linked via `DATABASE_URL`.
+- **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
+- **Auto-deploy:** push to `main` → CI `build` passes → the `deploy` job runs `dokku git:sync --build chatoverlay-django … main` over an SSH-via-Cloudflare-Tunnel path; the Procfile `release` phase runs `migrate`.
 
 ---
 
@@ -242,12 +197,12 @@ Required variables in `.env`:
 Update AGENTS.md when any of the following change:
 
 - **Technology stack** additions / changes / version bumps
-- **UI / component rules** (shadcn/ui usage, language policy, etc.)
-- **Directory structure** (new directories, file moves, etc.)
-- **Architecture constraints** (chat proxy, caching policy, encryption method, etc.)
-- **API route patterns**
+- **UI / component rules** (styling system, language policy, etc.)
+- **Directory structure** (new apps, file moves, etc.)
+- **Architecture constraints** (ingestor, caching policy, encryption, sessions, etc.)
+- **View / URL patterns**
 - **Testing** conventions or frameworks
-- **Linter / formatter** settings
+- **Linter / formatter / type** settings
 - **Environment variables** added / changed / removed
 - **Deployment method**
 
