@@ -6,9 +6,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DJ CLASS Overlay</title>
-    <link rel="stylesheet" href="{% static 'css/badge.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/chat.css' %}" />
     <style>
-      /* Layout-only rules. Badge/row/glint styling → badge.css */
+      /* Layout-only rules. Badge/row/glint + text styles → chat.css */
+      @font-face {
+        font-family: "Pretendard";
+        src: url("https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/woff2/PretendardVariable.woff2") format("woff2-variations");
+        font-weight: 45 920;
+        font-display: swap;
+      }
+
       html,
       body {
         margin: 0;
@@ -25,9 +32,8 @@
         padding: 8px;
         gap: 4px;
         box-sizing: border-box;
-        font-family: system-ui, sans-serif;
+        font-family: "Pretendard", system-ui, "Apple SD Gothic Neo", sans-serif;
         color: #fff;
-        text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
       }
 
       .emoji {
@@ -46,7 +52,9 @@
   </head>
   <body>
     <div id="status">채팅 연결 중…</div>
-    <div id="chat" data-channel-id="{{ channel_id }}"></div>
+    <div id="chat"
+         class="ts-shadow dim-unverified"
+         data-channel-id="{{ channel_id }}"></div>
     <script src="{% static 'overlay/widget.js' %}"></script>
   </body>
 </html>
