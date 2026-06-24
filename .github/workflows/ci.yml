@@ -27,7 +27,7 @@ jobs:
       DATABASE_URL: postgres://djclass:devpassword@localhost:5432/djclass_overlay
       BASE_URL: http://localhost:8000
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # Frontend gates: lint + EXECUTE the no-build browser scripts. widget.js /
       # components.js have no other coverage and `node --check` is syntax-only, so a
       # load-time crash (e.g. the PR#17 FONT_MAP init-order bug) only surfaces here.
