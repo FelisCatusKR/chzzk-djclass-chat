@@ -2,7 +2,8 @@
 
 ![CI](https://github.com/FelisCatusKR/chzzk-djclass-chat/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Node](https://img.shields.io/badge/node-%3E%3D24-brightgreen.svg)
+![Python](https://img.shields.io/badge/python-3.14-blue.svg)
+![Django](https://img.shields.io/badge/django-6.0-092e20.svg)
 
 V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니다.
 
@@ -77,61 +78,55 @@ V-ARCHIVE는 버튼별(4B / 5B / 6B / 8B)로 DJ CLASS를 따로 집계합니다.
 
 ## 기술 스택
 
-- Node.js 24
-- Next.js 15 (App Router)
-- TypeScript
-- SQLite (better-sqlite3)
-- Socket.IO-client v2.0.3 (Chzzk 채팅 연동)
-- Tailwind CSS + shadcn/ui
+- Python 3.14
+- Django 6.0 (ASGI, uvicorn 단일 프로세스)
+- PostgreSQL
+- python-socketio 4.6 (Chzzk 채팅 연동, EIO3)
+- httpx (Chzzk / V-ARCHIVE REST 클라이언트)
+- SSE + 빌드 없는 바닐라 JS 위젯
+- daisyUI + Tailwind CSS (CDN), htmx, Alpine.js (설정 페이지)
+- WhiteNoise (정적 파일 서빙)
+- uv (의존성 관리)
 - Docker + Dokku (배포)
 
 ## 프로젝트 구조
 
 ```
-src/
-  app/         # Next.js App Router 페이지 및 API 라우트
-  components/  # UI 컴포넌트 (ui/ 는 shadcn/ui)
-  lib/         # 비즈니스 로직: db, 암호화, 세션, 캐시, 레이트리밋, 로거, 외부 API 클라이언트
-  worker/      # node-cron 동기화 워커
-tests/         # Vitest 테스트
+config/              # Django 프로젝트: settings/{base,local,production}, urls, asgi
+djclass_overlay/     # 앱 + 템플릿 + 정적 파일
+  common/            # 암호화, Chzzk OAuth 클라이언트, 캐시, 미들웨어, 레이트리밋
+  users/             # 커스텀 User(chzzk_id), Chzzk OAuth 인증 백엔드
+  streamers/         # 채널 모델, 대시보드
+  viewers/           # V-ARCHIVE 연동 (/link)
+  djclass/           # DJ CLASS 뱃지 로직, 동기화, V-ARCHIVE 클라이언트
+  overlay/           # 실시간: Chzzk 인제스터, 250ms 배치/플러시, SSE, 위젯 JS, 일일 스케줄러
+  templates/         # Django 템플릿
+  static/            # badge.css, js/components.js
+manage.py
 ```
 
 ## 설치 및 실행
 
 ### 요구사항
 
-- Node.js 24+
-- SQLite
+- Python 3.14+ 와 [uv](https://docs.astral.sh/uv/)
+- Docker (개발용 PostgreSQL)
 
 ### 환경 변수
 
-`.env` 파일을 프로젝트 루트에 생성하세요:
-
-```env
-CHZZK_CLIENT_ID=your_chzzk_client_id
-CHZZK_CLIENT_SECRET=your_chzzk_client_secret
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
-VARCHIVE_TOKEN_KEY=your_32_byte_random_key
-SESSION_SECRET=your_32_byte_random_key
-DATABASE_URL=./data/app.db
-NODE_ENV=development
-```
+`.env.example`을 복사해 `.env.django`를 만들고 값을 채우세요 (`DJANGO_SECRET_KEY`, `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET`, `VARCHIVE_TOKEN_KEY`, `DATABASE_URL`, `BASE_URL`, `DJANGO_ALLOWED_HOSTS`).
 
 ### 로컬 개발
 
 ```bash
-# 의존성 설치
-npm install
-
-# 개발 서버 실행 (WebSocket 서버 포함)
-npm run dev
-
-# 워커 실행 (별도 터미널)
-npm run worker
-
-# 테스트
-npm test
+uv sync                              # 의존성 설치 (.venv 생성)
+docker compose up -d                 # 개발용 PostgreSQL
+uv run python manage.py migrate
+uv run python manage.py runasgi      # ASGI 서버: HTTP + SSE + Chzzk 인제스터 단일 프로세스
+uv run pytest                        # 테스트
 ```
+
+> `runserver`가 아닌 `runasgi`를 사용합니다 — 위젯 SSE 스트림과 Chzzk 채팅 인제스터, 배치/플러시 루프가 하나의 이벤트 루프에서 상시 동작해야 하기 때문입니다.
 
 ## 라이선스
 
