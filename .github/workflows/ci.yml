@@ -38,7 +38,7 @@ jobs:
       - run: npm run lint
       - run: node tests/widget-smoke.cjs
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
       - run: uv sync --frozen
       # Static lint/format gates (no DB or Django setup needed) — fail fast.
       - run: uv run ruff check djclass_overlay config manage.py
