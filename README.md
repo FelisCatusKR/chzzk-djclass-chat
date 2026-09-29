@@ -87,7 +87,7 @@ V-ARCHIVE는 버튼별(4B / 5B / 6B / 8B)로 DJ CLASS를 따로 집계합니다.
 - daisyUI + Tailwind CSS (CDN), htmx, Alpine.js (설정 페이지)
 - WhiteNoise (정적 파일 서빙)
 - uv (의존성 관리)
-- Docker + Dokku (배포)
+- Docker / Podman 컨테이너 (배포, [DEPLOY.md](./DEPLOY.md))
 
 ## 프로젝트 구조
 

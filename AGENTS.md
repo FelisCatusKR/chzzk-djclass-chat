@@ -173,7 +173,7 @@ npm run lint:fix && npm run format
 | `VARCHIVE_TOKEN_KEY`                      | AES-256-GCM key for Chzzk channel tokens (32 chars)   |
 | `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET` | Chzzk OAuth credentials                               |
 | `BASE_URL`                                | Public origin (OAuth redirect_uri, widget URLs, CSRF) |
-| `DATABASE_URL`                            | PostgreSQL DSN (Dokku link provides it)               |
+| `DATABASE_URL`                            | PostgreSQL DSN                                        |
 | `DJANGO_ALLOWED_HOSTS`                    | Comma-separated allowed hosts                         |
 | `DJANGO_CSRF_TRUSTED_ORIGINS`             | Optional; defaults to `BASE_URL`                      |
 | `DJANGO_SETTINGS_MODULE`                  | `config.settings.local` (dev) / `.production`         |
@@ -182,11 +182,11 @@ npm run lint:fix && npm run format
 
 ## 10. Deployment
 
-- **Platform:** Dokku. Full steps in [`DEPLOY.md`](./DEPLOY.md).
-- **Single `web` process** (`Procfile`); **no worker** — the daily sync is in-process.
-- **Database:** Dokku-managed PostgreSQL, linked via `DATABASE_URL`.
-- **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
-- **Auto-deploy:** push to `main` → CI `build` passes → the `deploy` job runs `dokku git:sync --build chatoverlay-django … main` over an SSH-via-Cloudflare-Tunnel path; the Procfile `release` phase runs `migrate`.
+- **Platform:** a self-hosted rootless Podman host, managed from a separate (private) infra repo. Container contract in [`DEPLOY.md`](./DEPLOY.md).
+- **Single `web` container, single instance**; **no worker** — the daily sync is in-process.
+- **Database:** PostgreSQL via `DATABASE_URL`.
+- **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); build target `runner`; `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
+- **Auto-deploy:** GitOps pull — the host polls `main` (~2 min), builds `--target runner`, then restarts the container, which runs `migrate --noinput` before `runasgi`. CI does not deploy; branch protection (required `build` check) is what gates `main`.
 
 ---
 

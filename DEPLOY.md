@@ -1,147 +1,60 @@
-# Deployment (Dokku)
+# Deployment
 
-This service runs as a **single Dokku app** (`chatoverlay-django`) with one `web`
-process (see [`Procfile`](./Procfile)). There is **no worker process** — the daily
-DJ CLASS sync runs in-process inside the ASGI server (an asyncio scheduler task that
-fires at 18:00 UTC). Persistent data lives in a **Dokku-managed PostgreSQL** service
-linked via `DATABASE_URL`.
+Production runs as a **single container** on a self-hosted rootless Podman host. The
+host's wiring (units, secrets, tunnel) lives in a separate private infra repo; this
+file documents the **contract** the app expects from any deployer.
 
-The image is built from the multi-stage [`Dockerfile`](./Dockerfile) (Python 3.14 +
-uv). It needs no build args — there is no client bundle to inline; `collectstatic`
-runs at build time and WhiteNoise serves the hashed static files.
+There is **no worker process** — the daily DJ CLASS sync runs in-process inside the
+ASGI server (an asyncio scheduler task that fires at 18:00 UTC). Run **exactly one
+instance**, or the sync fires more than once.
 
-## Prerequisites
+## How a change reaches production
 
-- A Dokku host with the `postgres` plugin (`dokku plugin:install https://github.com/dokku/dokku-postgres.git postgres`).
-- TLS is terminated upstream (e.g. a Cloudflare Tunnel → `http://localhost:80`), so
-  Dokku serves plain HTTP on port 80 and routes by vhost. No Let's Encrypt needed.
+GitOps pull: the host polls `main` (about every 2 minutes), builds the image from the
+new commit, and restarts the container. CI does not deploy. What gates `main` is branch
+protection — PRs must pass the `build` check before merging.
 
-## First-time setup
+If a build or the post-restart health check fails, the host keeps (or rolls back to) the
+previous image.
 
-Run on the Dokku host (replace the secret values):
+## Container contract
 
-```bash
-APP=chatoverlay-django
-DOMAIN=chatoverlay.felis.kr
-REPO=https://github.com/FelisCatusKR/chzzk-djclass-chat.git
-BRANCH=main
+| Item         | Value                                                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------- |
+| Build        | multi-stage [`Dockerfile`](./Dockerfile), target `runner`, no build args                                 |
+| Command      | `sh -c "python manage.py migrate --noinput && exec python manage.py runasgi --host 0.0.0.0 --port 8000"` |
+| Port         | `8000` (plain HTTP; TLS terminates at the Cloudflare Tunnel in front)                                    |
+| Health       | `GET http://localhost:8000/` → `200`                                                                     |
+| Static files | baked at build time (`collectstatic`), served by WhiteNoise                                              |
+| State        | PostgreSQL only (via `DATABASE_URL`); the container filesystem is disposable                             |
 
-# 1. App
-dokku apps:create $APP
+Migrations run on every start, so a deploy that adds migrations needs no manual step.
 
-# 2. PostgreSQL + link (exposes DATABASE_URL to the app)
-dokku postgres:create ${APP}-db
-dokku postgres:link ${APP}-db $APP
+> Podman builds images in OCI format, which **drops the Dockerfile `HEALTHCHECK`**.
+> Deployers using Podman must declare the health check on the container themselves.
 
-# 3. Runtime config + secrets
-dokku config:set --no-restart $APP \
-  DJANGO_SETTINGS_MODULE=config.settings.production \
-  DJANGO_SECRET_KEY=<50+-char-random> \
-  VARCHIVE_TOKEN_KEY=<32-char-random> \
-  CHZZK_CLIENT_ID=<your-prod-client-id> \
-  CHZZK_CLIENT_SECRET=<your-prod-client-secret> \
-  BASE_URL=https://$DOMAIN \
-  DJANGO_ALLOWED_HOSTS=$DOMAIN,localhost,127.0.0.1
-  # DJANGO_CSRF_TRUSTED_ORIGINS defaults to BASE_URL; set it only for extra origins.
+## Environment
 
-# 4. Domain + proxy port (external 80 -> container 8000)
-dokku domains:set $APP $DOMAIN
-dokku ports:set $APP http:80:8000
+See [`AGENTS.md`](./AGENTS.md) §9 for the full list. Production specifics:
 
-# 5. Build & deploy from GitHub (the Procfile `release` phase runs `migrate`)
-dokku git:sync --build $APP $REPO $BRANCH
-
-# 6. Scale to a single web process (the daily scheduler rides inside it)
-dokku ps:scale $APP web=1
-```
+- `DJANGO_SETTINGS_MODULE=config.settings.production`
+- `BASE_URL=https://<public-domain>` — drives the OAuth redirect_uri, widget URLs, and
+  the CSRF trusted origin.
+- `DJANGO_ALLOWED_HOSTS=<public-domain>,localhost,127.0.0.1` — `localhost` lets the
+  in-container health check pass.
+- Secrets (`DJANGO_SECRET_KEY`, `VARCHIVE_TOKEN_KEY`, `CHZZK_CLIENT_SECRET`,
+  `DATABASE_URL`) are injected by the host, never committed.
 
 > Generate secrets with e.g. `head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32`.
 > Changing `VARCHIVE_TOKEN_KEY` later invalidates every previously-encrypted Chzzk
-> channel token in the DB, forcing streamers to re-authenticate — so set it once.
-> `localhost,127.0.0.1` in `DJANGO_ALLOWED_HOSTS` lets the container HEALTHCHECK pass.
-
-## Database migrations
-
-Migrations run automatically on every deploy via the Procfile `release` phase
-(`python manage.py migrate --noinput`) — no manual step.
-
-## Redeploying after pushing new code
-
-Manual:
-
-```bash
-dokku git:sync --build chatoverlay-django https://github.com/FelisCatusKR/chzzk-djclass-chat.git main
-```
-
-## Automatic deploy on push to `main`
-
-The `deploy` job in [`ci.yml`](./.github/workflows/ci.yml) runs the same `git:sync`
-automatically after CI passes. The Dokku host is behind NAT with **no inbound SSH
-port**, so GitHub Actions reaches it _through the existing Cloudflare Tunnel_, gated by
-a Cloudflare Access **service token** in front of the normal Dokku SSH key (two
-independent auth layers; prod never runs a CI runner).
-
-Flow: `push main → CI build passes → Actions opens SSH via cloudflared → Access service
-token authorises the tunnel → Dokku SSH key authenticates → dokku git:sync --build`.
-
-### One-time host + Cloudflare setup
-
-1. **Expose SSH over the existing tunnel.** Add a public hostname to the tunnel
-   (dashboard: Zero Trust → Networks → Tunnels → your tunnel → Public Hostname), or in
-   the tunnel `config.yml` ingress:
-
-   ```yaml
-   ingress:
-     - hostname: ssh.chatoverlay.felis.kr
-       service: ssh://localhost:22
-     # ... existing HTTP rule(s) ...
-     - service: http_status:404
-   ```
-
-   DNS for `ssh.chatoverlay.felis.kr` is created automatically by the tunnel.
-
-2. **Create a service token.** Zero Trust → Access → Service Auth → Service Tokens →
-   _Create_. Set duration to non-expiring. Copy the **Client ID** and **Client Secret**
-   (secret is shown only once).
-
-3. **Protect the SSH hostname with Access.** Zero Trust → Access → Applications → add a
-   _Self-hosted_ application for `ssh.chatoverlay.felis.kr`, with a policy whose action
-   is **Service Auth** and whose Include is the service token from step 2. (Service Auth
-   skips the interactive browser login, which is what lets CI authenticate headlessly.)
-
-4. **Authorise the deploy key on Dokku.** Generate a dedicated keypair and register the
-   public half with the `dokku` user:
-
-   ```bash
-   ssh-keygen -t ed25519 -f ci-deploy -N '' -C 'github-actions-deploy'
-   dokku ssh-keys:add ci-deploy < ci-deploy.pub
-   ```
-
-### GitHub repository secrets
-
-Settings → Secrets and variables → Actions:
-
-| Secret                    | Value                                   |
-| ------------------------- | --------------------------------------- |
-| `DOKKU_SSH_HOST`          | `ssh.chatoverlay.felis.kr`              |
-| `DOKKU_SSH_KEY`           | private key (`ci-deploy`) from step 4   |
-| `CF_ACCESS_CLIENT_ID`     | service-token Client ID from step 2     |
-| `CF_ACCESS_CLIENT_SECRET` | service-token Client Secret from step 2 |
-
-After that, every push to `main` that passes CI redeploys automatically. The first run
-records the host key via `StrictHostKeyChecking=accept-new`; for stricter hygiene, pin
-it instead by committing a known_hosts entry.
+> channel token in the DB, forcing streamers to re-authenticate — so set it once and
+> carry it over on any host migration.
 
 ## Operations
 
-```bash
-dokku logs chatoverlay-django -t           # tail logs (web; includes the scheduler)
-dokku ps:report chatoverlay-django         # process / scale status
-dokku config:show chatoverlay-django       # current env (secrets visible — run privately)
-dokku ps:restart chatoverlay-django        # restart
-dokku postgres:info chatoverlay-django-db  # database status
+Confirm the in-process daily sync fired (18:00 UTC / 03:00 KST) by grepping the
+container logs for the scheduler line:
 
-# Confirm the in-process daily sync fired (18:00 UTC / 03:00 KST):
-dokku logs chatoverlay-django | grep -i scheduler
-# → [scheduler] daily sync done: synced=X failed=Y
+```
+[scheduler] daily sync done: synced=X failed=Y
 ```
