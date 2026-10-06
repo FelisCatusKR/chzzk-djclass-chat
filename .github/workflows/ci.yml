@@ -31,9 +31,9 @@ jobs:
       # Frontend gates: lint + EXECUTE the no-build browser scripts. widget.js /
       # components.js have no other coverage and `node --check` is syntax-only, so a
       # load-time crash (e.g. the PR#17 FONT_MAP init-order bug) only surfaces here.
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v2
         with:
-          node-version-file: .nvmrc
+          install_args: node
       - run: npm ci
       - run: npm run lint
       - run: node tests/widget-smoke.cjs
@@ -56,3 +56,20 @@ jobs:
           DJANGO_ALLOWED_HOSTS: example.com
           BASE_URL: https://example.com
         run: uv run python manage.py check --deploy --fail-level WARNING
+
+  go:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: go
+      # mise.toml and go.mod must pin the same Go version (GOTOOLCHAIN would
+      # otherwise silently fetch a different one).
+      - run: test "$(mise current go)" = "$(go mod edit -json | jq -r .Go)"
+      - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...

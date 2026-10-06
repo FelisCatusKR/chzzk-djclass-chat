@@ -22,7 +22,8 @@
       "uv run ruff format",
       "uv run ruff check --fix"
     ],
-    "*.html": "bash -c 'uv run djlint --reformat \"$@\" || true' --"
+    "*.html": "bash -c 'uv run djlint --reformat \"$@\" || true' --",
+    "*.go": "gofmt -w"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
