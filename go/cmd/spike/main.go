@@ -15,6 +15,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -146,7 +147,18 @@ func main() {
 // runSessions keeps one user-session socket open until ctx ends, reconnecting
 // with a fresh session URL after a fixed delay (like the Python ingestor).
 func runSessions(ctx context.Context, client *chzzk.Client, token string, st *stats) {
-	probed := false
+	if *probe {
+		// Probe with its own session URL: the socket auth in a session URL appears
+		// to be single-use, so probing the URL we then dial makes it "auth fail".
+		reqCtx, cancel := context.WithTimeout(ctx, chzzk.Timeout)
+		probeURL, err := client.UserSessionURL(reqCtx, token)
+		cancel()
+		if err != nil {
+			log.Printf("[probe] session url failed: %v", err)
+		} else {
+			probeVersions(ctx, probeURL)
+		}
+	}
 	for ctx.Err() == nil {
 		reqCtx, cancel := context.WithTimeout(ctx, chzzk.Timeout)
 		sessionURL, err := client.UserSessionURL(reqCtx, token)
@@ -155,10 +167,6 @@ func runSessions(ctx context.Context, client *chzzk.Client, token string, st *st
 			log.Printf("[session] url failed: %v", err)
 			sleep(ctx, reconnectDelay)
 			continue
-		}
-		if *probe && !probed {
-			probed = true
-			probeVersions(ctx, sessionURL)
 		}
 
 		opts := eio3.Options{}
@@ -224,6 +232,8 @@ func handleEvent(ctx context.Context, client *chzzk.Client, token string, ev eio
 			ts = time.UnixMilli(int64(ms)).Format("15:04:05.000")
 		}
 		log.Printf("[CHAT] %s %s(%s): %s  emojis=%d", ts, nick, sender, data["content"], len(emojis))
+	case "error": // e.g. 42["error","auth fail"], followed by a disconnect
+		log.Printf("[error] %s", clip(joinArgs(ev.Args), 300))
 	default:
 		log.Printf("[%s] %d args", ev.Name, len(ev.Args))
 	}
@@ -258,6 +268,14 @@ func probeVersions(ctx context.Context, sessionURL string) {
 		cancel()
 		log.Printf("[probe] EIO=%s: HTTP %d %s", v, resp.StatusCode, strconv.Quote(clip(string(body), 300)))
 	}
+}
+
+func joinArgs(args []json.RawMessage) string {
+	parts := make([]string, len(args))
+	for i, a := range args {
+		parts[i] = string(a)
+	}
+	return strings.Join(parts, " ")
 }
 
 func firstString(vs ...any) string {
