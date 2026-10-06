@@ -76,6 +76,10 @@ func main() {
 	)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		fmt.Fprint(w, `<p>Chzzk spike — <a href="/login">치지직으로 로그인</a></p>`)
+	})
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		state := randomHex(32)
 		states.Store(state, time.Now().Add(5*time.Minute))
