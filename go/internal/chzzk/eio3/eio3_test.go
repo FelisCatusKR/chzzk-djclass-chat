@@ -44,7 +44,16 @@ func TestParseSocketPacket(t *testing.T) {
 	if _, closed, _ := parseSocketPacket("1"); !closed {
 		t.Error("disconnect not detected")
 	}
-	for _, p := range []string{"", "0", `2/other,["X"]`, `2[]`, `2[1]`, `2not-json`} {
+	if ev, _, ok := parseSocketPacket(`2/,["SYSTEM",{}]`); !ok || ev.Name != "SYSTEM" {
+		t.Errorf("explicit default namespace = %+v ok=%v", ev, ok)
+	}
+	if ev, closed, ok := parseSocketPacket(`4"auth fail"`); !ok || closed || ev.Name != "error" || string(ev.Args[0]) != `"auth fail"` {
+		t.Errorf("error packet = %+v ok=%v closed=%v", ev, ok, closed)
+	}
+	if ev, _, ok := parseSocketPacket(`4not json`); !ok || string(ev.Args[0]) != `"not json"` {
+		t.Errorf("non-JSON error packet = %+v ok=%v", ev, ok)
+	}
+	for _, p := range []string{"", "0", `2/other,["X"]`, `2/other?x=1,["X"]`, `3["X"]`, `2[]`, `2[1]`, `2not-json`} {
 		if _, _, ok := parseSocketPacket(p); ok {
 			t.Errorf("parseSocketPacket(%q) delivered an event", p)
 		}
@@ -156,6 +165,53 @@ func TestRunHeartbeatTimeout(t *testing.T) {
 	}
 	if err := conn.Run(ctx, func(Event) {}); !errors.Is(err, ErrHeartbeatTimeout) {
 		t.Errorf("Run = %v, want ErrHeartbeatTimeout", err)
+	}
+}
+
+// The first ping goes out pingInterval after the handshake; the next one only
+// pingInterval after the pong (engine.io-client 3.x setPing), not on a ticker.
+func TestRunPingCadenceFollowsPong(t *testing.T) {
+	pings := make(chan time.Time, 4)
+	sessionURL, _ := fakeServer(t, func(ctx context.Context, ws *websocket.Conn) {
+		send(ctx, ws, `0{"sid":"s1","upgrades":[],"pingInterval":100,"pingTimeout":1000}`)
+		send(ctx, ws, "40")
+		n := 0
+		for {
+			_, b, err := ws.Read(ctx)
+			if err != nil {
+				return
+			}
+			if string(b) != "2" {
+				continue
+			}
+			pings <- time.Now()
+			n++
+			if n == 1 {
+				time.Sleep(150 * time.Millisecond) // delay the first pong
+			}
+			send(ctx, ws, "3")
+			if n == 2 {
+				send(ctx, ws, "41")
+			}
+		}
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	conn, err := Dial(ctx, sessionURL, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	if err := conn.Run(ctx, func(Event) {}); !errors.Is(err, ErrServerClosed) {
+		t.Fatalf("Run = %v", err)
+	}
+	first, second := <-pings, <-pings
+	if d := first.Sub(start); d < 80*time.Millisecond {
+		t.Errorf("first ping after %s, want ~pingInterval", d)
+	}
+	// second ping = pong (first+150ms) + interval (100ms), not first+interval
+	if d := second.Sub(first); d < 220*time.Millisecond {
+		t.Errorf("second ping %s after the first, want >= pong delay + interval", d)
 	}
 }
 

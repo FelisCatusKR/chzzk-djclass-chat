@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/coder/websocket"
@@ -35,10 +34,8 @@ const (
 
 // Socket.IO v4 packet types (first byte after an Engine.IO '4').
 const (
-	sConnect    = '0'
 	sDisconnect = '1'
 	sEvent      = '2'
-	sAck        = '3'
 	sError      = '4'
 )
 
@@ -71,7 +68,6 @@ type Conn struct {
 	ws        *websocket.Conn
 	opts      Options
 	Handshake Handshake
-	lastRecv  atomic.Int64 // unix nanos of the last frame received
 }
 
 // SocketURL turns the session URL Chzzk returns (e.g.
@@ -157,68 +153,83 @@ func Dial(ctx context.Context, sessionURL string, opts Options) (*Conn, error) {
 	}
 }
 
-// Run sends client pings every pingInterval and delivers incoming events to
-// handle until the session ends. It always returns a non-nil error:
-// ctx.Err(), ErrServerClosed, ErrHeartbeatTimeout, or a websocket error.
-// handle runs on the read goroutine; it must not block for long.
+// Run delivers incoming events to handle until the session ends. It always
+// returns a non-nil error: ctx.Err(), ErrServerClosed, ErrHeartbeatTimeout, or
+// a websocket error. handle runs on the caller's goroutine and must not block
+// for long (pings and timeouts are serviced between events).
+//
+// Heartbeat follows engine.io-client 3.x (lib/socket.js setPing/onHeartbeat),
+// the client Chzzk documents: the first ping goes out pingInterval after the
+// handshake and the next one pingInterval after each pong; every received frame
+// pushes the deadline to pingInterval+pingTimeout, and sending a ping sets it
+// to pingTimeout. Missing the deadline is a "ping timeout".
 func (c *Conn) Run(ctx context.Context, handle func(Event)) error {
 	defer c.ws.CloseNow()
 	interval := time.Duration(c.Handshake.PingInterval) * time.Millisecond
 	timeout := time.Duration(c.Handshake.PingTimeout) * time.Millisecond
 
-	ctx, cancel := context.WithCancelCause(ctx)
-	defer cancel(nil)
-	c.lastRecv.Store(time.Now().UnixNano())
-
-	// EIO3: the client pings; the server answers "3". If nothing at all arrives
-	// within interval+timeout, the session is dead.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	frames := make(chan string)
+	readErr := make(chan error, 1)
 	go func() {
-		t := time.NewTicker(interval)
-		defer t.Stop()
 		for {
+			f, err := c.read(ctx)
+			if err != nil {
+				readErr <- err
+				return
+			}
 			select {
+			case frames <- f:
 			case <-ctx.Done():
 				return
-			case <-t.C:
-				if time.Since(time.Unix(0, c.lastRecv.Load())) > interval+timeout {
-					cancel(ErrHeartbeatTimeout)
-					return
-				}
-				if err := c.write(ctx, string(pPing)); err != nil {
-					cancel(err)
-					return
-				}
 			}
 		}
 	}()
 
+	pingTimer := time.NewTimer(interval)
+	defer pingTimer.Stop()
+	deadline := time.NewTimer(interval + timeout)
+	defer deadline.Stop()
+
 	for {
-		frame, err := c.read(ctx)
-		if err != nil {
-			if cause := context.Cause(ctx); cause != nil {
-				return cause
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-readErr:
+			if ctx.Err() != nil {
+				return ctx.Err()
 			}
 			return err
-		}
-		c.lastRecv.Store(time.Now().UnixNano())
-		if frame == "" {
-			continue
-		}
-		switch frame[0] {
-		case pPong, pNoop:
-		case pPing:
-			_ = c.write(ctx, string(pPong)+frame[1:])
-		case pClose:
-			return ErrServerClosed
-		case pMessage:
-			ev, closed, ok := parseSocketPacket(frame[1:])
-			if closed {
+		case <-deadline.C:
+			return ErrHeartbeatTimeout
+		case <-pingTimer.C:
+			if err := c.write(ctx, string(pPing)); err != nil {
+				return err
+			}
+			deadline.Reset(timeout)
+		case frame := <-frames:
+			deadline.Reset(interval + timeout)
+			if frame == "" {
+				continue
+			}
+			switch frame[0] {
+			case pPong:
+				pingTimer.Reset(interval)
+			case pPing: // not sent by an EIO3 server; answer anyway
+				_ = c.write(ctx, string(pPong)+frame[1:])
+			case pClose:
 				return ErrServerClosed
+			case pMessage:
+				ev, closed, ok := parseSocketPacket(frame[1:])
+				if closed {
+					return ErrServerClosed
+				}
+				if ok {
+					handle(ev)
+				}
+			case pOpen, pUpgrade, pNoop:
 			}
-			if ok {
-				handle(ev)
-			}
-		case pOpen, pUpgrade:
 		}
 	}
 }
@@ -227,26 +238,45 @@ func (c *Conn) Close() error {
 	return c.ws.Close(websocket.StatusNormalClosure, "")
 }
 
-// parseSocketPacket parses a Socket.IO v4 packet (the text after Engine.IO '4').
-// Only default-namespace EVENTs are delivered; closed reports a DISCONNECT.
+// parseSocketPacket parses a Socket.IO v4 packet (the text after Engine.IO '4'),
+// like socket.io-parser 3.x: type, optional "/nsp,", optional ack id, JSON data.
+// Default-namespace EVENTs are delivered, an ERROR is delivered as an "error"
+// event (socket.io-client 2.x emits 'error' and stays connected), and closed
+// reports a DISCONNECT. Ack requests are not answered: socket.io-client 2.x only
+// acks when a handler calls back, and Chzzk's documented handlers never do.
 func parseSocketPacket(p string) (ev Event, closed, ok bool) {
 	if p == "" {
 		return Event{}, false, false
 	}
 	typ, rest := p[0], p[1:]
-	// Optional namespace "/nsp," — only "/" is used, so drop other namespaces.
 	if strings.HasPrefix(rest, "/") {
-		return Event{}, false, false
+		nsp := rest
+		if i := strings.IndexByte(rest, ','); i >= 0 {
+			nsp, rest = rest[:i], rest[i+1:]
+		} else {
+			rest = ""
+		}
+		if i := strings.IndexByte(nsp, '?'); i >= 0 {
+			nsp = nsp[:i]
+		}
+		if nsp != "/" {
+			return Event{}, false, false // only the default namespace is joined
+		}
 	}
 	switch typ {
 	case sDisconnect:
 		return Event{}, true, false
+	case sError:
+		arg := json.RawMessage(rest)
+		if !json.Valid(arg) {
+			arg, _ = json.Marshal(rest)
+		}
+		return Event{Name: "error", Args: []json.RawMessage{arg}}, false, true
 	case sEvent:
-	default: // connect, ack, error, binary — not used by Chzzk
+	default: // connect, ack, binary — not used by Chzzk
 		return Event{}, false, false
 	}
-	// Optional ack id: leading digits before the JSON array.
-	i := 0
+	i := 0 // optional ack id: leading digits before the JSON array
 	for i < len(rest) && rest[i] >= '0' && rest[i] <= '9' {
 		i++
 	}
