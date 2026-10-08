@@ -255,7 +255,7 @@ Go server (`go/.env` or real env; shares `CHZZK_*`, `VARCHIVE_TOKEN_KEY`, `BASE_
 - **Single `web` container, single instance**; **no worker** — the daily sync is in-process.
 - **Database:** PostgreSQL via `DATABASE_URL`.
 - **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); build target `runner`; `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
-- **Go image (cutover target):** the same `Dockerfile` also has `go-builder` → `go-runner` (static binary on distroless, ~18 MB, SQLite in a `/data` volume, `/djclass healthcheck`). Production keeps building `--target runner` until the switch in [`go/CUTOVER.md`](./go/CUTOVER.md). `.dockerignore` excludes `**/.env*` and `**/*.sqlite3*` (go/.env and the dev DB hold real secrets). CI's `go-image` job builds it; keep the `golang:` tag equal to `mise.toml`'s Go (CI checks).
+- **Go image (cutover target):** the same `Dockerfile` also has `go-builder` → `go-runner` (static binary on distroless Debian 13 / trixie, ~18 MB, SQLite in a `/data` volume, `/djclass healthcheck`). Production keeps building `--target runner` until the switch in [`go/CUTOVER.md`](./go/CUTOVER.md). `.dockerignore` excludes `**/.env*` and `**/*.sqlite3*` (go/.env and the dev DB hold real secrets). CI's `go-image` job builds it; keep the `golang:` tag equal to `mise.toml`'s Go (CI checks).
 - **Auto-deploy:** GitOps pull — the host polls `main` (~2 min), builds `--target runner`, then restarts the container, which runs `migrate --noinput` before `runasgi`. CI does not deploy; branch protection (required `build` check) is what gates `main`.
 
 ---

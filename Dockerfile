@@ -2,7 +2,7 @@
 # Go server (cutover target; see go/CUTOVER.md). Production still builds
 # `--target runner` (Django, below) until the cutover switches the target.
 # ---------------------------------------------------------------------------
-FROM golang:1.27.1-bookworm AS go-builder
+FROM golang:1.27.1-trixie AS go-builder
 WORKDIR /src/go
 COPY go/go.mod go/go.sum ./
 RUN go mod download
@@ -15,7 +15,7 @@ COPY djclass_overlay/overlay/static/overlay/widget.js internal/web/static/overla
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/djclass ./cmd/server \
  && mkdir -p /out/data
 
-FROM gcr.io/distroless/static-debian12:nonroot AS go-runner
+FROM gcr.io/distroless/static-debian13:nonroot AS go-runner
 COPY --from=go-builder /out/djclass /djclass
 # /data holds the SQLite file (+ -wal/-shm): mount a persistent volume here.
 COPY --from=go-builder --chown=65532:65532 /out/data /data
