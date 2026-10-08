@@ -1,7 +1,7 @@
 name: Deploy Assets
 
 # Static assets in public/ are served from Cloudflare Pages as a CDN edge copy.
-# Only runs when those assets change — the app itself deploys via ci.yml (Dokku).
+# Only runs when those assets change — the app itself ships as the GHCR image (ci.yml).
 on:
   push:
     branches: [main]

@@ -1,64 +1,59 @@
 # Deployment
 
 Production runs as a **single container** on a self-hosted rootless Podman host. The
-host's wiring (units, secrets, tunnel) lives in a separate private infra repo; this
-file documents the **contract** the app expects from any deployer.
+host's wiring (Quadlet units, secrets, tunnel, GitOps reconcile) lives in a separate
+private infra repo; this file documents the **contract** the app expects.
 
-There is **no worker process** — the daily DJ CLASS sync runs in-process inside the
-ASGI server (an asyncio scheduler task that fires at 18:00 UTC). Run **exactly one
-instance**, or the sync fires more than once.
+Everything — HTTP, the widget SSE streams, the Chzzk chat connections and the daily
+DJ CLASS sync (18:00 UTC) — runs in that one process with in-memory state. Run
+**exactly one instance.**
 
 ## How a change reaches production
 
-GitOps pull: the host polls `main` (about every 2 minutes), builds the image from the
-new commit, and restarts the container. CI does not deploy. What gates `main` is branch
-protection — PRs must pass the `build` check before merging.
+1. A PR merges to `main` after the required checks (`build`, `go-image`) pass.
+2. CI publishes `ghcr.io/feliscatuskr/chzzk-djclass-chat` for that commit — tags
+   `main` and `sha-<7>`, `linux/amd64` + `linux/arm64`. Docs-only commits (`*.md`,
+   `docs/`) are not published.
+3. The host polls the `main` tag and, when the image's
+   `org.opencontainers.image.revision` changes, restarts the container and waits for
+   it to become healthy. Open OBS widgets reconnect by themselves.
 
-If a build or the post-restart health check fails, the host keeps (or rolls back to) the
-previous image.
+Rollback: pin the previous `sha-<7>` tag on the host.
 
 ## Container contract
 
-> **Since 2026-10-08 production runs the Go image (`--target go-runner`).** Its contract
-> is in [`go/CUTOVER.md`](./go/CUTOVER.md); the table below describes the retired Django
-> image and is kept until the post-cutover cleanup rewrites this file.
+| Item    | Value                                                                                      |
+| ------- | ------------------------------------------------------------------------------------------ |
+| Image   | `Dockerfile` target `go-runner` — static binary on distroless Debian 13 (~18 MB)           |
+| Command | image default (`/djclass serve`); SQLite migrations apply automatically on start           |
+| Port    | `8000` (plain HTTP; TLS terminates at the Cloudflare Tunnel in front)                      |
+| Health  | `/djclass healthcheck` → `GET /healthz` (HTTP up + DB answers)                             |
+| State   | SQLite at `/data/djclass.sqlite3` (+ `-wal`/`-shm`) — mount a persistent volume on `/data` |
+| User    | uid 65532 (`nonroot`); the image's `/data` is owned by it                                  |
 
-| Item         | Value                                                                                                    |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| Build        | multi-stage [`Dockerfile`](./Dockerfile), target `runner`, no build args                                 |
-| Command      | `sh -c "python manage.py migrate --noinput && exec python manage.py runasgi --host 0.0.0.0 --port 8000"` |
-| Port         | `8000` (plain HTTP; TLS terminates at the Cloudflare Tunnel in front)                                    |
-| Health       | `GET http://localhost:8000/` → `200`                                                                     |
-| Static files | baked at build time (`collectstatic`), served by WhiteNoise                                              |
-| State        | PostgreSQL only (via `DATABASE_URL`); the container filesystem is disposable                             |
-
-Migrations run on every start, so a deploy that adds migrations needs no manual step.
-
-> Podman builds images in OCI format, which **drops the Dockerfile `HEALTHCHECK`**.
-> Deployers using Podman must declare the health check on the container themselves.
+> Podman builds/stores images in OCI format, which **drops the Dockerfile
+> `HEALTHCHECK`**. Declare it on the container, and as an **exec-form JSON array**
+> (Quadlet: `HealthCmd=["/djclass","healthcheck"]`) — a plain string is run through
+> `/bin/sh -c`, and distroless has no shell, so the container never turns healthy.
 
 ## Environment
 
-See [`AGENTS.md`](./AGENTS.md) §9 for the full list. Production specifics:
+| Variable              | Notes                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `BASE_URL`            | `https://<public-domain>` — OAuth redirect_uri, widget URLs; https enables Secure cookies + HSTS                                                 |
+| `CHZZK_CLIENT_ID`     |                                                                                                                                                  |
+| `CHZZK_CLIENT_SECRET` | secret                                                                                                                                           |
+| `VARCHIVE_TOKEN_KEY`  | secret; encrypts stored Chzzk tokens. **Set once and keep it**: changing it makes every stored token undecryptable (streamers must log in again) |
+| `SQLITE_PATH`, `ADDR` | image defaults `/data/djclass.sqlite3`, `:8000`                                                                                                  |
 
-- `DJANGO_SETTINGS_MODULE=config.settings.production`
-- `BASE_URL=https://<public-domain>` — drives the OAuth redirect_uri, widget URLs, and
-  the CSRF trusted origin.
-- `DJANGO_ALLOWED_HOSTS=<public-domain>,localhost,127.0.0.1` — `localhost` lets the
-  in-container health check pass.
-- Secrets (`DJANGO_SECRET_KEY`, `VARCHIVE_TOKEN_KEY`, `CHZZK_CLIENT_SECRET`,
-  `DATABASE_URL`) are injected by the host, never committed.
+Never set `DEV` in production (it is refused for a non-loopback `BASE_URL`).
 
-> Generate secrets with e.g. `head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32`.
-> Changing `VARCHIVE_TOKEN_KEY` later invalidates every previously-encrypted Chzzk
-> channel token in the DB, forcing streamers to re-authenticate — so set it once and
-> carry it over on any host migration.
+The container must be reachable **only through the tunnel**: rate limiting trusts
+`CF-Connecting-IP`.
 
 ## Operations
 
-Confirm the in-process daily sync fired (18:00 UTC / 03:00 KST) by grepping the
-container logs for the scheduler line:
-
-```
-[scheduler] daily sync done: synced=X failed=Y
-```
+- Daily sync: grep the logs for `daily sync done synced=X failed=Y` (18:00 UTC / 03:00 KST).
+- Chat connections: `chat socket connected` / `chat subscription confirmed` per channel;
+  `chat session ended` lines carry the reason and the retry delay.
+- Back up `/data` (the SQLite file) off-host.
