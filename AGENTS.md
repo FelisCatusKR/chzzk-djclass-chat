@@ -77,6 +77,7 @@ go/                       # Go migration spike (own go.mod; not in the Docker im
   internal/djclass/       # pure DJ CLASS badge logic (port of djclass/badges.py) + Python golden data
   internal/ttlcache/      # per-entry-TTL cache (port of common/cache.py)
   internal/resolver/      # chat sender → badge status, cached (port of djclass/resolver.py)
+  internal/realtime/      # per-channel chat worker (ingest + 250 ms flush), hub, SSE subscriptions
   internal/crypto/        # AES-GCM token encryption, byte-compatible with common/crypto.py
   internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
   cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
@@ -105,6 +106,12 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - The server computes DJ CLASS badges; the widget makes **zero network calls** beyond the SSE stream (`/widget/<channelId>/stream`). It renders `[{button}B {DJ CLASS}] message` — the Chzzk nickname is NOT shown; unverified viewers get a `미인증` badge.
 - A per-channel connect lock prevents duplicate connections; the ingestor tears down 30 s after the last subscriber leaves.
 - **Chzzk session socket facts** (verified live 2026-10, details in `go/internal/chzzk/eio3` package doc): the server is EIO3-only; a session URL is **single-use** (fetch a fresh one per (re)connect); the server closes sessions on its own after many hours (reconnect is normal operation); an open session outlives its access token, so refresh the token **before reconnecting**.
+
+### 5.2.0 Go realtime (`internal/realtime`)
+
+- One **Hub**; per Chzzk channel one **ingest** goroutine (token → fresh session URL → dial → subscribe → CHAT into buffer) and one **flush** goroutine (every 250 ms: resolve each sender once, encode one `chat` batch, non-blocking send to each subscriber). Same SSE batch JSON as `overlay/flush.py`.
+- **Every** failure (token, URL, dial, subscribe ×3, server close) restarts the whole session after a backoff (1 s doubling to 60 s, reset after a healthy minute) — never "retry once". Tokens refresh 5 min before expiry, before connecting.
+- Per-channel bookkeeping (subscribers, teardown timer) is guarded by `Hub.mu`; the chat buffer by its own mutex. `Hub.Close` stops workers **before** closing subscriber channels.
 
 ### 5.2.1 Go store (SQLite)
 
