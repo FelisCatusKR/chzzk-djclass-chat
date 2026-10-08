@@ -1,5 +1,9 @@
 # Go cutover runbook
 
+> **Done 2026-10-08.** Production runs the Go server. One fix was needed during the
+> switch: the Quadlet `HealthCmd` must be a JSON array — as a string Podman runs it via
+> `/bin/sh -c`, which distroless lacks, so the unit never became healthy.
+
 How the Go server replaces Django in production. Everything up to **Switch** is
 reversible and leaves production on Django. Host-side changes (Quadlet units,
 GitOps build target) live in the private `homelab-infra` repo.

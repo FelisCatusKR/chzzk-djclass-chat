@@ -12,7 +12,7 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 - **UI Language:** Korean ONLY. All user-facing text must be written in Korean.
 - **Repository:** `chzzk-djclass-overlay`
 - **History:** originally a Next.js/Node app; rewritten to Python/Django in 2026-06. The legacy code has been removed — do NOT reintroduce a Node/Next.js app.
-- **Go migration (ready, awaiting cutover):** the Go server under `go/` implements every Django feature (realtime widget, login, dashboard, `/link`, daily sync), passed an independent security review and a live-broadcast test. Django stays in production until the switch in [`go/CUTOVER.md`](./go/CUTOVER.md) (host steps: homelab-infra runbook). Python-side bugs are fixed in Go, not in Django.
+- **Production runs the Go server (since 2026-10-08).** `go/` (Go + SQLite) replaced Django via [`go/CUTOVER.md`](./go/CUTOVER.md) / the homelab-infra runbook. The Django code below is **no longer deployed** and is kept only until the post-cutover cleanup (Postgres stays a few days for rollback). Make all changes in Go; do not fix or extend Django.
 
 ---
 
@@ -253,10 +253,10 @@ Go server (`go/.env` or real env; shares `CHZZK_*`, `VARCHIVE_TOKEN_KEY`, `BASE_
 
 - **Platform:** a self-hosted rootless Podman host, managed from a separate (private) infra repo. Container contract in [`DEPLOY.md`](./DEPLOY.md).
 - **Single `web` container, single instance**; **no worker** — the daily sync is in-process.
-- **Database:** PostgreSQL via `DATABASE_URL`.
+- **Database:** SQLite in the `chatoverlay-data` volume (`/data`, Go). The old PostgreSQL is kept only as a rollback target until cleanup.
 - **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); build target `runner`; `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
-- **Go image (cutover target):** the same `Dockerfile` also has `go-builder` → `go-runner` (static binary on distroless Debian 13 / trixie, ~18 MB, SQLite in a `/data` volume, `/djclass healthcheck`). Production keeps building `--target runner` until the switch in [`go/CUTOVER.md`](./go/CUTOVER.md). `.dockerignore` excludes `**/.env*` and `**/*.sqlite3*` (go/.env and the dev DB hold real secrets). CI's `go-image` job builds it; keep the `golang:` tag equal to `mise.toml`'s Go (CI checks).
-- **Auto-deploy:** GitOps pull — the host polls `main` (~2 min), builds `--target runner`, then restarts the container, which runs `migrate --noinput` before `runasgi`. CI does not deploy; branch protection (required `build` check) is what gates `main`.
+- **Go image (production):** the same `Dockerfile` also has `go-builder` → `go-runner` (static binary on distroless Debian 13 / trixie, ~18 MB, SQLite in a `/data` volume, `/djclass healthcheck`). The Django `runner` target is no longer deployed. `.dockerignore` excludes `**/.env*` and `**/*.sqlite3*` (go/.env and the dev DB hold real secrets). CI's `go-image` job builds it; keep the `golang:` tag equal to `mise.toml`'s Go (CI checks).
+- **Auto-deploy:** GitOps pull — the host polls `main` (~2 min), builds `--target go-runner`, then restarts `chatoverlay-web` (Quadlet, `HealthCmd=["/djclass","healthcheck"]` — JSON form, distroless has no shell). **Every merge to main restarts production** (widgets reconnect on their own). CI does not deploy; branch protection gates `main`.
 
 ---
 

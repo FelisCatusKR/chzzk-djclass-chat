@@ -19,8 +19,9 @@ previous image.
 
 ## Container contract
 
-> A Go replacement image (`--target go-runner`) is built alongside but not deployed yet;
-> its contract and the switch-over steps are in [`go/CUTOVER.md`](./go/CUTOVER.md).
+> **Since 2026-10-08 production runs the Go image (`--target go-runner`).** Its contract
+> is in [`go/CUTOVER.md`](./go/CUTOVER.md); the table below describes the retired Django
+> image and is kept until the post-cutover cleanup rewrites this file.
 
 | Item         | Value                                                                                                    |
 | ------------ | -------------------------------------------------------------------------------------------------------- |
