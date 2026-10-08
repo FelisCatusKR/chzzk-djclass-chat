@@ -1,5 +1,6 @@
-// Package crypto encrypts Chzzk channel tokens at rest, byte-compatible with
-// djclass_overlay/common/crypto.py so rows imported from Django decrypt as-is:
+// Package crypto encrypts Chzzk channel tokens at rest. The format is the one
+// the former Django app used (its rows were imported as-is at the 2026-10
+// cutover), so it must not change without re-encrypting stored tokens:
 //
 //	key   = SHA-256(VARCHIVE_TOKEN_KEY)            (any length in, 32 bytes out)
 //	value = base64std(nonce[12] || AES-256-GCM(plaintext) || tag[16])

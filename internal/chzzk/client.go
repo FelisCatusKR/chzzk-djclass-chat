@@ -1,7 +1,7 @@
 // Package chzzk is the Chzzk Open API client: OAuth (authorize URL, code
 // exchange, refresh), the current user, and the realtime session endpoints.
-// Port of djclass_overlay/common/chzzk.py — same URLs, camelCase request bodies,
-// `content`-wrapped responses and 8-second timeout.
+// Request bodies are camelCase, responses may be wrapped in `content`, every
+// call has an 8-second timeout.
 package chzzk
 
 import (

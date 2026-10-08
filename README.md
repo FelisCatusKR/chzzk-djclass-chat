@@ -2,8 +2,7 @@
 
 ![CI](https://github.com/FelisCatusKR/chzzk-djclass-chat/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Python](https://img.shields.io/badge/python-3.14-blue.svg)
-![Django](https://img.shields.io/badge/django-6.0-092e20.svg)
+![Go](https://img.shields.io/badge/go-1.27-00ADD8.svg)
 
 V-ARCHIVE의 DJ CLASS를 Chzzk 채팅에 표시하는 OBS 위젯 서비스입니다.
 
@@ -78,55 +77,50 @@ V-ARCHIVE는 버튼별(4B / 5B / 6B / 8B)로 DJ CLASS를 따로 집계합니다.
 
 ## 기술 스택
 
-- Python 3.14
-- Django 6.0 (ASGI, uvicorn 단일 프로세스)
-- PostgreSQL
-- python-socketio 4.6 (Chzzk 채팅 연동, EIO3)
-- httpx (Chzzk / V-ARCHIVE REST 클라이언트)
+- Go 1.27 — 단일 바이너리 (HTTP + SSE + Chzzk 채팅 연결 + 일일 동기화를 한 프로세스에서)
+- SQLite (`modernc.org/sqlite`, 순수 Go) + goose 마이그레이션 + sqlc
+- Chzzk 채팅: Engine.IO v3 / Socket.IO v2 웹소켓 클라이언트 (직접 구현, 수신 전용)
 - SSE + 빌드 없는 바닐라 JS 위젯
-- daisyUI + Tailwind CSS (CDN), htmx, Alpine.js (설정 페이지)
-- WhiteNoise (정적 파일 서빙)
-- uv (의존성 관리)
-- Docker / Podman 컨테이너 (배포, [DEPLOY.md](./DEPLOY.md))
+- daisyUI + Tailwind CSS (CDN, SRI 고정), htmx, Alpine.js (설정 페이지)
+- 배포: distroless 컨테이너 이미지 (GHCR), Podman — [DEPLOY.md](./DEPLOY.md)
+
+2026년 10월에 Django(Python) 구현에서 Go로 전환했습니다 ([기록](./docs/go-cutover-2026-10.md)).
 
 ## 프로젝트 구조
 
 ```
-config/              # Django 프로젝트: settings/{base,local,production}, urls, asgi
-djclass_overlay/     # 앱 + 템플릿 + 정적 파일
-  common/            # 암호화, Chzzk OAuth 클라이언트, 캐시, 미들웨어, 레이트리밋
-  users/             # 커스텀 User(chzzk_id), Chzzk OAuth 인증 백엔드
-  streamers/         # 채널 모델, 대시보드
-  viewers/           # V-ARCHIVE 연동 (/link)
-  djclass/           # DJ CLASS 뱃지 로직, 동기화, V-ARCHIVE 클라이언트
-  overlay/           # 실시간: Chzzk 인제스터, 250ms 배치/플러시, SSE, 위젯 JS, 일일 스케줄러
-  templates/         # Django 템플릿
-  static/            # badge.css, js/components.js
-manage.py
+cmd/server/            # 진입점: serve / healthcheck
+internal/
+  web/                 # 페이지·위젯·SSE·로그인·/link, 템플릿과 정적 파일(내장)
+  realtime/            # 채널별 Chzzk 채팅 worker, 250ms 배치, 구독 관리
+  chzzk/ (+ eio3/)     # Chzzk OAuth·세션 API 클라이언트, Engine.IO v3 클라이언트
+  djclass/             # 순수 DJ CLASS 뱃지 로직
+  resolver/            # 채팅 발신자 → 뱃지 (캐시)
+  link/ varchive/      # V-ARCHIVE 연동·동기화, V-ARCHIVE 클라이언트
+  store/               # SQLite: 마이그레이션, 쿼리(sqlc), 세션 저장소
+  crypto/ ratelimit/ ttlcache/ schedule/ config/
+tests/widget-smoke.cjs # 위젯 JS 실행 스모크 테스트
 ```
 
 ## 설치 및 실행
 
 ### 요구사항
 
-- Python 3.14+ 와 [uv](https://docs.astral.sh/uv/)
-- Docker (개발용 PostgreSQL)
+- [mise](https://mise.jdx.dev/) — `mise install`로 Go, sqlc, Node(린트 전용)를 `mise.toml` 버전대로 설치합니다.
+- Chzzk 개발자 앱 (스코프: 채팅 메시지 조회, Redirect URI: `<BASE_URL>/api/auth/chzzk/callback`)
 
 ### 환경 변수
 
-`.env.example`을 복사해 `.env.django`를 만들고 값을 채우세요 (`DJANGO_SECRET_KEY`, `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET`, `VARCHIVE_TOKEN_KEY`, `DATABASE_URL`, `BASE_URL`, `DJANGO_ALLOWED_HOSTS`).
+`.env.example`을 복사해 `.env`를 만들고 값을 채우세요 (`BASE_URL`, `CHZZK_CLIENT_ID` / `CHZZK_CLIENT_SECRET`, `VARCHIVE_TOKEN_KEY`). 로컬에서는 `DEV=1`로 데모 시청자와 채팅 주입 페이지(`/dev`)를 켤 수 있습니다.
 
 ### 로컬 개발
 
 ```bash
-uv sync                              # 의존성 설치 (.venv 생성)
-docker compose up -d                 # 개발용 PostgreSQL
-uv run python manage.py migrate
-uv run python manage.py runasgi      # ASGI 서버: HTTP + SSE + Chzzk 인제스터 단일 프로세스
-uv run pytest                        # 테스트
+mise install
+go run ./cmd/server          # http://localhost:8000 (SQLite 파일: ./djclass.sqlite3)
+go test ./...                # 테스트
+npm ci && npm run lint       # 위젯 JS 린트 (선택)
 ```
-
-> `runserver`가 아닌 `runasgi`를 사용합니다 — 위젯 SSE 스트림과 Chzzk 채팅 인제스터, 배치/플러시 루프가 하나의 이벤트 루프에서 상시 동작해야 하기 때문입니다.
 
 ## 라이선스
 

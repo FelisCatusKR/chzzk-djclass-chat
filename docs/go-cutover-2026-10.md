@@ -1,3 +1,6 @@
+> Historical record of the October 2026 Django → Go cutover. Paths below refer to
+> the repository layout at that time (`go/…`, the Django tree), since removed.
+
 # Go cutover runbook
 
 > **Done 2026-10-08.** Production runs the Go server. One fix was needed during the

@@ -1,7 +1,8 @@
 // Package djclass is the pure DJ CLASS badge logic (no DB, no I/O): which of a
 // player's per-button classes to show, and the atomic badge fields the widget
-// renders. 1:1 port of djclass_overlay/djclass/badges.py (itself a port of the
-// original src/lib/dj-class.ts) — keep the rules here and nowhere else.
+// renders. A 1:1 port of the former Django app's badges.py (checked against its
+// frozen output in testdata/python_golden.json) — keep the rules here and
+// nowhere else.
 package djclass
 
 import (
