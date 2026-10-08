@@ -6,7 +6,9 @@
 
 - Python 3.14+ (`uv`로 관리, `.python-version` 참고)
 - PostgreSQL (개발용은 `docker compose`로 실행)
-- Node.js 24+ (`.nvmrc` 참고) — JS 린트/포맷 Git 훅에만 사용합니다
+- Node.js 24+ — JS 린트/포맷 Git 훅에만 사용합니다
+- Go 1.27 — `go/` 마이그레이션 실험 코드용
+- Node.js와 Go 버전은 `mise.toml`에 고정돼 있습니다 (`mise install`)
 
 ## 설정
 

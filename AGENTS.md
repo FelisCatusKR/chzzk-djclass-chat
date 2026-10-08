@@ -12,6 +12,7 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 - **UI Language:** Korean ONLY. All user-facing text must be written in Korean.
 - **Repository:** `chzzk-djclass-overlay`
 - **History:** originally a Next.js/Node app; rewritten to Python/Django in 2026-06. The legacy code has been removed — do NOT reintroduce a Node/Next.js app.
+- **Go migration (in progress):** a Go rewrite is being evaluated under `go/`. It currently holds only the Chzzk client (`internal/chzzk`), a receive-only Engine.IO v3 socket client (`internal/chzzk/eio3`) and a throwaway live-test harness (`cmd/spike`). The Django app remains the production service until the migration is decided.
 
 ---
 
@@ -30,6 +31,8 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 | daisyUI + Tailwind (CDN) | 5 / 4           | Config-page styling (no build step)                         |
 | htmx + Alpine.js         | —               | Config-page interactivity (`hx-boost` app shell)            |
 | pytest                   | —               | Tests (`pytest-django`, `pytest-httpx`)                     |
+| mise                     | —               | Tool versions (`mise.toml`: Go, Node) — local + CI          |
+| Go                       | 1.27            | `go/` migration spike (`coder/websocket`)                   |
 | ruff / djlint / mypy     | —               | Lint, format, template lint, strict typing                  |
 
 ---
@@ -67,6 +70,11 @@ djclass_overlay/
   templates/              # Django templates
   static/                 # css/badge.css, js/components.js
 manage.py
+go/                       # Go migration spike (own go.mod; not in the Docker image)
+  internal/chzzk/         # Chzzk OAuth + session API client (port of common/chzzk.py)
+  internal/chzzk/eio3/    # minimal Socket.IO v2 / Engine.IO v3 websocket client
+  cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
+mise.toml                 # pinned tool versions (replaces .nvmrc)
 ```
 
 ### 4.1 Adding / Moving Rules
@@ -90,6 +98,7 @@ manage.py
 - Widgets **cannot connect directly to Chzzk** — the server ingests via **python-socketio 4.6.1 (EIO3)**. **5.x is NOT compatible** (the 4.x↔5.x API diverged; `python-socketio-stubs` tracks 5.x only — do not add it).
 - The server computes DJ CLASS badges; the widget makes **zero network calls** beyond the SSE stream (`/widget/<channelId>/stream`). It renders `[{button}B {DJ CLASS}] message` — the Chzzk nickname is NOT shown; unverified viewers get a `미인증` badge.
 - A per-channel connect lock prevents duplicate connections; the ingestor tears down 30 s after the last subscriber leaves.
+- **Chzzk session socket facts** (verified live 2026-10, details in `go/internal/chzzk/eio3` package doc): the server is EIO3-only; a session URL is **single-use** (fetch a fresh one per (re)connect); the server closes sessions on its own after many hours (reconnect is normal operation); an open session outlives its access token, so refresh the token **before reconnecting**.
 
 ### 5.3 Tokens & sessions
 
@@ -135,6 +144,7 @@ manage.py
 - **Framework:** pytest (`pytest-django`, `pytest-httpx`); settings module `config.settings.local`.
 - **Location:** `djclass_overlay/<app>/tests/test_*.py`. All external I/O (Chzzk, V-ARCHIVE) is mocked.
 - **Run:** `uv run pytest`.
+- **Go:** `cd go && go test ./...`. CI runs `go test -race`; the race detector does not work on the 39-bit-VMA Raspberry Pi kernel, so run `-race` only on amd64/CI.
 
 ---
 
@@ -144,6 +154,7 @@ manage.py
 - **djlint** — Django template lint/format (`profile = django`).
 - **mypy** — `strict` + `django-stubs`.
 - **eslint + prettier** — for the two first-party browser scripts only (`widget.js`, `components.js`); enforced by **local Git hooks, NOT CI**.
+- **gofmt + go vet** — Go code under `go/`; gofmt runs in lint-staged, CI's `go` job checks gofmt/vet/tests. Keep the Go version in `mise.toml` and `go/go.mod` identical (CI checks).
 
 ### 8.1 Mandatory commands
 
@@ -159,6 +170,12 @@ uv run mypy djclass_overlay config
 
 ```bash
 npm run lint:fix && npm run format
+```
+
+**After Go changes:**
+
+```bash
+cd go && gofmt -w . && go vet ./... && go test ./...
 ```
 
 ---
