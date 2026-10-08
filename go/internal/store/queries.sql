@@ -88,3 +88,24 @@ SELECT l.user_id, l.varchive_nickname, u.chzzk_id, u.chzzk_nickname
 FROM varchive_links l JOIN users u ON u.id = l.user_id
 WHERE l.is_active = 1
 ORDER BY l.user_id;
+
+-- Cutover import (internal/importer): keeps Django's primary keys and timestamps.
+
+-- name: CountUsers :one
+SELECT count(*) FROM users;
+
+-- name: ImportUser :exec
+INSERT INTO users (id, chzzk_id, chzzk_nickname, preferred_button, created_at)
+VALUES (?, ?, ?, ?, ?);
+
+-- name: ImportChannel :exec
+INSERT INTO channels (id, user_id, chzzk_channel_id, access_token_encrypted, refresh_token_encrypted, token_expires_at, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- name: ImportVarchiveLink :exec
+INSERT INTO varchive_links (id, user_id, varchive_nickname, varchive_user_no, is_active, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- name: ImportDjClass :exec
+INSERT INTO dj_classes (id, user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);

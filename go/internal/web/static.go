@@ -1,11 +1,31 @@
 package web
 
 import (
+	"embed"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// The Docker build copies chat.css, components.js and widget.js into static/
+// before compiling, so release binaries carry their assets. In a plain
+// checkout static/ holds only its .gitignore.
+//
+//go:embed all:static
+var embeddedStatic embed.FS
+
+// StaticAssets returns the baked-in assets when present, else the files in
+// the Django tree under repoRoot (local dev). Either way only css/, js/ and
+// overlay/ are reachable.
+func StaticAssets(repoRoot string) (fsys fs.FS, embedded bool) {
+	sub, _ := fs.Sub(embeddedStatic, "static")
+	if _, err := fs.Stat(sub, "overlay/widget.js"); err != nil {
+		return DjangoStatic(repoRoot), false
+	}
+	dir := func(name string) fs.FS { d, _ := fs.Sub(sub, name); return d }
+	return prefixFS{"css": dir("css"), "js": dir("js"), "overlay": dir("overlay")}, true
+}
 
 // DjangoStatic serves the widget assets straight from the Django tree under
 // the URLs Django's collectstatic layout uses (/static/css/…, /static/js/…, /static/overlay/…).

@@ -70,8 +70,19 @@ jobs:
       # mise.toml and go.mod must pin the same Go version (GOTOOLCHAIN would
       # otherwise silently fetch a different one).
       - run: test "$(mise current go)" = "$(go mod edit -json | jq -r .Go)"
+      # ...and the Dockerfile's builder image too.
+      - run: grep -q "^FROM golang:$(mise current go)-" ../Dockerfile
       - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       # Generated sqlc code must match queries.sql + migrations.
       - run: sqlc diff
       - run: go vet ./...
       - run: go test -race -count=1 ./...
+
+  # The Go image (cutover target) must keep building: embedded assets copied
+  # from the Django tree, static binary, distroless runtime.
+  go-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target go-runner -t djclass-go:ci .
+      - run: docker run --rm djclass-go:ci healthcheck || test $? -eq 1 # binary runs (no server → exit 1)
