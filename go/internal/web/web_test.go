@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,11 +20,13 @@ import (
 
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/chzzk"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/crypto"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/link"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/ratelimit"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/realtime"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/resolver"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store/db"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/varchive"
 )
 
 // noTokens keeps channel workers idle (no Chzzk traffic) while the hub still
@@ -37,6 +40,33 @@ type env struct {
 	http  *httptest.Server
 	store *store.Store
 	hub   *realtime.Hub
+	va    *vaFake
+}
+
+// vaFake is a V-ARCHIVE stand-in: token "good" is valid for nickname "VA",
+// whose classes are whatever the test puts in classes (button → JSON).
+type vaFake struct {
+	mu      sync.Mutex
+	classes map[string]string
+}
+
+func (f *vaFake) handler(w http.ResponseWriter, r *http.Request) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if r.URL.Path == "/api/v2/open-token/user" {
+		if r.Header.Get("Authorization") != "Bearer good" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		io.WriteString(w, `{"success":true,"userNo":7,"nickname":"VA"}`)
+		return
+	}
+	button := r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
+	if body, ok := f.classes[button]; ok && strings.HasPrefix(r.URL.Path, "/api/v2/archive/VA/") {
+		io.WriteString(w, body)
+		return
+	}
+	http.NotFound(w, r)
 }
 
 func newEnv(t *testing.T, dev bool, chzzkAPI http.HandlerFunc) *env {
@@ -61,10 +91,21 @@ func newEnv(t *testing.T, dev bool, chzzkAPI http.HandlerFunc) *env {
 		t.Cleanup(api.Close)
 		cz.TokenURL, cz.APIURL = api.URL+"/auth/v1/token", api.URL+"/open/v1"
 	}
+	va := &vaFake{classes: map[string]string{
+		"4": `{"success":true,"djClass":"SHOWSTOPPER II","djPowerConversion":9823.0}`,
+		"8": `{"success":true,"djClass":"HEADLINER IV","djPowerConversion":9410.0}`,
+	}}
+	vaSrv := httptest.NewServer(http.HandlerFunc(va.handler))
+	t.Cleanup(vaSrv.Close)
+	vaClient := varchive.New()
+	vaClient.BaseURL = vaSrv.URL
+	badges := resolver.New(st.Read)
+
 	sessions := scs.New()
 	sessions.Store = st.Sessions()
 	s := &Server{
 		Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil),
+		Link:    &link.Service{Store: st, VA: vaClient, Cache: badges, Log: log},
 		BaseURL: "http://localhost:8000", Log: log, Dev: dev,
 		Static: DjangoStatic(filepath.Join("..", "..", "..")),
 	}
@@ -75,7 +116,7 @@ func newEnv(t *testing.T, dev bool, chzzkAPI http.HandlerFunc) *env {
 			t.Fatal(err)
 		}
 	}
-	return &env{srv: s, http: ts, store: st, hub: hub}
+	return &env{srv: s, http: ts, store: st, hub: hub, va: va}
 }
 
 func (e *env) addChannel(t *testing.T, id string) {
@@ -452,5 +493,126 @@ func TestDevRoutes(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("injected chat not delivered")
+	}
+}
+
+// login runs the OAuth flow against the fake Chzzk API and returns a client
+// carrying the session cookie (user chanX).
+func login(t *testing.T, e *env) *http.Client {
+	t.Helper()
+	jar, _ := cookiejar.New(nil)
+	c := &http.Client{Jar: jar, CheckRedirect: noRedirect}
+	resp, err := c.Get(e.http.URL + "/api/auth/chzzk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	loc, _ := url.Parse(resp.Header.Get("Location"))
+	resp, err = c.Get(e.http.URL + "/api/auth/chzzk/callback?code=C&state=" + loc.Query().Get("state"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("login failed: %d", resp.StatusCode)
+	}
+	return c
+}
+
+func post(t *testing.T, c *http.Client, u string, form url.Values) (int, string) {
+	t.Helper()
+	req, _ := http.NewRequest("POST", u, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(b)
+}
+
+func getWith(t *testing.T, c *http.Client, u string) (int, string) {
+	t.Helper()
+	resp, err := c.Get(u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	b, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, string(b)
+}
+
+// Ported from viewers/tests/test_pages.py and test_link_actions.py.
+func TestLinkFlow(t *testing.T) {
+	e := newEnv(t, false, chzzkFake(t))
+	anon := &http.Client{CheckRedirect: noRedirect}
+	if resp, _ := anon.Get(e.http.URL + "/link/"); resp.Header.Get("Location") != "/login/?next=%2Flink%2F" {
+		t.Errorf("anonymous /link/ → %q", resp.Header.Get("Location"))
+	}
+	if code, _ := post(t, anon, e.http.URL+"/link/sync/", nil); code != 200 {
+		t.Errorf("anonymous htmx post: %d", code) // HX-Redirect, checked in TestRequireLoginForHtmx
+	}
+
+	c := login(t, e)
+	code, body := getWith(t, c, e.http.URL+"/link/")
+	for _, want := range []string{"스트리머님, 환영합니다!", "조회토큰을 입력하세요", "V-ARCHIVE 마이페이지", `hx-post="/link/connect/"`, `id="link-card"`, `hx-select="#link-card"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("unlinked page lacks %q", want)
+		}
+	}
+	if code != 200 || strings.Contains(body, "버튼 선택") || strings.Contains(body, "rendered inside the page") {
+		t.Errorf("unlinked page: %d, picker or template comment leaked", code)
+	}
+
+	if _, body := post(t, c, e.http.URL+"/link/connect/", url.Values{"token": {""}}); !strings.Contains(body, "조회토큰을 입력하세요.") {
+		t.Errorf("empty token: %s", body)
+	}
+	if _, body := post(t, c, e.http.URL+"/link/connect/", url.Values{"token": {"bad"}}); !strings.Contains(body, "조회토큰이 유효하지 않습니다") {
+		t.Errorf("bad token: %s", body)
+	}
+	_, body = post(t, c, e.http.URL+"/link/connect/", url.Values{"token": {" good "}})
+	if strings.Contains(body, "<html") {
+		t.Error("htmx response is a full page, want the card fragment")
+	}
+	for _, want := range []string{"연동 완료! 이제 채팅에서", "VA와 연동 완료", `hx-post="/link/sync/"`, `hx-post="/link/unlink/"`, "버튼 선택", "자동 (최고 클래스)", "4버튼", "SS II", "9823", "9800+"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("linked card lacks %q", want)
+		}
+	}
+
+	_, body = post(t, c, e.http.URL+"/link/sync/", nil)
+	if !strings.Contains(body, "DJ CLASS 동기화 완료: 4B SHOWSTOPPER II") {
+		t.Errorf("sync: %s", body)
+	}
+	_, body = post(t, c, e.http.URL+"/link/preferred-button/", url.Values{"button": {"8"}})
+	if !strings.Contains(body, `value="8"
+                           class="h-4 w-4"
+                           checked`) {
+		t.Errorf("preferred 8 not checked: %s", body)
+	}
+	if _, body := post(t, c, e.http.URL+"/link/preferred-button/", url.Values{"button": {"5"}}); !strings.Contains(body, "잘못된 버튼 선택입니다.") {
+		t.Errorf("invalid button: %s", body)
+	}
+
+	// Nickname changed on V-ARCHIVE: fetch comes back empty, rows are kept.
+	e.va.mu.Lock()
+	e.va.classes = map[string]string{}
+	e.va.mu.Unlock()
+	if _, body := post(t, c, e.http.URL+"/link/sync/", nil); !strings.Contains(body, "V-ARCHIVE 닉네임이 바뀌었다면") || !strings.Contains(body, "4버튼") {
+		t.Errorf("stale sync: %s", body)
+	}
+	// Third sync within the minute is still allowed; the fourth is limited.
+	if _, body := post(t, c, e.http.URL+"/link/sync/", nil); strings.Contains(body, "요청이 너무 많습니다") {
+		t.Error("3rd sync limited")
+	}
+	if _, body := post(t, c, e.http.URL+"/link/sync/", nil); !strings.Contains(body, "요청이 너무 많습니다") {
+		t.Error("4th sync not rate limited")
+	}
+
+	_, body = post(t, c, e.http.URL+"/link/unlink/", nil)
+	if !strings.Contains(body, "V-ARCHIVE 연동을 해제했습니다.") || !strings.Contains(body, "조회토큰을 입력하세요") || strings.Contains(body, "버튼 선택") {
+		t.Errorf("unlink: %s", body)
 	}
 }

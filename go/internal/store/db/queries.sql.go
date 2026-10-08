@@ -24,6 +24,24 @@ func (q *Queries) CommitSession(ctx context.Context, arg CommitSessionParams) er
 	return err
 }
 
+const deactivateLink = `-- name: DeactivateLink :exec
+UPDATE varchive_links SET is_active = 0, updated_at = unixepoch() WHERE user_id = ?
+`
+
+func (q *Queries) DeactivateLink(ctx context.Context, userID int64) error {
+	_, err := q.db.ExecContext(ctx, deactivateLink, userID)
+	return err
+}
+
+const deleteDjClasses = `-- name: DeleteDjClasses :exec
+DELETE FROM dj_classes WHERE user_id = ?
+`
+
+func (q *Queries) DeleteDjClasses(ctx context.Context, userID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteDjClasses, userID)
+	return err
+}
+
 const deleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expiry < julianday('now')
 `
@@ -53,6 +71,25 @@ func (q *Queries) FindSession(ctx context.Context, token string) ([]byte, error)
 	var data []byte
 	err := row.Scan(&data)
 	return data, err
+}
+
+const getActiveLink = `-- name: GetActiveLink :one
+SELECT id, user_id, varchive_nickname, varchive_user_no, is_active, created_at, updated_at FROM varchive_links WHERE user_id = ? AND is_active = 1
+`
+
+func (q *Queries) GetActiveLink(ctx context.Context, userID int64) (VarchiveLink, error) {
+	row := q.db.QueryRowContext(ctx, getActiveLink, userID)
+	var i VarchiveLink
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.VarchiveNickname,
+		&i.VarchiveUserNo,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getChannelByChzzkID = `-- name: GetChannelByChzzkID :one
@@ -137,6 +174,48 @@ func (q *Queries) HasActiveLink(ctx context.Context, userID int64) (bool, error)
 	var has_link bool
 	err := row.Scan(&has_link)
 	return has_link, err
+}
+
+const listActiveLinks = `-- name: ListActiveLinks :many
+SELECT l.user_id, l.varchive_nickname, u.chzzk_id, u.chzzk_nickname
+FROM varchive_links l JOIN users u ON u.id = l.user_id
+WHERE l.is_active = 1
+ORDER BY l.user_id
+`
+
+type ListActiveLinksRow struct {
+	UserID           int64
+	VarchiveNickname string
+	ChzzkID          string
+	ChzzkNickname    string
+}
+
+func (q *Queries) ListActiveLinks(ctx context.Context) ([]ListActiveLinksRow, error) {
+	rows, err := q.db.QueryContext(ctx, listActiveLinks)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListActiveLinksRow
+	for rows.Next() {
+		var i ListActiveLinksRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.VarchiveNickname,
+			&i.ChzzkID,
+			&i.ChzzkNickname,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDjClasses = `-- name: ListDjClasses :many

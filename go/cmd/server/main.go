@@ -21,10 +21,13 @@ import (
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/chzzk"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/config"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/crypto"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/link"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/ratelimit"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/realtime"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/resolver"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/schedule"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/varchive"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/web"
 )
 
@@ -67,11 +70,18 @@ func run(envFile string, log *slog.Logger) error {
 		log.Warn("DEV mode: demo viewers seeded, /dev enabled — never run this in production")
 	}
 
+	badges := resolver.New(st.Read)
 	hub := realtime.New(realtime.Config{
 		Tokens:   &realtime.Tokens{Store: st, Box: box, Chzzk: cz},
 		API:      cz,
-		Resolver: resolver.New(st.Read),
+		Resolver: badges,
 		Logger:   log,
+	})
+	links := &link.Service{Store: st, VA: varchive.New(), Cache: badges, Log: log}
+	// Daily DJ CLASS sync at 18:00 UTC (03:00 KST), in-process.
+	go schedule.Daily(ctx, 18, func(ctx context.Context) {
+		ok, failed := links.SyncAll(ctx)
+		log.Info("daily sync done", "synced", ok, "failed", failed)
 	})
 	sessions := scs.New()
 	sessions.Store = st.Sessions()
@@ -85,7 +95,7 @@ func run(envFile string, log *slog.Logger) error {
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: (&web.Server{
-			Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil),
+			Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil), Link: links,
 			BaseURL: cfg.BaseURL, Log: log, Dev: cfg.Dev, Static: web.DjangoStatic(cfg.DjangoDir),
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,

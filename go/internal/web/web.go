@@ -15,6 +15,7 @@ import (
 
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/chzzk"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/crypto"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/link"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/ratelimit"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/realtime"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store"
@@ -43,6 +44,7 @@ type Server struct {
 	Box      *crypto.Box
 	Sessions *scs.SessionManager
 	Limiter  *ratelimit.Limiter
+	Link     *link.Service
 	BaseURL  string // public origin, no trailing slash
 	Log      *slog.Logger
 
@@ -64,7 +66,12 @@ func (s *Server) Handler() http.Handler {
 	page("GET /api/auth/chzzk/callback", s.callback)
 	page("POST /logout/{$}", s.logout)
 	page("GET /dashboard/{$}", s.requireLogin(s.dashboard))
-	for _, p := range []string{"/login", "/dashboard"} { // Django APPEND_SLASH parity
+	page("GET /link/{$}", s.requireLogin(s.linkPage))
+	page("POST /link/connect/{$}", s.requireLogin(s.linkConnect))
+	page("POST /link/sync/{$}", s.requireLogin(s.linkSync))
+	page("POST /link/unlink/{$}", s.requireLogin(s.linkUnlink))
+	page("POST /link/preferred-button/{$}", s.requireLogin(s.linkPreferredButton))
+	for _, p := range []string{"/login", "/dashboard", "/link"} { // Django APPEND_SLASH parity
 		mux.Handle("GET "+p, http.RedirectHandler(p+"/", http.StatusMovedPermanently))
 	}
 
