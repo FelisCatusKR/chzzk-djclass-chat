@@ -13,10 +13,10 @@ GitOps build target) live in the private `homelab-infra` repo.
       subscribers, not live status: OBS keeps a loaded source open while
       off-air, so the Chzzk session stays up then — cheap, and chat works the
       moment the next stream starts.)
-- [ ] **Import rehearsal** (steps 2–3 below against a scratch volume, Django
-      still serving): `import done` reports every token verified and the same
-      row counts as Postgres; spot-check a few linked viewers' badges on the
-      Go `/link/` page against production.
+- [x] **Import rehearsal** (2026-10-08, on rpi-1, Django still serving,
+      dumpdata piped straight into `import` — no export file): users 1,276,
+      channels 1,276, links 1,005, dj_classes 3,205 — all equal to Postgres;
+      all 2,552 Chzzk tokens decrypted with the production key.
 - [x] Widget URLs (`/widget/<channelId>/`) and the OAuth callback
       (`/api/auth/chzzk/callback`) are unchanged — OBS sources and the Chzzk
       app config keep working.
