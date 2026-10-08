@@ -2,14 +2,14 @@ import js from '@eslint/js'
 import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 
-// The Next.js app is gone; the only first-party JS left is the two hand-written,
-// no-build browser scripts served by WhiteNoise (the OBS overlay widget + the
-// htmx/Alpine page glue). Lint just those — plus this config — as plain browser JS.
+// The only first-party JS is the two hand-written, no-build browser scripts
+// embedded in the Go binary (the OBS overlay widget + the Alpine page glue).
+// Lint just those — plus this config and the smoke test — as plain JS.
 const config = [
   js.configs.recommended,
   prettier,
   {
-    files: ['djclass_overlay/**/*.js'],
+    files: ['internal/web/static/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'script',
@@ -34,13 +34,7 @@ const config = [
     },
   },
   {
-    ignores: [
-      'node_modules/',
-      '.next/', // stale legacy Next.js build output (gitignored; absent in CI)
-      '.venv/', // Python virtualenv — don't lint third-party deps' bundled JS (Django admin)
-      'staticfiles/', // collectstatic output (copies of the above)
-      'data/',
-    ],
+    ignores: ['node_modules/', 'data/'],
   },
 ]
 

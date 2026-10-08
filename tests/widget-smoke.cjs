@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /*
- * Dependency-free smoke test for the no-build browser scripts served by WhiteNoise
+ * Dependency-free smoke test for the no-build browser scripts embedded in the Go binary
  * (the OBS overlay widget + the htmx/Alpine page glue). It loads the REAL files with
  * stubbed DOM/browser globals and asserts they initialize — and that the overlay
  * renders an SSE batch — without throwing.
@@ -18,11 +18,8 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
-const WIDGET = path.join(
-  ROOT,
-  'djclass_overlay/overlay/static/overlay/widget.js'
-)
-const COMPONENTS = path.join(ROOT, 'djclass_overlay/static/js/components.js')
+const WIDGET = path.join(ROOT, 'internal/web/static/overlay/widget.js')
+const COMPONENTS = path.join(ROOT, 'internal/web/static/js/components.js')
 
 let failures = 0
 function check(name, fn) {

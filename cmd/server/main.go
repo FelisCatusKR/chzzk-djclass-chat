@@ -167,14 +167,11 @@ func serve(cfg config.Config, log *slog.Logger) error {
 	sessions.Cookie.Secure = cfg.HTTPS
 	go st.Sessions().Cleanup(ctx, time.Hour)
 
-	static, embedded := web.StaticAssets(cfg.DjangoDir)
-	log.Info("static assets", "embedded", embedded)
-
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: (&web.Server{
 			Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil), Link: links,
-			BaseURL: cfg.BaseURL, HTTPS: cfg.HTTPS, Log: log, Dev: cfg.Dev, Static: static,
+			BaseURL: cfg.BaseURL, HTTPS: cfg.HTTPS, Log: log, Dev: cfg.Dev, Static: web.StaticAssets(),
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second, // bounds slow request bodies; SSE is unaffected (tested)

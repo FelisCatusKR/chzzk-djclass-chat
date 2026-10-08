@@ -21,7 +21,6 @@ type Config struct {
 	ChzzkClientID     string // CHZZK_CLIENT_ID
 	ChzzkClientSecret string // CHZZK_CLIENT_SECRET
 	TokenKey          string // VARCHIVE_TOKEN_KEY (encrypts Chzzk tokens at rest)
-	DjangoDir         string // DJANGO_DIR: repo root; widget assets are served from the Django tree until cutover
 	Dev               bool   // DEV=1: seed demo viewers, enable /dev. Only for a localhost BASE_URL.
 	HTTPS             bool   // BASE_URL scheme is https: Secure cookies + HSTS
 }
@@ -34,7 +33,6 @@ func FromEnv() (Config, error) {
 		ChzzkClientID:     os.Getenv("CHZZK_CLIENT_ID"),
 		ChzzkClientSecret: os.Getenv("CHZZK_CLIENT_SECRET"),
 		TokenKey:          os.Getenv("VARCHIVE_TOKEN_KEY"),
-		DjangoDir:         envOr("DJANGO_DIR", "."),
 	}
 	if v := os.Getenv("DEV"); v != "" {
 		dev, err := strconv.ParseBool(v)

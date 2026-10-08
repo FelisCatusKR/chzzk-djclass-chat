@@ -1,4 +1,0 @@
-# Filled at Docker build time from the Django tree (see Dockerfile go-builder).
-# Local dev serves the same files from DJANGO_DIR instead.
-*
-!.gitignore

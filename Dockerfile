@@ -8,10 +8,6 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ cmd/
 COPY internal/ internal/
-# Widget/page assets still live in the Django tree; bake them into the binary.
-COPY djclass_overlay/static/css/chat.css internal/web/static/css/
-COPY djclass_overlay/static/js/components.js internal/web/static/js/
-COPY djclass_overlay/overlay/static/overlay/widget.js internal/web/static/overlay/
 # modernc.org/sqlite is pure Go: a static binary, no cgo.
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/djclass ./cmd/server \
  && mkdir -p /out/data
