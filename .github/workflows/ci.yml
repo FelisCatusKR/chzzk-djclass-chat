@@ -16,77 +16,29 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Every check except the image build: Go (gofmt, sqlc, vet, race tests) and
+  # the two embedded browser scripts (eslint, executed smoke test). Tools come
+  # from mise.toml.
   build:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_DB: djclass_overlay
-          POSTGRES_USER: djclass
-          POSTGRES_PASSWORD: devpassword
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U djclass -d djclass_overlay"
-          --health-interval 2s --health-timeout 3s --health-retries 15
-    env:
-      DJANGO_SECRET_KEY: ci-secret-0123456789abcdef0123456789abcdef0123456789
-      VARCHIVE_TOKEN_KEY: ci-dummy-key-32-characters-long!!
-      CHZZK_CLIENT_ID: ci-dummy
-      CHZZK_CLIENT_SECRET: ci-dummy
-      DATABASE_URL: postgres://djclass:devpassword@localhost:5432/djclass_overlay
-      BASE_URL: http://localhost:8000
-    steps:
-      - uses: actions/checkout@v4
-      # Frontend gates: lint + EXECUTE the no-build browser scripts. widget.js /
-      # components.js have no other coverage and `node --check` is syntax-only, so a
-      # load-time crash (e.g. the PR#17 FONT_MAP init-order bug) only surfaces here.
-      - uses: jdx/mise-action@v2
-        with:
-          install_args: node
-      - run: npm ci
-      - run: npm run lint
-      - run: node tests/widget-smoke.cjs
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-      - run: uv sync --frozen
-      # Static lint/format gates (no DB or Django setup needed) — fail fast.
-      - run: uv run ruff check djclass_overlay config manage.py
-      - run: uv run ruff format --check djclass_overlay config manage.py
-      - run: uv run djlint djclass_overlay/templates --check
-      - run: uv run djlint djclass_overlay/templates --lint
-      - run: uv run mypy djclass_overlay config
-      - run: uv run python manage.py check
-      - run: uv run python manage.py makemigrations --check --dry-run
-      - run: uv run pytest -q
-      - run: uv run python manage.py collectstatic --noinput
-      - name: Deploy-security check (production settings)
-        env:
-          DJANGO_SETTINGS_MODULE: config.settings.production
-          DJANGO_ALLOWED_HOSTS: example.com
-          BASE_URL: https://example.com
-        run: uv run python manage.py check --deploy --fail-level WARNING
-
-  go:
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-        with:
-          install_args: go sqlc
-      # mise.toml and go.mod must pin the same Go version (GOTOOLCHAIN would
-      # otherwise silently fetch a different one).
+      # mise.toml, go.mod and the Dockerfile builder must pin the same Go.
       - run: test "$(mise current go)" = "$(go mod edit -json | jq -r .Go)"
-      # ...and the Dockerfile's builder image too.
       - run: grep -q "^FROM golang:$(mise current go)-" Dockerfile
-      - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; exit 1; }
       # Generated sqlc code must match queries.sql + migrations.
       - run: sqlc diff
       - run: go vet ./...
       - run: go test -race -count=1 ./...
+      # widget.js / components.js have no other coverage; `node --check` is
+      # syntax-only, so the smoke test executes them (catches load-time crashes).
+      - run: npm ci
+      - run: npm run lint
+      - run: node tests/widget-smoke.cjs
 
-  # The Go image (cutover target) must keep building: embedded assets copied
-  # from the Django tree, static binary, distroless runtime.
+  # The production image must keep building (static binary, distroless).
   go-image:
     runs-on: ubuntu-latest
     steps:
@@ -129,7 +81,7 @@ jobs:
 
   publish:
     name: publish (${{ matrix.arch }})
-    needs: [build, go, go-image, changes]
+    needs: [build, go-image, changes]
     if: needs.changes.outputs.image == 'true'
     strategy:
       fail-fast: true
