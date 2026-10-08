@@ -38,3 +38,25 @@ SELECT EXISTS (
 
 -- name: ListDjClasses :many
 SELECT * FROM dj_classes WHERE user_id = ? ORDER BY button;
+
+-- name: UpsertVarchiveLink :exec
+INSERT INTO varchive_links (user_id, varchive_nickname, varchive_user_no)
+VALUES (?, ?, ?)
+ON CONFLICT (user_id) DO UPDATE SET
+    varchive_nickname = excluded.varchive_nickname,
+    varchive_user_no  = excluded.varchive_user_no,
+    is_active         = 1,
+    updated_at        = unixepoch();
+
+-- name: UpsertDjClass :exec
+INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (user_id, button) DO UPDATE SET
+    dj_class            = excluded.dj_class,
+    dj_power_sum        = excluded.dj_power_sum,
+    max_dj_power        = excluded.max_dj_power,
+    dj_power_conversion = excluded.dj_power_conversion,
+    synced_at           = unixepoch();
+
+-- name: SetPreferredButton :exec
+UPDATE users SET preferred_button = ? WHERE id = ?;

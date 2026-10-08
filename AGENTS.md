@@ -80,6 +80,10 @@ go/                       # Go migration spike (own go.mod; not in the Docker im
   internal/realtime/      # per-channel chat worker (ingest + 250 ms flush), hub, SSE subscriptions
   internal/crypto/        # AES-GCM token encryption, byte-compatible with common/crypto.py
   internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
+  cmd/server/             # the Go server (HTTP + SSE + chat workers); `cd go && go run ./cmd/server`
+  internal/config/        # env/.env configuration
+  internal/web/           # widget page, SSE, OAuth login, /dev chat injection (DEV only)
+  CUTOVER.md              # what must be verified before Go replaces Django
   cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
 mise.toml                 # pinned tool versions (replaces .nvmrc)
 ```
@@ -213,6 +217,15 @@ cd go && sqlc generate && gofmt -w . && go vet ./... && go test ./...
 | `DJANGO_ALLOWED_HOSTS`                    | Comma-separated allowed hosts                         |
 | `DJANGO_CSRF_TRUSTED_ORIGINS`             | Optional; defaults to `BASE_URL`                      |
 | `DJANGO_SETTINGS_MODULE`                  | `config.settings.local` (dev) / `.production`         |
+
+Go server (`go/.env` or real env; shares `CHZZK_*`, `VARCHIVE_TOKEN_KEY`, `BASE_URL` with the table above):
+
+| Variable      | Description                                                                            |
+| ------------- | -------------------------------------------------------------------------------------- |
+| `SQLITE_PATH` | SQLite file (default `djclass.sqlite3`)                                                |
+| `ADDR`        | Listen address (default `:8000`)                                                       |
+| `DJANGO_DIR`  | Repo root to serve widget assets from until cutover (default `..`)                     |
+| `DEV`         | `1` = seed demo viewers + enable `/dev` chat injection; refused if `BASE_URL` is https |
 
 ---
 
