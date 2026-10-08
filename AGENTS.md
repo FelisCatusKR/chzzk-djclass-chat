@@ -119,6 +119,8 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 
 - One **Hub**; per Chzzk channel one **ingest** goroutine (token → fresh session URL → dial → subscribe → CHAT into buffer) and one **flush** goroutine (every 250 ms: resolve each sender once, encode one `chat` batch, non-blocking send to each subscriber). Same SSE batch JSON as `overlay/flush.py`.
 - **Every** failure (token, URL, dial, subscribe ×3, server close) restarts the whole session after a backoff (1 s doubling to 60 s, reset after a healthy minute) — never "retry once". Tokens refresh 5 min before expiry, before connecting.
+- Widget streams are unauthenticated, so they are capped (10 per channel, 1000 total → 503), each subscriber buffers ≤64 batches, and every SSE write has a 10 s deadline (slow readers are dropped).
+- **Badges resolve by `senderChannelId` only** — no nickname fallback (Django had one; nicknames are user-changeable, so it allowed impersonation). Emoji URLs are kept only for `https://*.pstatic.net` / `*.naver.net`.
 - Per-channel bookkeeping (subscribers, teardown timer) is guarded by `Hub.mu`; the chat buffer by its own mutex. `Hub.Close` stops workers **before** closing subscriber channels.
 
 ### 5.2.0.1 Go web (`internal/web`)
@@ -129,7 +131,9 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - **Headers:** CSP (same policy as Django + `frame-ancestors`/`base-uri`/`form-action`), `X-Frame-Options: DENY`, nosniff, `Referrer-Policy: same-origin`, COOP, Permissions-Policy, HSTS when `BASE_URL` is https.
 - **CDN assets** (daisyUI, Tailwind browser, htmx, Alpine) are version-pinned with SRI `integrity` in `templates/base.html`; bumping a version means recomputing its sha384.
 - `requireLogin`: htmx **fragment** requests get `HX-Redirect` to `/login/?next=<current page>`; normal and boosted requests redirect to the requested path.
-- Access log never records query strings (OAuth `code`).
+- Access log never records query strings (OAuth `code`); Chzzk client/eio3 errors never quote URLs (`auth=`, `sessionKey=`).
+- Rate-limited `/link` actions answer **429** with the card body (base.html configures htmx to swap 429). Rate limiting trusts `CF-Connecting-IP` because the container is reachable only via cloudflared (no published port; see homelab-infra) — revisit if that changes.
+- `/widget/*` has its own CSP (no `unsafe-eval`); session pages send `Cache-Control: no-store`. `DEV` is accepted only with a loopback `BASE_URL`.
 - `/link` actions (`internal/link`): V-ARCHIVE calls happen **outside** write transactions; the badge cache is invalidated **after** commit. An empty V-ARCHIVE fetch never wipes existing classes. Fragment handlers re-read the user before rendering (the request-scoped user predates the change).
 
 ### 5.2.1 Go store (SQLite)

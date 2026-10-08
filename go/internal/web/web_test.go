@@ -194,7 +194,7 @@ func TestPagesRender(t *testing.T) {
 func TestSecurityHeaders(t *testing.T) {
 	e := newEnv(t, false, nil)
 	for _, path := range []string{"/", "/widget/abc/"} {
-		resp, _ := get(t, e.http.URL+path)
+		resp, _ := get(t, e.http.URL+path) // both policies keep these
 		h := resp.Header
 		csp := h.Get("Content-Security-Policy")
 		for _, want := range []string{"default-src 'self'", "https://*.pstatic.net", "https://*.naver.net", "frame-ancestors 'none'"} {
@@ -208,6 +208,12 @@ func TestSecurityHeaders(t *testing.T) {
 		if h.Get("X-Frame-Options") != "DENY" || h.Get("X-Content-Type-Options") != "nosniff" || h.Get("Strict-Transport-Security") != "" {
 			t.Errorf("%s: headers %v", path, h)
 		}
+	}
+	if resp, _ := get(t, e.http.URL+"/widget/abc/"); strings.Contains(resp.Header.Get("Content-Security-Policy"), "unsafe-eval") {
+		t.Error("widget CSP allows eval")
+	}
+	if resp, _ := get(t, e.http.URL+"/"); resp.Header.Get("Cache-Control") != "no-store" {
+		t.Error("session pages are cacheable")
 	}
 	rec := httptest.NewRecorder()
 	securityHeaders(true, http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
@@ -607,12 +613,66 @@ func TestLinkFlow(t *testing.T) {
 	if _, body := post(t, c, e.http.URL+"/link/sync/", nil); strings.Contains(body, "요청이 너무 많습니다") {
 		t.Error("3rd sync limited")
 	}
-	if _, body := post(t, c, e.http.URL+"/link/sync/", nil); !strings.Contains(body, "요청이 너무 많습니다") {
-		t.Error("4th sync not rate limited")
+	if code, body := post(t, c, e.http.URL+"/link/sync/", nil); code != http.StatusTooManyRequests || !strings.Contains(body, "요청이 너무 많습니다") || !strings.Contains(body, `id="link-card"`) {
+		t.Errorf("4th sync: %d, want 429 with the card", code)
 	}
 
 	_, body = post(t, c, e.http.URL+"/link/unlink/", nil)
 	if !strings.Contains(body, "V-ARCHIVE 연동을 해제했습니다.") || !strings.Contains(body, "조회토큰을 입력하세요") || strings.Contains(body, "버튼 선택") {
 		t.Errorf("unlink: %s", body)
+	}
+}
+
+// The server's ReadTimeout would cancel a long-lived SSE request; the handler
+// must lift it. Also: over the subscriber cap the stream answers 503.
+func TestStreamOutlivesReadTimeoutAndIsCapped(t *testing.T) {
+	e := newEnv(t, true, nil)
+	e.addChannel(t, "chan1")
+	ts := httptest.NewUnstartedServer(e.srv.Handler())
+	ts.Config.ReadTimeout = 200 * time.Millisecond
+	ts.Start()
+	t.Cleanup(ts.Close)
+
+	resp, err := http.Get(ts.URL + "/widget/chan1/stream")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	r := bufio.NewReader(resp.Body)
+	r.ReadString('\n')
+	r.ReadString('\n')
+	time.Sleep(600 * time.Millisecond) // well past ReadTimeout
+	e.hub.Inject("chan1", realtime.ChatMessage{SenderChannelID: "dev-unlinked", Content: "late"})
+	got := make(chan string, 1)
+	go func() {
+		r.ReadString('\n')
+		line, _ := r.ReadString('\n')
+		got <- line
+	}()
+	select {
+	case line := <-got:
+		if !strings.Contains(line, `"text":"late"`) {
+			t.Errorf("got %q", line)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("stream died after ReadTimeout")
+	}
+
+	for i := 0; ; i++ { // fill channel chan1 up to the per-channel cap
+		resp, err := http.Get(ts.URL + "/widget/chan1/stream")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode == http.StatusServiceUnavailable {
+			resp.Body.Close()
+			if i != 9 { // one stream already open above; cap is 10
+				t.Errorf("503 after %d extra streams, want 9", i)
+			}
+			break
+		}
+		defer resp.Body.Close()
+		if i > 20 {
+			t.Fatal("no subscriber cap")
+		}
 	}
 }

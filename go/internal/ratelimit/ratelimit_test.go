@@ -2,6 +2,7 @@ package ratelimit
 
 import (
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -46,5 +47,17 @@ func TestClientIP(t *testing.T) {
 	r.Header.Set("CF-Connecting-IP", "4.4.4.4")
 	if got := ClientIP(r); got != "4.4.4.4" {
 		t.Errorf("cf: %q", got)
+	}
+}
+
+func TestBucketMapIsBounded(t *testing.T) {
+	l := New(nil)
+	r := httptest.NewRequest("POST", "/", nil)
+	for i := range maxKeys + 50 { // all inside one window: none can be evicted as finished
+		r.Header.Set("CF-Connecting-IP", strconv.Itoa(i))
+		l.Allow(r, "link", 5, time.Hour)
+	}
+	if n := len(l.buckets); n > maxKeys+1 {
+		t.Errorf("buckets = %d, want ≤ %d", n, maxKeys+1)
 	}
 }

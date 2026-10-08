@@ -3,7 +3,9 @@ package realtime
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strconv"
+	"strings"
 )
 
 // ChatMessage is one normalized CHAT event waiting for the next flush.
@@ -24,7 +26,7 @@ func ExtractChat(p map[string]any, channelID string) ChatMessage {
 	emojis := map[string]string{}
 	if raw, ok := p["emojis"].(map[string]any); ok {
 		for k, v := range raw {
-			if s, ok := v.(string); ok {
+			if s, ok := v.(string); ok && isNaverImage(s) {
 				emojis[k] = s
 			}
 		}
@@ -37,6 +39,18 @@ func ExtractChat(p map[string]any, channelID string) ChatMessage {
 		MessageTime:     toInt64(p["messageTime"]),
 		Emojis:          emojis,
 	}
+}
+
+// isNaverImage keeps only https URLs on Chzzk's (Naver's) image CDNs — the
+// same hosts the widget CSP allows — so a payload can't point the streamer's
+// OBS at an arbitrary server.
+func isNaverImage(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.User != nil {
+		return false
+	}
+	h := strings.ToLower(u.Hostname())
+	return strings.HasSuffix(h, ".pstatic.net") || strings.HasSuffix(h, ".naver.net")
 }
 
 // str mirrors Python's str(x or ""): JSON falsy values become "".

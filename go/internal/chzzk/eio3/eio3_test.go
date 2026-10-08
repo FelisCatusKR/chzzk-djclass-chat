@@ -31,6 +31,12 @@ func TestSocketURL(t *testing.T) {
 	if _, err := SocketURL("ftp://x"); err == nil {
 		t.Error("want error for ftp scheme")
 	}
+	// Unparseable URLs must not echo the auth token back in the error.
+	for _, bad := range []string{"https://h?auth=SECRET\x7f", "https://h:port?auth=SECRET"} {
+		if _, err := SocketURL(bad); err == nil || strings.Contains(err.Error(), "SECRET") {
+			t.Errorf("SocketURL(%q) err = %v", bad, err)
+		}
+	}
 }
 
 func TestParseSocketPacket(t *testing.T) {

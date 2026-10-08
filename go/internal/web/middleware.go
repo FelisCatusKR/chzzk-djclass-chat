@@ -25,6 +25,13 @@ const csp = "default-src 'self'; " +
 	"connect-src 'self'; " +
 	"frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
+// widgetCSP is the OBS widget's policy: only its own script, no eval.
+const widgetCSP = "default-src 'self'; script-src 'self'; " +
+	"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+	"img-src 'self' https://*.pstatic.net https://*.naver.net; " +
+	"font-src https://cdn.jsdelivr.net; connect-src 'self'; " +
+	"frame-ancestors 'none'; base-uri 'self'; form-action 'none'"
+
 func securityHeaders(https bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
@@ -75,6 +82,8 @@ type userKey struct{}
 // the request context.
 func (s *Server) withUser(h http.HandlerFunc) http.Handler {
 	return s.Sessions.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Per-user pages must not come back from the browser cache after logout.
+		w.Header().Set("Cache-Control", "no-store")
 		if id := s.Sessions.GetInt64(r.Context(), sessionUserID); id != 0 {
 			u, err := s.Store.Read.GetUserByID(r.Context(), id)
 			switch {

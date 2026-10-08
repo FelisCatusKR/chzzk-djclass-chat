@@ -27,9 +27,9 @@ func exec(t *testing.T, s *store.Store, query string, args ...any) {
 	}
 }
 
-func resolve(t *testing.T, r *Resolver, id, nick string) Result {
+func resolve(t *testing.T, r *Resolver, id, _ string) Result {
 	t.Helper()
-	res, err := r.Resolve(context.Background(), id, nick)
+	res, err := r.Resolve(context.Background(), id)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,16 +78,21 @@ func TestLinkedEmitsAutoAndViewer(t *testing.T) {
 	}
 }
 
-func TestNicknameFallback(t *testing.T) {
+// Nicknames are never used: they are not unique and anyone can change theirs,
+// so a viewer matching a linked user's nickname must not get that badge.
+func TestNoNicknameFallback(t *testing.T) {
 	s, r := setup(t)
 	exec(t, s, `INSERT INTO users (id, chzzk_id, chzzk_nickname) VALUES (1, 'c5', 'Nick')`)
 	exec(t, s, `INSERT INTO varchive_links (user_id, varchive_nickname) VALUES (1, 'v')`)
-	if res := resolve(t, r, "", "Nick"); res.Status != Unsynced {
+	exec(t, s, `INSERT INTO dj_classes (user_id, button, dj_class) VALUES (1, 4, 'ROOKIE I')`)
+	if res := resolve(t, r, "", "Nick"); res.Status != Unlinked {
 		t.Errorf("no sender id: got %+v", res)
 	}
-	// An unknown sender id still falls back to the nickname (as in Python).
-	if res := resolve(t, r, "other-id", "Nick"); res.Status != Unsynced {
-		t.Errorf("unknown id: got %+v", res)
+	if res := resolve(t, r, "impostor-id", "Nick"); res.Status != Unlinked {
+		t.Errorf("unknown id with a linked user's nickname: got %+v", res)
+	}
+	if res := resolve(t, r, "c5", "whatever"); res.Status != Linked {
+		t.Errorf("real id: got %+v", res)
 	}
 }
 
@@ -103,7 +108,7 @@ func TestCachedUntilInvalidated(t *testing.T) {
 	if again := resolve(t, r, "c4", "N"); again.Badge.Auto.Class != first.Badge.Auto.Class {
 		t.Errorf("cache miss: %+v", again)
 	}
-	r.InvalidateUser("c4", "N")
+	r.InvalidateUser("c4")
 	if fresh := resolve(t, r, "c4", "N"); fresh.Badge.Auto.Class != "SS II" {
 		t.Errorf("after invalidate: %+v", fresh)
 	}

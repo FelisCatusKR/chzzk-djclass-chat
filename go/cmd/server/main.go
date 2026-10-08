@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -89,17 +88,18 @@ func run(envFile string, log *slog.Logger) error {
 	sessions.Cookie.Name = "session"
 	sessions.Cookie.HttpOnly = true
 	sessions.Cookie.SameSite = http.SameSiteLaxMode
-	sessions.Cookie.Secure = strings.HasPrefix(cfg.BaseURL, "https://")
+	sessions.Cookie.Secure = cfg.HTTPS
 	go st.Sessions().Cleanup(ctx, time.Hour)
 
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: (&web.Server{
 			Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil), Link: links,
-			BaseURL: cfg.BaseURL, Log: log, Dev: cfg.Dev, Static: web.DjangoStatic(cfg.DjangoDir),
+			BaseURL: cfg.BaseURL, HTTPS: cfg.HTTPS, Log: log, Dev: cfg.Dev, Static: web.DjangoStatic(cfg.DjangoDir),
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
-		WriteTimeout:      30 * time.Second, // SSE clears its own deadline
+		ReadTimeout:       30 * time.Second, // bounds slow request bodies; SSE is unaffected (tested)
+		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       2 * time.Minute,
 	}
 

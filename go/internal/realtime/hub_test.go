@@ -97,7 +97,7 @@ type fakeResolver struct {
 	fail  bool
 }
 
-func (r *fakeResolver) Resolve(_ context.Context, sender, nick string) (resolver.Result, error) {
+func (r *fakeResolver) Resolve(_ context.Context, sender string) (resolver.Result, error) {
 	r.calls.Add(1)
 	if r.fail {
 		return resolver.Result{}, errors.New("db down")
@@ -160,7 +160,7 @@ func recv[T any](t *testing.T, c <-chan T, what string) T {
 func chatEvent(sender, nick, content string) eio3.Event {
 	p, _ := json.Marshal(map[string]any{
 		"profile": map[string]any{"senderChannelId": sender, "nickname": nick},
-		"content": content, "emojis": map[string]any{"e": "https://e/1.png"},
+		"content": content, "emojis": map[string]any{"e": "https://ssl.pstatic.net/1.png"},
 	})
 	s, _ := json.Marshal(string(p)) // Chzzk sends the payload as a JSON string
 	return eio3.Event{Name: "CHAT", Args: []json.RawMessage{s}}
@@ -202,7 +202,7 @@ func TestChatReachesSubscriber(t *testing.T) {
 	}
 	b := decodeBatch(t, raw).Messages[0]
 	if b.Text != "hello" || b.Nickname != "Viewer" || b.Status != resolver.Linked ||
-		b.Badge == nil || b.Badge.Auto.Class != "SS II" || b.Emojis["e"] != "https://e/1.png" {
+		b.Badge == nil || b.Badge.Auto.Class != "SS II" || b.Emojis["e"] != "https://ssl.pstatic.net/1.png" {
 		t.Errorf("message = %+v", b)
 	}
 }
@@ -294,8 +294,8 @@ func TestBuildBatch(t *testing.T) {
 	raw := []ChatMessage{
 		{SenderChannelID: "linked", Nickname: "A", Content: "1"},
 		{SenderChannelID: "linked", Nickname: "A", Content: "2"},
-		{Nickname: "NoID", Content: "3"},
-		{Nickname: "NoID", Content: "4"},
+		{SenderChannelID: "other", Nickname: "B", Content: "3"},
+		{SenderChannelID: "other", Nickname: "B", Content: "4"},
 	}
 	b := h.hub.buildBatch(ctx, raw, log)
 	if h.res.calls.Load() != 2 {
@@ -330,6 +330,24 @@ func TestDropsChatWithoutSubscribers(t *testing.T) {
 	h.hub.flushOnce(context.Background(), ch, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if len(ch.drain()) != 0 || h.res.calls.Load() != 0 {
 		t.Error("buffer not dropped, or resolved for nobody")
+	}
+}
+
+func TestSubscriberCaps(t *testing.T) {
+	h := newHarness(t)
+	h.hub.cfg.MaxPerChannel, h.hub.cfg.MaxTotal = 2, 3
+	a1, _ := h.hub.Subscribe("a")
+	h.hub.Subscribe("a")
+	if _, err := h.hub.Subscribe("a"); !errors.Is(err, ErrTooManySubscribers) {
+		t.Errorf("3rd on channel a: %v", err)
+	}
+	h.hub.Subscribe("b")
+	if _, err := h.hub.Subscribe("c"); !errors.Is(err, ErrTooManySubscribers) {
+		t.Errorf("4th overall: %v", err)
+	}
+	h.hub.Unsubscribe(a1) // frees a slot
+	if _, err := h.hub.Subscribe("c"); err != nil {
+		t.Errorf("after unsubscribe: %v", err)
 	}
 }
 

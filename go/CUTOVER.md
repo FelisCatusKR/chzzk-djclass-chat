@@ -17,10 +17,19 @@ production (stage 7). Stage 7 turns this into the step-by-step runbook.
       (`/api/auth/chzzk/callback`) unchanged, so OBS sources and the Chzzk app
       config keep working.
 
+## Behavior changes vs. Django (intentional)
+
+- Badges match viewers by Chzzk channel id only — the nickname fallback is
+  gone (impersonation risk). Viewers without a `senderChannelId` show `미인증`.
+- Rate-limited `/link` actions return 429 (Django returned 200).
+- Emoji URLs outside Naver's image CDNs are dropped.
+
 ## Before switching
 
 - [ ] Move widget assets (`chat.css`, `widget.js`) into `go/` and embed them
       (the server currently reads them from the Django tree via `DJANGO_DIR`).
+- [ ] Keep the web container reachable only through cloudflared (rate
+      limiting trusts `CF-Connecting-IP`).
 - [x] Security headers / CSP (incl. Naver emoji CDN in `img-src`) — stage 5a.
 - [ ] When moving `components.js` into `go/`, drop its hx-boost/initTree
       workarounds (the Go pages don't boost).

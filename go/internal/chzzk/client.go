@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -168,6 +169,11 @@ func (c *Client) do(ctx context.Context, method, u, bearer string, body, out any
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
+		// *url.Error quotes the full URL (e.g. ?sessionKey=…); keep only its cause.
+		var ue *url.Error
+		if errors.As(err, &ue) {
+			err = ue.Err
+		}
 		return fmt.Errorf("chzzk: %s %s: %w", method, redactURL(u), err)
 	}
 	defer resp.Body.Close()

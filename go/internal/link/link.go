@@ -33,7 +33,7 @@ type VArchive interface {
 
 // Invalidator drops a user's cached badge (resolver.Resolver).
 type Invalidator interface {
-	InvalidateUser(chzzkID, nickname string)
+	InvalidateUser(chzzkID string)
 }
 
 type Service struct {
@@ -66,7 +66,7 @@ func (s *Service) Connect(ctx context.Context, u db.User, token string) (SyncRes
 	if err != nil {
 		return SyncResult{}, err
 	}
-	s.Cache.InvalidateUser(u.ChzzkID, u.ChzzkNickname)
+	s.Cache.InvalidateUser(u.ChzzkID)
 	return s.syncUser(ctx, u, va.Nickname)
 }
 
@@ -111,7 +111,7 @@ func (s *Service) syncUser(ctx context.Context, u db.User, nickname string) (Syn
 	if err != nil {
 		return SyncResult{}, err
 	}
-	s.Cache.InvalidateUser(u.ChzzkID, u.ChzzkNickname)
+	s.Cache.InvalidateUser(u.ChzzkID)
 
 	rows := make([]djclass.Row, len(classes))
 	for i, c := range classes {
@@ -141,7 +141,7 @@ func (s *Service) Unlink(ctx context.Context, u db.User) error {
 	if err != nil {
 		return err
 	}
-	s.Cache.InvalidateUser(u.ChzzkID, u.ChzzkNickname)
+	s.Cache.InvalidateUser(u.ChzzkID)
 	return nil
 }
 
@@ -169,7 +169,7 @@ func (s *Service) SetPreferredButton(ctx context.Context, u db.User, raw string)
 	if err != nil {
 		return err
 	}
-	s.Cache.InvalidateUser(u.ChzzkID, u.ChzzkNickname)
+	s.Cache.InvalidateUser(u.ChzzkID)
 	return nil
 }
 

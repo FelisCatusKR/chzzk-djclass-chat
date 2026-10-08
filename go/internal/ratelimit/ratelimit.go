@@ -46,6 +46,9 @@ func (l *Limiter) Allow(r *http.Request, scope string, limit int, window time.Du
 				delete(l.buckets, k)
 			}
 		}
+		if len(l.buckets) > maxKeys { // still full within one window: hard bound on memory
+			clear(l.buckets)
+		}
 	}
 	k := key{scope, ClientIP(r)}
 	b, ok := l.buckets[k]
@@ -60,10 +63,11 @@ func (l *Limiter) Allow(r *http.Request, scope string, limit int, window time.Du
 	return true
 }
 
-// ClientIP is the real client address. In production the app sits behind a
-// Cloudflare Tunnel, which sets CF-Connecting-IP; X-Forwarded-For is the
-// generic proxy fallback. NOTE: both are client-controlled if the app is ever
-// reachable without that proxy in front.
+// ClientIP is the real client address. Trusting CF-Connecting-IP is safe only
+// because the app is reachable solely through the Cloudflare Tunnel: in
+// homelab-infra the web container publishes no port and only cloudflared
+// shares its Podman network, and the router forwards nothing but WireGuard.
+// If that ever changes, these headers become client-controlled.
 func ClientIP(r *http.Request) string {
 	if ip := r.Header.Get("CF-Connecting-IP"); ip != "" {
 		return ip

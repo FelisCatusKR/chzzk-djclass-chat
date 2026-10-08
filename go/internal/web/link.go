@@ -32,10 +32,20 @@ func (s *Server) linkPage(w http.ResponseWriter, r *http.Request) {
 	}{u, cardView{Card: card}})
 }
 
+// tooMany answers a rate-limited card action: 429 (as AGENTS.md promises),
+// with the card body so htmx (configured in base.html) still shows the message.
+func (s *Server) tooMany(w http.ResponseWriter, r *http.Request) {
+	s.renderCardStatus(w, r, http.StatusTooManyRequests, msgTooMany, "error")
+}
+
 // renderCard answers an hx-post with just the #link-card fragment. It re-reads
 // the user: the action may have just changed it (e.g. the preferred button),
 // and the request-scoped user was loaded before that.
 func (s *Server) renderCard(w http.ResponseWriter, r *http.Request, msg, msgType string) {
+	s.renderCardStatus(w, r, http.StatusOK, msg, msgType)
+}
+
+func (s *Server) renderCardStatus(w http.ResponseWriter, r *http.Request, status int, msg, msgType string) {
 	u, err := s.Store.Read.GetUserByID(r.Context(), currentUser(r).ID)
 	if err != nil {
 		s.Log.Error("link card: reload user", "err", err)
@@ -49,6 +59,7 @@ func (s *Server) renderCard(w http.ResponseWriter, r *http.Request, msg, msgType
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
 	if err := pages["link.html"].ExecuteTemplate(w, "link_card", cardView{card, msg, msgType}); err != nil {
 		s.Log.Error("render link card", "err", err)
 	}
@@ -56,7 +67,7 @@ func (s *Server) renderCard(w http.ResponseWriter, r *http.Request, msg, msgType
 
 func (s *Server) linkConnect(w http.ResponseWriter, r *http.Request) {
 	if !s.Limiter.Allow(r, "link", 5, time.Minute) {
-		s.renderCard(w, r, msgTooMany, "error")
+		s.tooMany(w, r)
 		return
 	}
 	token := strings.TrimSpace(r.FormValue("token"))
@@ -80,7 +91,7 @@ func (s *Server) linkConnect(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) linkSync(w http.ResponseWriter, r *http.Request) {
 	if !s.Limiter.Allow(r, "sync", 3, time.Minute) {
-		s.renderCard(w, r, msgTooMany, "error")
+		s.tooMany(w, r)
 		return
 	}
 	res, err := s.Link.Sync(r.Context(), *currentUser(r))
@@ -110,7 +121,7 @@ func (s *Server) linkUnlink(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) linkPreferredButton(w http.ResponseWriter, r *http.Request) {
 	if !s.Limiter.Allow(r, "pref", 10, time.Minute) {
-		s.renderCard(w, r, msgTooMany, "error")
+		s.tooMany(w, r)
 		return
 	}
 	err := s.Link.SetPreferredButton(r.Context(), *currentUser(r), r.FormValue("button"))
