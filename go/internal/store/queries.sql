@@ -60,3 +60,20 @@ ON CONFLICT (user_id, button) DO UPDATE SET
 
 -- name: SetPreferredButton :exec
 UPDATE users SET preferred_button = ? WHERE id = ?;
+
+-- name: GetUserByID :one
+SELECT * FROM users WHERE id = ?;
+
+-- Sessions (alexedwards/scs layout; expiry is a julianday REAL).
+
+-- name: FindSession :one
+SELECT data FROM sessions WHERE token = ? AND julianday('now') < expiry;
+
+-- name: CommitSession :exec
+REPLACE INTO sessions (token, data, expiry) VALUES (?, ?, julianday(?));
+
+-- name: DeleteSession :exec
+DELETE FROM sessions WHERE token = ?;
+
+-- name: DeleteExpiredSessions :exec
+DELETE FROM sessions WHERE expiry < julianday('now');

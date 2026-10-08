@@ -117,6 +117,16 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - **Every** failure (token, URL, dial, subscribe ×3, server close) restarts the whole session after a backoff (1 s doubling to 60 s, reset after a healthy minute) — never "retry once". Tokens refresh 5 min before expiry, before connecting.
 - Per-channel bookkeeping (subscribers, teardown timer) is guarded by `Hub.mu`; the chat buffer by its own mutex. `Hub.Close` stops workers **before** closing subscriber channels.
 
+### 5.2.0.1 Go web (`internal/web`)
+
+- **No `hx-boost`** in the Go layout: page navigations are full loads so Alpine initialises each page once (boost + Alpine's observer + `components.js`'s `initTree` double-initialised the dashboard preview). htmx is only for in-page fragment swaps (the `/link` card). `components.js` is still shared with Django — don't change it until cutover.
+- **CSRF:** `http.CrossOriginProtection` (Sec-Fetch-Site / Origin) + `SameSite=Lax` session cookie — no tokens in templates.
+- **Sessions:** `alexedwards/scs` on the SQLite `sessions` table (7 days; token renewed at login). The OAuth `state`/`next` live in short-lived cookies scoped to `/api/auth/chzzk/`, so the login link writes nothing to the DB.
+- **Headers:** CSP (same policy as Django + `frame-ancestors`/`base-uri`/`form-action`), `X-Frame-Options: DENY`, nosniff, `Referrer-Policy: same-origin`, COOP, Permissions-Policy, HSTS when `BASE_URL` is https.
+- **CDN assets** (daisyUI, Tailwind browser, htmx, Alpine) are version-pinned with SRI `integrity` in `templates/base.html`; bumping a version means recomputing its sha384.
+- `requireLogin`: htmx **fragment** requests get `HX-Redirect` to `/login/?next=<current page>`; normal and boosted requests redirect to the requested path.
+- Access log never records query strings (OAuth `code`).
+
 ### 5.2.1 Go store (SQLite)
 
 - One DB file, two pools: a **read pool** (`query_only`) and a **single write connection** (`_txlock=immediate`, WAL, `synchronous=NORMAL`, `foreign_keys=ON`). Writers queue in `database/sql`, not on SQLite's lock.

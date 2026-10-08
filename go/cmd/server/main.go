@@ -12,12 +12,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/alexedwards/scs/v2"
 
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/chzzk"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/config"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/crypto"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/ratelimit"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/realtime"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/resolver"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store"
@@ -69,11 +73,20 @@ func run(envFile string, log *slog.Logger) error {
 		Resolver: resolver.New(st.Read),
 		Logger:   log,
 	})
+	sessions := scs.New()
+	sessions.Store = st.Sessions()
+	sessions.Lifetime = 7 * 24 * time.Hour // same as the Django session cookie
+	sessions.Cookie.Name = "session"
+	sessions.Cookie.HttpOnly = true
+	sessions.Cookie.SameSite = http.SameSiteLaxMode
+	sessions.Cookie.Secure = strings.HasPrefix(cfg.BaseURL, "https://")
+	go st.Sessions().Cleanup(ctx, time.Hour)
+
 	srv := &http.Server{
 		Addr: cfg.Addr,
 		Handler: (&web.Server{
-			Hub: hub, Store: st, Chzzk: cz, Box: box, BaseURL: cfg.BaseURL, Log: log, Dev: cfg.Dev,
-			Static: web.DjangoStatic(cfg.DjangoDir),
+			Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil),
+			BaseURL: cfg.BaseURL, Log: log, Dev: cfg.Dev, Static: web.DjangoStatic(cfg.DjangoDir),
 		}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      30 * time.Second, // SSE clears its own deadline
