@@ -3,3 +3,6 @@ docs/superpowers/
 
 # npm lockfile — managed by npm, not prettier
 package-lock.json
+
+# Generated parity data (go/internal/djclass/testdata/gen_golden.py)
+go/internal/djclass/testdata/python_golden.json
