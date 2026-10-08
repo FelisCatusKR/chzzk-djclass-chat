@@ -256,7 +256,7 @@ Go server (`go/.env` or real env; shares `CHZZK_*`, `VARCHIVE_TOKEN_KEY`, `BASE_
 - **Database:** SQLite in the `chatoverlay-data` volume (`/data`, Go). The old PostgreSQL is kept only as a rollback target until cleanup.
 - **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); build target `runner`; `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
 - **Go image (production):** the same `Dockerfile` also has `go-builder` → `go-runner` (static binary on distroless Debian 13 / trixie, ~18 MB, SQLite in a `/data` volume, `/djclass healthcheck`). The Django `runner` target is no longer deployed. `.dockerignore` excludes `**/.env*` and `**/*.sqlite3*` (go/.env and the dev DB hold real secrets). CI's `go-image` job builds it; keep the `golang:` tag equal to `mise.toml`'s Go (CI checks).
-- **Auto-deploy:** GitOps pull — the host polls `main` (~2 min), builds `--target go-runner`, then restarts `chatoverlay-web` (Quadlet, `HealthCmd=["/djclass","healthcheck"]` — JSON form, distroless has no shell). **Every merge to main restarts production** (widgets reconnect on their own). CI does not deploy; branch protection gates `main`.
+- **Auto-deploy:** CI publishes the `go-runner` image to **GHCR** (`ghcr.io/feliscatuskr/chzzk-djclass-chat`, tags `main` + `sha-<7>`, amd64 + arm64 on native runners) for every main commit that passed `build`/`go`/`go-image` — docs-only commits (`*.md`, `docs/`) are not published. The host's reconcile pulls `:main` and restarts `chatoverlay-web` when the image's `org.opencontainers.image.revision` changes (Quadlet, `HealthCmd=["/djclass","healthcheck"]` — JSON form, distroless has no shell). Rollback = `pin: sha-<7>` in homelab-infra. Branch protection requires `build`, `go`, `go-image`.
 
 ---
 

@@ -89,9 +89,4 @@ is lost.
   Node) with one job — update the branch-protection required check;
   rewrite AGENTS.md / DEPLOY.md / CONTRIBUTING.md for Go.
 - Back up `/data` (e.g. Litestream or a periodic `VACUUM INTO` copy off-host).
-- Publish the image to GHCR from CI (like organon: `image_source: ghcr`,
-  `sha-<7>` tags, rollback = `pin`) instead of building on the Pi: only
-  CI-tested commits deploy, the host pulls ~18 MB instead of compiling.
-  Needs an arm64 build — cross-compile in the builder
-  (`FROM --platform=$BUILDPLATFORM golang…`, `GOARCH=$TARGETARCH`), no QEMU.
-  Do it after the cutover is stable, not together with it.
+- [x] Publish the image to GHCR from CI (native amd64/arm64 runners, `main` + `sha-<7>` tags, docs-only commits skipped) so the Pi pulls instead of compiling.
