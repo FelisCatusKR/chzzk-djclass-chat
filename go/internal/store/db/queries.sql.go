@@ -112,6 +112,20 @@ func (q *Queries) ListDjClasses(ctx context.Context, userID int64) ([]DjClass, e
 	return items, nil
 }
 
+const setPreferredButton = `-- name: SetPreferredButton :exec
+UPDATE users SET preferred_button = ? WHERE id = ?
+`
+
+type SetPreferredButtonParams struct {
+	PreferredButton *int64
+	ID              int64
+}
+
+func (q *Queries) SetPreferredButton(ctx context.Context, arg SetPreferredButtonParams) error {
+	_, err := q.db.ExecContext(ctx, setPreferredButton, arg.PreferredButton, arg.ID)
+	return err
+}
+
 const updateChannelTokens = `-- name: UpdateChannelTokens :exec
 UPDATE channels
 SET access_token_encrypted = ?, refresh_token_encrypted = ?, token_expires_at = ?
@@ -164,6 +178,38 @@ func (q *Queries) UpsertChannel(ctx context.Context, arg UpsertChannelParams) er
 	return err
 }
 
+const upsertDjClass = `-- name: UpsertDjClass :exec
+INSERT INTO dj_classes (user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion)
+VALUES (?, ?, ?, ?, ?, ?)
+ON CONFLICT (user_id, button) DO UPDATE SET
+    dj_class            = excluded.dj_class,
+    dj_power_sum        = excluded.dj_power_sum,
+    max_dj_power        = excluded.max_dj_power,
+    dj_power_conversion = excluded.dj_power_conversion,
+    synced_at           = unixepoch()
+`
+
+type UpsertDjClassParams struct {
+	UserID            int64
+	Button            int64
+	DjClass           string
+	DjPowerSum        *float64
+	MaxDjPower        *float64
+	DjPowerConversion *float64
+}
+
+func (q *Queries) UpsertDjClass(ctx context.Context, arg UpsertDjClassParams) error {
+	_, err := q.db.ExecContext(ctx, upsertDjClass,
+		arg.UserID,
+		arg.Button,
+		arg.DjClass,
+		arg.DjPowerSum,
+		arg.MaxDjPower,
+		arg.DjPowerConversion,
+	)
+	return err
+}
+
 const upsertUser = `-- name: UpsertUser :one
 
 INSERT INTO users (chzzk_id, chzzk_nickname)
@@ -190,4 +236,25 @@ func (q *Queries) UpsertUser(ctx context.Context, arg UpsertUserParams) (User, e
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const upsertVarchiveLink = `-- name: UpsertVarchiveLink :exec
+INSERT INTO varchive_links (user_id, varchive_nickname, varchive_user_no)
+VALUES (?, ?, ?)
+ON CONFLICT (user_id) DO UPDATE SET
+    varchive_nickname = excluded.varchive_nickname,
+    varchive_user_no  = excluded.varchive_user_no,
+    is_active         = 1,
+    updated_at        = unixepoch()
+`
+
+type UpsertVarchiveLinkParams struct {
+	UserID           int64
+	VarchiveNickname string
+	VarchiveUserNo   *int64
+}
+
+func (q *Queries) UpsertVarchiveLink(ctx context.Context, arg UpsertVarchiveLinkParams) error {
+	_, err := q.db.ExecContext(ctx, upsertVarchiveLink, arg.UserID, arg.VarchiveNickname, arg.VarchiveUserNo)
+	return err
 }

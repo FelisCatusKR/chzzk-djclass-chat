@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Title}}</title>
+    <style>
+      body { font-family: system-ui, "Apple SD Gothic Neo", sans-serif; max-width: 40rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.6; }
+      code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 4px; word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <h1>{{.Title}}</h1>
+    {{range .Lines}}<p>{{.}}</p>{{end}}
+    {{if .WidgetURL}}<p>위젯 주소: <a href="{{.WidgetURL}}"><code>{{.WidgetURL}}</code></a></p>{{end}}
+    {{if .LoginURL}}<p><a href="{{.LoginURL}}">치지직으로 로그인</a></p>{{end}}
+    {{if .DevURL}}<p><a href="{{.DevURL}}">개발용 채팅 주입 페이지</a></p>{{end}}
+  </body>
+</html>

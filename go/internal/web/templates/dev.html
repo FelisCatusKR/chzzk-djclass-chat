@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>개발용 채팅 주입</title>
+    <style>
+      body { font-family: system-ui, "Apple SD Gothic Neo", sans-serif; max-width: 44rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
+      fieldset { margin-bottom: 1rem; }
+      .warn { color: #b00; }
+      button { margin: 0.2rem; }
+    </style>
+  </head>
+  <body>
+    <h1>개발용 채팅 주입</h1>
+    <p class="warn">DEV 모드에서만 존재하는 페이지입니다. 위젯이 열려 있는(구독 중인) 채널에만 주입됩니다.</p>
+    {{if .Flash}}<p><strong>{{.Flash}}</strong></p>{{end}}
+    <form method="post" action="/dev/chat">
+      <fieldset>
+        <legend>채널</legend>
+        <input name="channel" value="{{.Channel}}" size="40" placeholder="치지직 채널 ID" required />
+        {{if .Channel}}<a href="/widget/{{.Channel}}/" target="_blank">위젯 열기</a>{{end}}
+      </fieldset>
+      <fieldset>
+        <legend>메시지</legend>
+        <input name="text" value="테스트 채팅입니다" size="40" />
+      </fieldset>
+      <fieldset>
+        <legend>보낸 사람</legend>
+        {{range .Senders}}<button name="sender" value="{{.ID}}">{{.Label}}</button>{{end}}
+      </fieldset>
+    </form>
+  </body>
+</html>
