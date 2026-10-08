@@ -48,55 +48,22 @@ Never set `DEV` in production (it is refused for a non-loopback `BASE_URL`).
 
 ## Steps
 
-Commands assume the host user running the `chatoverlay` units; adapt names to
-the infra repo.
+The host-side runbook — exact commands for the rpi-1 Podman/Quadlet setup —
+lives in homelab-infra: `docs/runbooks/2026-10-08-chatoverlay-go-cutover.md`
+(PR #88 there). In short:
 
-1. **Freeze deploys.** Pause the GitOps poller so no build/restart lands
-   mid-cutover.
-2. **Stop writes and export.** Stop the Django web unit (keep Postgres up),
-   then dump with the current Django image on the app network:
-
-   ```sh
-   systemctl --user stop chatoverlay-web
-   podman run --rm --network chatoverlay \
-     --secret chatoverlay-database-url,type=env,target=DATABASE_URL \
-     --secret chatoverlay-django-secret-key,type=env,target=DJANGO_SECRET_KEY \
-     --secret chatoverlay-varchive-token-key,type=env,target=VARCHIVE_TOKEN_KEY \
-     --secret chatoverlay-chzzk-client-secret,type=env,target=CHZZK_CLIENT_SECRET \
-     -e DJANGO_SETTINGS_MODULE=config.settings.production \
-     -e BASE_URL=https://chatoverlay.felis.kr -e CHZZK_CLIENT_ID=… \
-     localhost/chatoverlay-runner:current \
-     python manage.py dumpdata users.user streamers.channel viewers.varchivetoken djclass.djclass \
-     > ~/chatoverlay-export.json
-   chmod 600 ~/chatoverlay-export.json   # contains encrypted Chzzk tokens
-   ```
-
-3. **Build and import.** Build `--target go-runner` from the same commit,
-   create the volume, import (refuses a non-empty DB; all-or-nothing):
-
-   ```sh
-   podman build --target go-runner -t localhost/chatoverlay-go:current <checkout>
-   podman volume create chatoverlay-data
-   podman run --rm -i -v chatoverlay-data:/data \
-     --secret chatoverlay-varchive-token-key,type=env,target=VARCHIVE_TOKEN_KEY \
-     --secret chatoverlay-chzzk-client-secret,type=env,target=CHZZK_CLIENT_SECRET \
-     -e BASE_URL=https://chatoverlay.felis.kr -e CHZZK_CLIENT_ID=… \
-     localhost/chatoverlay-go:current import - < ~/chatoverlay-export.json
-   ```
-
-   Expect `import done … tokens_verified=N` with counts matching Postgres. A
-   `does not decrypt` error means the wrong `VARCHIVE_TOKEN_KEY` — stop here.
-
-4. **Switch.** Deploy the Go web unit (infra repo): image
-   `chatoverlay-go:current`, `Volume=chatoverlay-data:/data`, no `Exec`, the
-   env/secrets above, `HealthCmd=/djclass healthcheck`, no Postgres
-   dependency. Start it and wait for `healthy`.
-5. **Smoke test** on the public URL: landing; log in → dashboard widget URL;
-   OBS source reconnects on its own (widget.js retries after the 502 during
-   the switch); `/link/` shows an existing viewer's classes; logs show
-   `chat socket connected` / `chat subscription confirmed` for live channels.
-6. **Resume deploys** with the GitOps build target set to `go-runner`.
-7. **Clean up the export:** `shred -u ~/chatoverlay-export.json`.
+1. **Freeze deploys** (`reconcile.timer`) and pre-build the image as
+   `localhost/chatoverlay-go-runner:current` (the name reconcile derives from
+   the `go-runner` build target).
+2. **Stop the Django web unit** (Postgres stays up) and `dumpdata` the four
+   models with the current Django image.
+3. **Import** into the `chatoverlay-data` volume with `djclass import -`;
+   compare its counts with Postgres. `does not decrypt` = wrong
+   `VARCHIVE_TOKEN_KEY` → stop and restart Django.
+4. **Switch** by applying the infra branch (new web unit + volume).
+5. **Smoke test**: `/healthz`, login → dashboard, `/link/` for an existing
+   viewer, OBS widget reconnects by itself, `chat subscription confirmed`.
+6. **Clean up** the export, resume deploys, merge the infra PR.
 
 ## Rollback
 
