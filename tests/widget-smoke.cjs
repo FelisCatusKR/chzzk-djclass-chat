@@ -18,7 +18,10 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const ROOT = path.resolve(__dirname, '..')
-const WIDGET = path.join(ROOT, 'djclass_overlay/overlay/static/overlay/widget.js')
+const WIDGET = path.join(
+  ROOT,
+  'djclass_overlay/overlay/static/overlay/widget.js'
+)
 const COMPONENTS = path.join(ROOT, 'djclass_overlay/static/js/components.js')
 
 let failures = 0
@@ -47,13 +50,28 @@ function makeEl() {
     rel: '',
     href: '',
     _children: [],
-    classList: { add() {}, remove() {}, contains() { return false } },
-    appendChild(c) { this._children.push(c); return c },
+    classList: {
+      add() {},
+      remove() {},
+      contains() {
+        return false
+      },
+    },
+    appendChild(c) {
+      this._children.push(c)
+      return c
+    },
     removeChild() {},
     remove() {},
-    get childElementCount() { return this._children.length },
-    get firstChild() { return this._children[0] || null },
-    get children() { return this._children.slice() },
+    get childElementCount() {
+      return this._children.length
+    },
+    get firstChild() {
+      return this._children[0] || null
+    },
+    get children() {
+      return this._children.slice()
+    },
     scrollTop: 0,
     scrollHeight: 0,
   }
@@ -69,29 +87,48 @@ function runInScope(code, globalsObj) {
   fn(...values)
 }
 
-function loadWidget(search) {
+function loadWidget(search, extraGlobals) {
   const code = fs.readFileSync(WIDGET, 'utf8')
   let chatHandler = null
-  runInScope(code, {
-    document: {
-      getElementById: () => makeEl(),
-      createElement: () => makeEl(),
-      createTextNode: () => ({}),
-      head: { appendChild() {} },
-    },
-    location: { search },
-    URLSearchParams,
-    EventSource: function () {
-      return {
-        addEventListener(type, fn) {
-          if (type === 'chat') chatHandler = fn
+  const sources = []
+  function FakeEventSource(url) {
+    const es = {
+      url,
+      readyState: 0,
+      closed: false,
+      addEventListener(type, fn) {
+        if (type === 'chat') chatHandler = fn
+      },
+      close() {
+        this.closed = true
+      },
+      onopen: null,
+      onerror: null,
+    }
+    sources.push(es)
+    return es
+  }
+  FakeEventSource.CONNECTING = 0
+  FakeEventSource.OPEN = 1
+  FakeEventSource.CLOSED = 2
+  runInScope(
+    code,
+    Object.assign(
+      {
+        document: {
+          getElementById: () => makeEl(),
+          createElement: () => makeEl(),
+          createTextNode: () => ({}),
+          head: { appendChild() {} },
         },
-        onopen: null,
-        onerror: null,
-      }
-    },
-  })
-  return { chatHandler }
+        location: { search },
+        URLSearchParams,
+        EventSource: FakeEventSource,
+      },
+      extraGlobals || {}
+    )
+  )
+  return { chatHandler, sources }
 }
 
 function loadComponents() {
@@ -119,8 +156,22 @@ const FAKE_BATCH = {
       status: 'linked',
       nickname: '록담',
       badge: {
-        auto: { rank: 'SS', button: 4, class: 'SS II', threshold: 9800, power: 9823, isTheory: false },
-        viewer: { rank: 'SS', button: 4, class: 'SS II', threshold: 9800, power: 9823, isTheory: false },
+        auto: {
+          rank: 'SS',
+          button: 4,
+          class: 'SS II',
+          threshold: 9800,
+          power: 9823,
+          isTheory: false,
+        },
+        viewer: {
+          rank: 'SS',
+          button: 4,
+          class: 'SS II',
+          threshold: 9800,
+          power: 9823,
+          isTheory: false,
+        },
       },
     },
     {
@@ -130,11 +181,32 @@ const FAKE_BATCH = {
       status: 'linked',
       nickname: '새벽',
       badge: {
-        auto: { rank: 'LoD', button: 4, class: 'LoD', threshold: 9980, power: 10000, isTheory: true },
-        viewer: { rank: 'LoD', button: 4, class: 'LoD', threshold: 9980, power: 10000, isTheory: true },
+        auto: {
+          rank: 'LoD',
+          button: 4,
+          class: 'LoD',
+          threshold: 9980,
+          power: 10000,
+          isTheory: true,
+        },
+        viewer: {
+          rank: 'LoD',
+          button: 4,
+          class: 'LoD',
+          threshold: 9980,
+          power: 10000,
+          isTheory: true,
+        },
       },
     },
-    { id: 3, text: 'hi there', emojis: {}, status: 'unlinked', nickname: '김토니', badge: null },
+    {
+      id: 3,
+      text: 'hi there',
+      emojis: {},
+      status: 'unlinked',
+      nickname: '김토니',
+      badge: null,
+    },
   ],
 }
 
@@ -150,15 +222,54 @@ const COMBOS = [
 for (const search of COMBOS) {
   check('load+render [' + (search || '(none)') + ']', () => {
     const { chatHandler } = loadWidget(search)
-    if (typeof chatHandler !== 'function') throw new Error("'chat' listener not registered")
+    if (typeof chatHandler !== 'function')
+      throw new Error("'chat' listener not registered")
     chatHandler({ data: JSON.stringify(FAKE_BATCH) })
   })
 }
 
+console.log('widget.js — SSE reconnect:')
+check('reconnects after a non-200 close, not after a transient drop', () => {
+  const timers = []
+  const { sources } = loadWidget('', {
+    setTimeout: (fn, ms) => timers.push({ fn, ms }),
+  })
+  if (sources.length !== 1) throw new Error('expected one EventSource at load')
+
+  // Transient drop: the browser retries itself (readyState CONNECTING).
+  sources[0].readyState = 0
+  sources[0].onerror()
+  if (timers.length)
+    throw new Error('scheduled a manual retry for a transient drop')
+
+  // Non-200 (e.g. 502 during deploy): EventSource gives up → we reconnect.
+  sources[0].readyState = 2
+  sources[0].onerror()
+  if (!sources[0].closed) throw new Error('dead EventSource not closed')
+  if (timers.length !== 1 || timers[0].ms < 2000)
+    throw new Error('no backoff retry scheduled')
+  timers[0].fn()
+  if (sources.length !== 2)
+    throw new Error('retry did not open a new EventSource')
+
+  // Backoff grows while failing, and resets once a connection opens.
+  sources[1].readyState = 2
+  sources[1].onerror()
+  if (timers[1].ms < 4000)
+    throw new Error('backoff did not grow: ' + timers[1].ms)
+  timers[1].fn()
+  sources[2].onopen()
+  sources[2].readyState = 2
+  sources[2].onerror()
+  if (timers[2].ms >= 3000)
+    throw new Error('backoff not reset after open: ' + timers[2].ms)
+})
+
 console.log('components.js — load:')
 check('load (registers alpine:init)', () => {
   const { listeners } = loadComponents()
-  if (typeof listeners['alpine:init'] !== 'function') throw new Error('alpine:init not registered')
+  if (typeof listeners['alpine:init'] !== 'function')
+    throw new Error('alpine:init not registered')
 })
 
 if (failures) {
