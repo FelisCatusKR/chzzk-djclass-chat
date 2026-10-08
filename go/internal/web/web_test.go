@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
@@ -14,8 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/alexedwards/scs/v2"
+
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/chzzk"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/crypto"
+	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/ratelimit"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/realtime"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/resolver"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store"
@@ -57,8 +61,11 @@ func newEnv(t *testing.T, dev bool, chzzkAPI http.HandlerFunc) *env {
 		t.Cleanup(api.Close)
 		cz.TokenURL, cz.APIURL = api.URL+"/auth/v1/token", api.URL+"/open/v1"
 	}
+	sessions := scs.New()
+	sessions.Store = st.Sessions()
 	s := &Server{
-		Hub: hub, Store: st, Chzzk: cz, Box: box, BaseURL: "http://localhost:8000", Log: log, Dev: dev,
+		Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil),
+		BaseURL: "http://localhost:8000", Log: log, Dev: dev,
 		Static: DjangoStatic(filepath.Join("..", "..", "..")),
 	}
 	ts := httptest.NewServer(s.Handler())
@@ -112,13 +119,121 @@ func TestWidgetPage(t *testing.T) {
 	}
 }
 
-func TestHomeLinksToLogin(t *testing.T) {
+func TestPagesRender(t *testing.T) {
 	e := newEnv(t, false, nil)
-	if resp, body := get(t, e.http.URL+"/"); resp.StatusCode != 200 || !strings.Contains(body, `href="/login"`) || strings.Contains(body, "/dev") {
-		t.Errorf("home: %d %s", resp.StatusCode, body)
+	for path, want := range map[string]string{
+		"/":                            "Chzzk DJ CLASS 채팅 위젯",
+		"/login/":                      "Chzzk로 로그인",
+		"/login/?next=%2Fdashboard%2F": "위젯 설정을 위해",
+	} {
+		resp, body := get(t, e.http.URL+path)
+		if resp.StatusCode != 200 || !strings.Contains(body, want) {
+			t.Errorf("%s: %d, missing %q", path, resp.StatusCode, want)
+		}
+	}
+	if _, body := get(t, e.http.URL+"/login/?next=%2Fdashboard%2F"); !strings.Contains(body, `href="/api/auth/chzzk?next=%2fdashboard%2f"`) {
+		t.Errorf("login link does not carry next: %s", body)
+	}
+	client := &http.Client{CheckRedirect: noRedirect}
+	for from, to := range map[string]string{"/login": "/login/", "/dashboard": "/dashboard/", "/dashboard/": "/login/?next=%2Fdashboard%2F"} {
+		resp, err := client.Get(e.http.URL + from)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if loc := resp.Header.Get("Location"); loc != to {
+			t.Errorf("%s → %q, want %q", from, loc, to)
+		}
 	}
 	if resp, _ := get(t, e.http.URL+"/nope"); resp.StatusCode != 404 {
 		t.Errorf("unknown path: %d", resp.StatusCode)
+	}
+}
+
+func TestSecurityHeaders(t *testing.T) {
+	e := newEnv(t, false, nil)
+	for _, path := range []string{"/", "/widget/abc/"} {
+		resp, _ := get(t, e.http.URL+path)
+		h := resp.Header
+		csp := h.Get("Content-Security-Policy")
+		for _, want := range []string{"default-src 'self'", "https://*.pstatic.net", "https://*.naver.net", "frame-ancestors 'none'"} {
+			if !strings.Contains(csp, want) {
+				t.Errorf("%s: CSP lacks %q: %s", path, want, csp)
+			}
+		}
+		if strings.Contains(csp, "script-src 'self' 'unsafe-inline'") {
+			t.Errorf("inline scripts allowed: %s", csp)
+		}
+		if h.Get("X-Frame-Options") != "DENY" || h.Get("X-Content-Type-Options") != "nosniff" || h.Get("Strict-Transport-Security") != "" {
+			t.Errorf("%s: headers %v", path, h)
+		}
+	}
+	rec := httptest.NewRecorder()
+	securityHeaders(true, http.NotFoundHandler()).ServeHTTP(rec, httptest.NewRequest("GET", "/", nil))
+	if !strings.Contains(rec.Header().Get("Strict-Transport-Security"), "max-age=31536000") {
+		t.Error("no HSTS for https")
+	}
+}
+
+func TestCrossOriginPostRejected(t *testing.T) {
+	e := newEnv(t, false, nil)
+	for site, want := range map[string]int{"cross-site": 403, "same-site": 403, "same-origin": 303} {
+		req, _ := http.NewRequest("POST", e.http.URL+"/logout/", nil)
+		req.Header.Set("Sec-Fetch-Site", site)
+		resp, err := (&http.Client{CheckRedirect: noRedirect}).Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != want {
+			t.Errorf("Sec-Fetch-Site %s: %d, want %d", site, resp.StatusCode, want)
+		}
+	}
+	req, _ := http.NewRequest("POST", e.http.URL+"/logout/", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	resp, _ := http.DefaultClient.Do(req)
+	resp.Body.Close()
+	if resp.StatusCode != 403 {
+		t.Errorf("foreign Origin: %d", resp.StatusCode)
+	}
+}
+
+func TestRequireLoginForHtmx(t *testing.T) {
+	e := newEnv(t, false, nil)
+	cases := []struct {
+		name, path, boosted, want string
+	}{
+		// hx-boost link from the landing page to /dashboard/: a navigation → return to /dashboard/.
+		{"boosted navigation", "/dashboard/", "true", "/login/?next=%2Fdashboard%2F"},
+		// fragment request issued from /link/ (e.g. hx-post to a card endpoint) → return to /link/.
+		{"fragment request", "/dashboard/", "", "/login/?next=%2Flink%2F"},
+	}
+	for _, c := range cases {
+		req, _ := http.NewRequest("GET", e.http.URL+c.path, nil)
+		req.Header.Set("HX-Request", "true")
+		req.Header.Set("HX-Current-URL", e.http.URL+"/link/")
+		if c.boosted != "" {
+			req.Header.Set("HX-Boosted", c.boosted)
+		}
+		resp, err := (&http.Client{CheckRedirect: noRedirect}).Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 200 || resp.Header.Get("HX-Redirect") != c.want {
+			t.Errorf("%s: %d HX-Redirect=%q, want %q", c.name, resp.StatusCode, resp.Header.Get("HX-Redirect"), c.want)
+		}
+	}
+}
+
+func TestSafeNextPath(t *testing.T) {
+	for in, want := range map[string]string{
+		"/link/": "/link/", "": "/d/", "dashboard": "/d/", "https://evil.example": "/d/",
+		"//evil.example": "/d/", `/\evil.example`: "/d/", "/\t/evil.example": "/d/", "/ok?x=1": "/ok?x=1",
+	} {
+		if got := safeNextPath(in, "/d/"); got != want {
+			t.Errorf("safeNextPath(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
@@ -203,37 +318,34 @@ func chzzkFake(t *testing.T) http.HandlerFunc {
 
 func noRedirect(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 
-func TestLoginCallbackStoresEncryptedTokens(t *testing.T) {
+func TestLoginFlow(t *testing.T) {
 	e := newEnv(t, false, chzzkFake(t))
-	client := &http.Client{CheckRedirect: noRedirect}
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{Jar: jar, CheckRedirect: noRedirect}
 
-	resp, err := client.Get(e.http.URL + "/login")
+	resp, err := client.Get(e.http.URL + "/api/auth/chzzk?next=%2Flink%2F")
 	if err != nil {
 		t.Fatal(err)
 	}
 	resp.Body.Close()
 	loc, _ := url.Parse(resp.Header.Get("Location"))
 	state := loc.Query().Get("state")
-	var cookie *http.Cookie
+	if resp.StatusCode != http.StatusFound || loc.Host != "chzzk.naver.com" || state == "" {
+		t.Fatalf("start: %d %s", resp.StatusCode, loc)
+	}
 	for _, c := range resp.Cookies() {
-		if c.Name == stateCookie {
-			cookie = c
+		if !c.HttpOnly || c.Path != oauthPath {
+			t.Errorf("cookie %s: %+v", c.Name, c)
 		}
 	}
-	if resp.StatusCode != http.StatusFound || state == "" || cookie == nil || cookie.Value != state || !cookie.HttpOnly {
-		t.Fatalf("login: %d loc=%s cookie=%+v", resp.StatusCode, loc, cookie)
-	}
 
-	req, _ := http.NewRequest("GET", e.http.URL+"/api/auth/chzzk/callback?code=C&state="+state, nil)
-	req.AddCookie(&http.Cookie{Name: stateCookie, Value: state})
-	resp, err = client.Do(req)
+	resp, err = client.Get(e.http.URL + "/api/auth/chzzk/callback?code=C&state=" + state)
 	if err != nil {
 		t.Fatal(err)
 	}
-	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != 200 || !strings.Contains(string(body), "http://localhost:8000/widget/chanX/") {
-		t.Fatalf("callback: %d %s", resp.StatusCode, body)
+	if resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != "/link/" {
+		t.Fatalf("callback: %d → %q (want the saved next)", resp.StatusCode, resp.Header.Get("Location"))
 	}
 
 	ch, err := e.store.Read.GetChannelByChzzkID(context.Background(), "chanX")
@@ -246,29 +358,60 @@ func TestLoginCallbackStoresEncryptedTokens(t *testing.T) {
 	if at, _ := e.srv.Box.Decrypt(*ch.AccessTokenEncrypted); at != "AT" {
 		t.Errorf("access token = %q", at)
 	}
-	if u, _ := e.store.Read.GetUserByChzzkID(context.Background(), "chanX"); u.ChzzkNickname != "스트리머" {
-		t.Errorf("user = %+v", u)
+
+	// Logged in: dashboard shows the widget URL; login page bounces.
+	resp, err = client.Get(e.http.URL + "/dashboard/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != 200 || !strings.Contains(string(body), `data-widget-base="http://localhost:8000/widget/chanX/"`) {
+		t.Fatalf("dashboard: %d", resp.StatusCode)
+	}
+	if resp, _ := client.Get(e.http.URL + "/login/"); resp.Header.Get("Location") != "/dashboard/" {
+		t.Errorf("login page while logged in → %q", resp.Header.Get("Location"))
+	}
+
+	// Logout ends the session server-side.
+	req, _ := http.NewRequest("POST", e.http.URL+"/logout/", nil)
+	if resp, err = client.Do(req); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp, _ := client.Get(e.http.URL + "/dashboard/"); resp.StatusCode != http.StatusFound {
+		t.Errorf("dashboard after logout: %d", resp.StatusCode)
 	}
 }
 
-func TestCallbackRejectsBadState(t *testing.T) {
+func TestCallbackRejectsBadStateAndRateLimits(t *testing.T) {
 	e := newEnv(t, false, chzzkFake(t))
+	client := &http.Client{CheckRedirect: noRedirect}
 	for name, cookie := range map[string]string{"no cookie": "", "mismatch": "other"} {
 		req, _ := http.NewRequest("GET", e.http.URL+"/api/auth/chzzk/callback?code=C&state=S", nil)
 		if cookie != "" {
 			req.AddCookie(&http.Cookie{Name: stateCookie, Value: cookie})
 		}
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusBadRequest {
-			t.Errorf("%s: status %d", name, resp.StatusCode)
+		if resp.Header.Get("Location") != "/?error=auth_failed" {
+			t.Errorf("%s: %d → %q", name, resp.StatusCode, resp.Header.Get("Location"))
 		}
 	}
 	if _, err := e.store.Read.GetChannelByChzzkID(context.Background(), "chanX"); err == nil {
 		t.Error("user saved despite bad state")
+	}
+	last := 0
+	for range 10 {
+		resp, _ := client.Get(e.http.URL + "/api/auth/chzzk/callback")
+		resp.Body.Close()
+		last = resp.StatusCode
+	}
+	if last != http.StatusTooManyRequests {
+		t.Errorf("12th callback: %d, want 429", last)
 	}
 }
 

@@ -21,4 +21,6 @@ production (stage 7). Stage 7 turns this into the step-by-step runbook.
 
 - [ ] Move widget assets (`chat.css`, `widget.js`) into `go/` and embed them
       (the server currently reads them from the Django tree via `DJANGO_DIR`).
-- [ ] Security headers / CSP (incl. Naver emoji CDN in `img-src`).
+- [x] Security headers / CSP (incl. Naver emoji CDN in `img-src`) — stage 5a.
+- [ ] When moving `components.js` into `go/`, drop its hx-boost/initTree
+      workarounds (the Go pages don't boost).

@@ -9,6 +9,52 @@ import (
 	"context"
 )
 
+const commitSession = `-- name: CommitSession :exec
+REPLACE INTO sessions (token, data, expiry) VALUES (?, ?, julianday(?))
+`
+
+type CommitSessionParams struct {
+	Token     string
+	Data      []byte
+	Julianday interface{}
+}
+
+func (q *Queries) CommitSession(ctx context.Context, arg CommitSessionParams) error {
+	_, err := q.db.ExecContext(ctx, commitSession, arg.Token, arg.Data, arg.Julianday)
+	return err
+}
+
+const deleteExpiredSessions = `-- name: DeleteExpiredSessions :exec
+DELETE FROM sessions WHERE expiry < julianday('now')
+`
+
+func (q *Queries) DeleteExpiredSessions(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteExpiredSessions)
+	return err
+}
+
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions WHERE token = ?
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, deleteSession, token)
+	return err
+}
+
+const findSession = `-- name: FindSession :one
+
+SELECT data FROM sessions WHERE token = ? AND julianday('now') < expiry
+`
+
+// Sessions (alexedwards/scs layout; expiry is a julianday REAL).
+func (q *Queries) FindSession(ctx context.Context, token string) ([]byte, error) {
+	row := q.db.QueryRowContext(ctx, findSession, token)
+	var data []byte
+	err := row.Scan(&data)
+	return data, err
+}
+
 const getChannelByChzzkID = `-- name: GetChannelByChzzkID :one
 SELECT id, user_id, chzzk_channel_id, access_token_encrypted, refresh_token_encrypted, token_expires_at, created_at FROM channels WHERE chzzk_channel_id = ?
 `
@@ -34,6 +80,23 @@ SELECT id, chzzk_id, chzzk_nickname, preferred_button, created_at FROM users WHE
 
 func (q *Queries) GetUserByChzzkID(ctx context.Context, chzzkID string) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByChzzkID, chzzkID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ChzzkID,
+		&i.ChzzkNickname,
+		&i.PreferredButton,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, chzzk_id, chzzk_nickname, preferred_button, created_at FROM users WHERE id = ?
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,

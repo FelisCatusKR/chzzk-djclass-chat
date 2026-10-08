@@ -12,37 +12,52 @@ import (
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store/db"
 )
 
-// The OAuth state lives in a short-lived cookie scoped to the callback path,
-// not in a server session: visiting /login creates no DB rows.
-const stateCookie = "oauth_state"
+// The OAuth state and the post-login target live in short-lived cookies
+// scoped to the callback path, not in the session: visiting the login link
+// writes nothing to the DB.
+const (
+	stateCookie = "oauth_state"
+	nextCookie  = "oauth_next"
+	oauthPath   = "/api/auth/chzzk/"
+)
 
-// login redirects to Chzzk's consent page. Minimal for now: sessions and the
-// dashboard come with the web stage.
-func (s *Server) login(w http.ResponseWriter, r *http.Request) {
+func (s *Server) oauthCookie(name, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{
+		Name: name, Value: value, Path: oauthPath, MaxAge: maxAge,
+		HttpOnly: true, Secure: strings.HasPrefix(s.BaseURL, "https://"), SameSite: http.SameSiteLaxMode,
+	}
+}
+
+// startLogin redirects to Chzzk's consent page (Django: chzzk_login).
+func (s *Server) startLogin(w http.ResponseWriter, r *http.Request) {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
 	state := hex.EncodeToString(b)
-	http.SetCookie(w, &http.Cookie{
-		Name:     stateCookie,
-		Value:    state,
-		Path:     "/api/auth/chzzk/",
-		MaxAge:   300,
-		HttpOnly: true,
-		Secure:   strings.HasPrefix(s.BaseURL, "https://"),
-		SameSite: http.SameSiteLaxMode,
-	})
+	http.SetCookie(w, s.oauthCookie(stateCookie, state, 300))
+	http.SetCookie(w, s.oauthCookie(nextCookie, safeNextPath(r.URL.Query().Get("next"), "/dashboard/"), 300))
 	http.Redirect(w, r, s.Chzzk.AuthorizeURL(state), http.StatusFound)
 }
 
-// callback exchanges the code, then stores the user and the encrypted Chzzk
-// tokens the channel worker needs.
+// callback exchanges the code, stores the user and the encrypted Chzzk tokens
+// the channel worker needs, and logs the user in (Django: chzzk_callback).
+// Any failure lands on "/?error=auth_failed", as before.
 func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
+	fail := func() { http.Redirect(w, r, "/?error=auth_failed", http.StatusFound) }
+	if !s.Limiter.Allow(r, "auth", 10, time.Minute) {
+		http.Error(w, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.", http.StatusTooManyRequests)
+		return
+	}
 	code, state := r.URL.Query().Get("code"), r.URL.Query().Get("state")
-	c, err := r.Cookie(stateCookie)
-	http.SetCookie(w, &http.Cookie{Name: stateCookie, Path: "/api/auth/chzzk/", MaxAge: -1})
-	if err != nil || code == "" || state == "" || subtle.ConstantTimeCompare([]byte(c.Value), []byte(state)) != 1 {
+	stored, err := r.Cookie(stateCookie)
+	next := "/dashboard/"
+	if c, err := r.Cookie(nextCookie); err == nil {
+		next = safeNextPath(c.Value, next)
+	}
+	http.SetCookie(w, s.oauthCookie(stateCookie, "", -1))
+	http.SetCookie(w, s.oauthCookie(nextCookie, "", -1))
+	if err != nil || code == "" || state == "" || subtle.ConstantTimeCompare([]byte(stored.Value), []byte(state)) != 1 {
 		s.Log.Warn("oauth: state mismatch or missing parameters")
-		s.renderMessage(w, http.StatusBadRequest, "로그인 실패", "로그인 요청이 만료되었거나 올바르지 않습니다. 다시 시도해주세요.")
+		fail()
 		return
 	}
 
@@ -50,42 +65,49 @@ func (s *Server) callback(w http.ResponseWriter, r *http.Request) {
 	tok, err := s.Chzzk.ExchangeCode(ctx, code, state)
 	if err != nil {
 		s.Log.Error("oauth: token exchange", "err", err)
-		s.renderMessage(w, http.StatusBadGateway, "로그인 실패", "치지직 인증 서버와 통신하지 못했습니다. 잠시 후 다시 시도해주세요.")
+		fail()
 		return
 	}
 	me, err := s.Chzzk.Me(ctx, tok.AccessToken)
 	if err != nil {
 		s.Log.Error("oauth: users/me", "err", err)
-		s.renderMessage(w, http.StatusBadGateway, "로그인 실패", "치지직 사용자 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.")
+		fail()
 		return
 	}
 
 	access, refresh := s.Box.Encrypt(tok.AccessToken), s.Box.Encrypt(tok.RefreshToken)
 	expires := time.Now().Unix() + int64(tok.ExpiresIn)
+	var user db.User
 	err = s.Store.WriteTx(ctx, func(ctx context.Context, q *db.Queries) error {
-		u, err := q.UpsertUser(ctx, db.UpsertUserParams{ChzzkID: me.ChannelID, ChzzkNickname: me.Nickname})
-		if err != nil {
+		var err error
+		if user, err = q.UpsertUser(ctx, db.UpsertUserParams{ChzzkID: me.ChannelID, ChzzkNickname: me.Nickname}); err != nil {
 			return err
 		}
 		return q.UpsertChannel(ctx, db.UpsertChannelParams{
-			UserID: u.ID, ChzzkChannelID: me.ChannelID,
+			UserID: user.ID, ChzzkChannelID: me.ChannelID,
 			AccessTokenEncrypted: &access, RefreshTokenEncrypted: &refresh, TokenExpiresAt: &expires,
 		})
 	})
 	if err != nil {
 		s.Log.Error("oauth: save user", "err", err)
-		s.renderMessage(w, http.StatusInternalServerError, "로그인 실패", "로그인 정보를 저장하지 못했습니다.")
+		fail()
 		return
 	}
-	s.Log.Info("oauth: logged in", "channel", me.ChannelID)
 
-	msg := message{
-		Title:     "로그인 완료",
-		Lines:     []string{me.Nickname + "님, 로그인되었습니다. 아래 주소를 OBS 브라우저 소스로 추가하세요."},
-		WidgetURL: s.BaseURL + "/widget/" + me.ChannelID + "/",
+	// New session token on login (no session fixation), then store the user.
+	if err := s.Sessions.RenewToken(ctx); err != nil {
+		s.Log.Error("oauth: renew session", "err", err)
+		fail()
+		return
 	}
-	if s.Dev {
-		msg.DevURL = "/dev?channel=" + me.ChannelID
+	s.Sessions.Put(ctx, sessionUserID, user.ID)
+	s.Log.Info("oauth: logged in", "user", user.ID)
+	http.Redirect(w, r, next, http.StatusFound)
+}
+
+func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	if err := s.Sessions.Destroy(r.Context()); err != nil {
+		s.Log.Error("logout", "err", err)
 	}
-	s.render(w, http.StatusOK, "message.html", msg)
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

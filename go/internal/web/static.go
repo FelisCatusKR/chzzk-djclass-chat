@@ -8,11 +8,12 @@ import (
 )
 
 // DjangoStatic serves the widget assets straight from the Django tree under
-// the URLs Django's collectstatic layout uses (/static/css/…, /static/overlay/…).
+// the URLs Django's collectstatic layout uses (/static/css/…, /static/js/…, /static/overlay/…).
 // Temporary: the files move into go/ (embedded) at cutover.
 func DjangoStatic(repoRoot string) fs.FS {
 	return prefixFS{
 		"css":     os.DirFS(filepath.Join(repoRoot, "djclass_overlay", "static", "css")),
+		"js":      os.DirFS(filepath.Join(repoRoot, "djclass_overlay", "static", "js")),
 		"overlay": os.DirFS(filepath.Join(repoRoot, "djclass_overlay", "overlay", "static", "overlay")),
 	}
 }
