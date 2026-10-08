@@ -98,6 +98,7 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - Widgets **cannot connect directly to Chzzk** — the server ingests via **python-socketio 4.6.1 (EIO3)**. **5.x is NOT compatible** (the 4.x↔5.x API diverged; `python-socketio-stubs` tracks 5.x only — do not add it).
 - The server computes DJ CLASS badges; the widget makes **zero network calls** beyond the SSE stream (`/widget/<channelId>/stream`). It renders `[{button}B {DJ CLASS}] message` — the Chzzk nickname is NOT shown; unverified viewers get a `미인증` badge.
 - A per-channel connect lock prevents duplicate connections; the ingestor tears down 30 s after the last subscriber leaves.
+- **Chzzk session socket facts** (verified live 2026-10, details in `go/internal/chzzk/eio3` package doc): the server is EIO3-only; a session URL is **single-use** (fetch a fresh one per (re)connect); the server closes sessions on its own after many hours (reconnect is normal operation); an open session outlives its access token, so refresh the token **before reconnecting**.
 
 ### 5.3 Tokens & sessions
 

@@ -6,6 +6,19 @@
 //
 // Chzzk documents support for socket.io-client 1.0.0–2.0.3 only, so the
 // Engine.IO v4 clients (python-socketio 5.x, socket.io-client 3+) don't apply.
+//
+// Verified against the live Chzzk session server (2026-10, cmd/spike):
+//   - EIO3 only: an EIO=4 handshake is answered in v3 format (no maxPayload);
+//     the server sends "40" unprompted; the client pings, the server pongs.
+//     Handshake: pingInterval=25000, pingTimeout=60000.
+//   - A session URL is single-use: any earlier handshake on the same URL (even
+//     a polling probe) makes the websocket get 42["error","auth fail"] + "41".
+//     Always fetch a fresh URL before each (re)connect.
+//   - The server closes sessions on its own (one closed after ~18.7 h); expect
+//     ErrServerClosed in normal operation and reconnect.
+//   - An open session outlives its access token (one ran ~18.5 h past expiry):
+//     the token is only used to fetch the URL and to subscribe, so refresh it
+//     before reconnecting, not on a timer.
 package eio3
 
 import (
