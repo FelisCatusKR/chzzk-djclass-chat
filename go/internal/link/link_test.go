@@ -35,7 +35,7 @@ func (f *fakeVA) AllDjClasses(_ context.Context, nick string) []varchive.DjClass
 
 type fakeCache struct{ invalidated []string }
 
-func (c *fakeCache) InvalidateUser(id, _ string) { c.invalidated = append(c.invalidated, id) }
+func (c *fakeCache) InvalidateUser(id string) { c.invalidated = append(c.invalidated, id) }
 
 func setup(t *testing.T) (*Service, *fakeVA, *fakeCache, db.User) {
 	t.Helper()

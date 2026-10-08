@@ -49,31 +49,28 @@ func New(q *db.Queries) *Resolver {
 	return &Resolver{q: q, cache: ttlcache.New[Result](10000, nil)}
 }
 
-func cacheKey(senderChannelID, nickname string) string {
-	if senderChannelID != "" {
-		return "id:" + senderChannelID
+// Resolve looks the sender up by Chzzk channel id only. There is deliberately
+// no nickname fallback (the Django version had one): nicknames are not unique
+// and anyone can change theirs, so matching on them let a viewer wear a linked
+// user's badge. No id → unlinked. DB errors are returned and not cached.
+func (r *Resolver) Resolve(ctx context.Context, senderChannelID string) (Result, error) {
+	if senderChannelID == "" {
+		return Result{Status: Unlinked}, nil
 	}
-	return "nick:" + nickname
-}
-
-// Resolve looks the sender up by Chzzk channel id, falling back to nickname.
-// DB errors are returned and not cached.
-func (r *Resolver) Resolve(ctx context.Context, senderChannelID, nickname string) (Result, error) {
-	key := cacheKey(senderChannelID, nickname)
-	if res, ok := r.cache.Get(key); ok {
+	if res, ok := r.cache.Get(senderChannelID); ok {
 		return res, nil
 	}
-	res, err := r.resolve(ctx, senderChannelID, nickname)
+	res, err := r.resolve(ctx, senderChannelID)
 	if err != nil {
 		return Result{}, err
 	}
-	r.cache.Set(key, res, ttl[res.Status])
+	r.cache.Set(senderChannelID, res, ttl[res.Status])
 	return res, nil
 }
 
-func (r *Resolver) resolve(ctx context.Context, senderChannelID, nickname string) (Result, error) {
+func (r *Resolver) resolve(ctx context.Context, senderChannelID string) (Result, error) {
 	unlinked := Result{Status: Unlinked}
-	user, err := r.findUser(ctx, senderChannelID, nickname)
+	user, err := r.q.GetUserByChzzkID(ctx, senderChannelID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return unlinked, nil
 	}
@@ -111,22 +108,8 @@ func (r *Resolver) resolve(ctx context.Context, senderChannelID, nickname string
 	}}, nil
 }
 
-func (r *Resolver) findUser(ctx context.Context, senderChannelID, nickname string) (db.User, error) {
-	if senderChannelID != "" {
-		u, err := r.q.GetUserByChzzkID(ctx, senderChannelID)
-		if !errors.Is(err, sql.ErrNoRows) {
-			return u, err
-		}
-	}
-	if nickname != "" {
-		return r.q.GetUserByNickname(ctx, nickname)
-	}
-	return db.User{}, sql.ErrNoRows
-}
-
-// InvalidateUser drops the cached result under both keys a user's chats can
-// map to. Call it after any committed link / sync / unlink / preference change.
-func (r *Resolver) InvalidateUser(chzzkID, nickname string) {
-	r.cache.Delete("id:" + chzzkID)
-	r.cache.Delete("nick:" + nickname)
+// InvalidateUser drops a user's cached result. Call it after any committed
+// link / sync / unlink / preference change.
+func (r *Resolver) InvalidateUser(chzzkID string) {
+	r.cache.Delete(chzzkID)
 }

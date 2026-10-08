@@ -27,10 +27,6 @@ WHERE id = ?;
 -- name: GetUserByChzzkID :one
 SELECT * FROM users WHERE chzzk_id = ?;
 
--- Several users can share a nickname; take the oldest, deterministically.
--- name: GetUserByNickname :one
-SELECT * FROM users WHERE chzzk_nickname = ? ORDER BY id LIMIT 1;
-
 -- name: HasActiveLink :one
 SELECT EXISTS (
     SELECT 1 FROM varchive_links WHERE user_id = ? AND is_active = 1

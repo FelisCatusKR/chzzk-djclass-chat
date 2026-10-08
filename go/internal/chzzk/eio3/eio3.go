@@ -90,7 +90,8 @@ type Conn struct {
 func SocketURL(sessionURL string) (string, error) {
 	u, err := url.Parse(sessionURL)
 	if err != nil {
-		return "", fmt.Errorf("eio3: bad session url: %w", err)
+		// Not wrapped: *url.Error quotes the whole URL, including the auth token.
+		return "", errors.New("eio3: bad session url")
 	}
 	switch u.Scheme {
 	case "https", "wss":

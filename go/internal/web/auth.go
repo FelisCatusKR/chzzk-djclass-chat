@@ -6,7 +6,6 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/store/db"
@@ -24,7 +23,7 @@ const (
 func (s *Server) oauthCookie(name, value string, maxAge int) *http.Cookie {
 	return &http.Cookie{
 		Name: name, Value: value, Path: oauthPath, MaxAge: maxAge,
-		HttpOnly: true, Secure: strings.HasPrefix(s.BaseURL, "https://"), SameSite: http.SameSiteLaxMode,
+		HttpOnly: true, Secure: s.HTTPS, SameSite: http.SameSiteLaxMode,
 	}
 }
 

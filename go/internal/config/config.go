@@ -7,6 +7,8 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +22,8 @@ type Config struct {
 	ChzzkClientSecret string // CHZZK_CLIENT_SECRET
 	TokenKey          string // VARCHIVE_TOKEN_KEY (encrypts Chzzk tokens at rest)
 	DjangoDir         string // DJANGO_DIR: repo root; widget assets are served from the Django tree until cutover
-	Dev               bool   // DEV=1: seed demo viewers, enable /dev. Refused for https BASE_URL.
+	Dev               bool   // DEV=1: seed demo viewers, enable /dev. Only for a localhost BASE_URL.
+	HTTPS             bool   // BASE_URL scheme is https: Secure cookies + HSTS
 }
 
 func FromEnv() (Config, error) {
@@ -51,10 +54,23 @@ func FromEnv() (Config, error) {
 	if len(missing) > 0 {
 		return c, fmt.Errorf("config: missing %s", strings.Join(missing, ", "))
 	}
-	if c.Dev && strings.HasPrefix(c.BaseURL, "https://") {
-		return c, errors.New("config: DEV mode is for local http only (BASE_URL is https)")
+	u, err := url.Parse(c.BaseURL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return c, fmt.Errorf("config: BASE_URL must be an absolute http(s) URL, got %q", c.BaseURL)
+	}
+	c.HTTPS = u.Scheme == "https" // url.Parse lower-cases the scheme
+	if c.Dev && !isLoopback(u.Hostname()) {
+		return c, errors.New("config: DEV mode is only allowed with a localhost BASE_URL")
 	}
 	return c, nil
+}
+
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func envOr(k, def string) string {

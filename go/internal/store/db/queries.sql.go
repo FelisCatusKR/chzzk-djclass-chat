@@ -145,24 +145,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 	return i, err
 }
 
-const getUserByNickname = `-- name: GetUserByNickname :one
-SELECT id, chzzk_id, chzzk_nickname, preferred_button, created_at FROM users WHERE chzzk_nickname = ? ORDER BY id LIMIT 1
-`
-
-// Several users can share a nickname; take the oldest, deterministically.
-func (q *Queries) GetUserByNickname(ctx context.Context, chzzkNickname string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByNickname, chzzkNickname)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.ChzzkID,
-		&i.ChzzkNickname,
-		&i.PreferredButton,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const hasActiveLink = `-- name: HasActiveLink :one
 SELECT EXISTS (
     SELECT 1 FROM varchive_links WHERE user_id = ? AND is_active = 1

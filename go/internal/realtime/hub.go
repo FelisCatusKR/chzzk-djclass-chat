@@ -25,11 +25,19 @@ const (
 	defaultTeardownDelay = 30 * time.Second
 	defaultMinBackoff    = time.Second
 	defaultMaxBackoff    = time.Minute
-	maxBatch             = 200  // abnormal-burst cap per flush (as in flush.py)
-	subscriberBuffer     = 1000 // queued batches per widget before dropping
+	maxBatch             = 200 // abnormal-burst cap per flush (as in flush.py)
+	subscriberBuffer     = 64  // queued batches per widget before dropping (64 × 250 ms = 16 s)
+
+	// Widget streams are unauthenticated (channel ids are public), so cap them:
+	// a streamer needs a handful (OBS + preview), not hundreds.
+	defaultMaxPerChannel = 10
+	defaultMaxTotal      = 1000
 )
 
-var ErrClosed = errors.New("realtime: hub closed")
+var (
+	ErrClosed             = errors.New("realtime: hub closed")
+	ErrTooManySubscribers = errors.New("realtime: too many widget connections")
+)
 
 type TokenSource interface {
 	AccessToken(ctx context.Context, channelID string) (string, error)
@@ -49,7 +57,7 @@ type Socket interface {
 type Dialer func(ctx context.Context, sessionURL string) (Socket, error)
 
 type Resolver interface {
-	Resolve(ctx context.Context, senderChannelID, nickname string) (resolver.Result, error)
+	Resolve(ctx context.Context, senderChannelID string) (resolver.Result, error)
 }
 
 type Config struct {
@@ -64,6 +72,8 @@ type Config struct {
 	TeardownDelay time.Duration
 	MinBackoff    time.Duration
 	MaxBackoff    time.Duration
+	MaxPerChannel int // subscribers per channel
+	MaxTotal      int // subscribers across all channels
 }
 
 type Hub struct {
@@ -77,6 +87,7 @@ type Hub struct {
 	mu       sync.Mutex
 	closed   bool
 	channels map[string]*channel
+	total    int // subscribers across all channels
 }
 
 type channel struct {
@@ -114,6 +125,12 @@ func New(cfg Config) *Hub {
 	cfg.TeardownDelay = or0(cfg.TeardownDelay, defaultTeardownDelay)
 	cfg.MinBackoff = or0(cfg.MinBackoff, defaultMinBackoff)
 	cfg.MaxBackoff = or0(cfg.MaxBackoff, defaultMaxBackoff)
+	if cfg.MaxPerChannel == 0 {
+		cfg.MaxPerChannel = defaultMaxPerChannel
+	}
+	if cfg.MaxTotal == 0 {
+		cfg.MaxTotal = defaultMaxTotal
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Hub{cfg: cfg, log: cfg.Logger, ctx: ctx, cancel: cancel, channels: map[string]*channel{}}
 }
@@ -134,6 +151,9 @@ func (h *Hub) Subscribe(channelID string) (*Subscription, error) {
 		return nil, ErrClosed
 	}
 	ch, ok := h.channels[channelID]
+	if h.total >= h.cfg.MaxTotal || (ok && len(ch.subs) >= h.cfg.MaxPerChannel) {
+		return nil, ErrTooManySubscribers
+	}
 	if !ok {
 		ch = h.startChannel(channelID)
 		h.channels[channelID] = ch
@@ -145,6 +165,7 @@ func (h *Hub) Subscribe(channelID string) (*Subscription, error) {
 	c := make(chan []byte, subscriberBuffer)
 	sub := &Subscription{C: c, c: c, ch: ch}
 	ch.subs[sub] = struct{}{}
+	h.total++
 	return sub, nil
 }
 
@@ -157,6 +178,7 @@ func (h *Hub) Unsubscribe(sub *Subscription) {
 		return
 	}
 	delete(ch.subs, sub)
+	h.total--
 	if len(ch.subs) > 0 || h.closed {
 		return
 	}
@@ -204,6 +226,7 @@ func (h *Hub) Close() {
 		ch.subs = map[*Subscription]struct{}{}
 	}
 	h.channels = map[string]*channel{}
+	h.total = 0
 	h.mu.Unlock()
 
 	h.cancel()  // stops every worker (their contexts derive from h.ctx)
@@ -307,18 +330,14 @@ func (h *Hub) buildBatch(ctx context.Context, raw []ChatMessage, log *slog.Logge
 	seen := map[string]resolver.Result{}
 	msgs := make([]BatchMessage, 0, len(raw))
 	for _, m := range raw {
-		key := m.SenderChannelID
-		if key == "" {
-			key = "nick:" + m.Nickname
-		}
-		res, ok := seen[key]
+		res, ok := seen[m.SenderChannelID]
 		if !ok {
 			var err error
-			if res, err = h.cfg.Resolver.Resolve(ctx, m.SenderChannelID, m.Nickname); err != nil {
+			if res, err = h.cfg.Resolver.Resolve(ctx, m.SenderChannelID); err != nil {
 				log.Error("resolve sender", "err", err)
 				res = resolver.Result{Status: resolver.Unlinked}
 			}
-			seen[key] = res
+			seen[m.SenderChannelID] = res
 		}
 		emojis := m.Emojis
 		if emojis == nil {

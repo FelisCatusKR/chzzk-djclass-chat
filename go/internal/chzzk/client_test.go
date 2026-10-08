@@ -150,3 +150,15 @@ func TestErrorsDoNotLeakSecrets(t *testing.T) {
 		t.Errorf("error lacks status: %v", err)
 	}
 }
+
+func TestNetworkErrorsDoNotLeakQuery(t *testing.T) {
+	c := New("CID", "S", "")
+	c.APIURL = "http://127.0.0.1:1/open/v1" // nothing listens: connection refused
+	err := c.SubscribeChat(context.Background(), "SECRETTOKEN", "SECRETKEY")
+	if err == nil {
+		t.Fatal("want error")
+	}
+	if strings.Contains(err.Error(), "SECRETKEY") || strings.Contains(err.Error(), "SECRETTOKEN") {
+		t.Errorf("error leaks secrets: %v", err)
+	}
+}

@@ -131,8 +131,8 @@ func TestBadgeLookups(t *testing.T) {
 	if u, err := s.Read.GetUserByChzzkID(ctx, "c2"); err != nil || u.ID != u2.ID {
 		t.Errorf("by chzzk id: %+v %v", u, err)
 	}
-	if u, err := s.Read.GetUserByNickname(ctx, "dup"); err != nil || u.ID != u1.ID {
-		t.Errorf("by nickname: got %+v %v, want oldest (id %d)", u, err, u1.ID)
+	if u, err := s.Read.GetUserByChzzkID(ctx, "c1"); err != nil || u.ID != u1.ID {
+		t.Errorf("by chzzk id: %+v %v", u, err)
 	}
 	if ok, err := s.Read.HasActiveLink(ctx, u1.ID); err != nil || !ok {
 		t.Errorf("u1 active link = %v %v", ok, err)
@@ -224,7 +224,7 @@ func TestConcurrentWritesAndReads(t *testing.T) {
 			})
 		})
 		wg.Go(func() {
-			_, err := s.Read.GetUserByNickname(ctx, "n")
+			_, err := s.Read.GetUserByChzzkID(ctx, "c0")
 			if errors.Is(err, sql.ErrNoRows) {
 				err = nil
 			}

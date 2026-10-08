@@ -46,6 +46,7 @@ type Server struct {
 	Limiter  *ratelimit.Limiter
 	Link     *link.Service
 	BaseURL  string // public origin, no trailing slash
+	HTTPS    bool   // BaseURL is https: Secure cookies, HSTS
 	Log      *slog.Logger
 
 	// Static assets: css/chat.css, js/components.js, overlay/widget.js.
@@ -91,7 +92,7 @@ func (s *Server) Handler() http.Handler {
 		s.Log.Warn("cross-origin request blocked", "method", r.Method, "path", r.URL.Path)
 		http.Error(w, "다른 사이트에서 보낸 요청은 처리할 수 없습니다.", http.StatusForbidden)
 	}))
-	return accessLog(s.Log, securityHeaders(strings.HasPrefix(s.BaseURL, "https://"), csrf.Handler(mux)))
+	return accessLog(s.Log, securityHeaders(s.HTTPS, csrf.Handler(mux)))
 }
 
 func (s *Server) renderPage(w http.ResponseWriter, status int, name string, data any) {
