@@ -69,9 +69,6 @@ jobs:
 
   go:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: go
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
@@ -81,7 +78,7 @@ jobs:
       # otherwise silently fetch a different one).
       - run: test "$(mise current go)" = "$(go mod edit -json | jq -r .Go)"
       # ...and the Dockerfile's builder image too.
-      - run: grep -q "^FROM golang:$(mise current go)-" ../Dockerfile
+      - run: grep -q "^FROM golang:$(mise current go)-" Dockerfile
       - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
       # Generated sqlc code must match queries.sql + migrations.
       - run: sqlc diff

@@ -25,4 +25,4 @@ staticfiles/
 get-token.ts
 
 # Go dev database
-/go/*.sqlite3*
+/*.sqlite3*

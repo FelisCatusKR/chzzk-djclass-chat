@@ -107,7 +107,7 @@ func newEnv(t *testing.T, dev bool, chzzkAPI http.HandlerFunc) *env {
 		Hub: hub, Store: st, Chzzk: cz, Box: box, Sessions: sessions, Limiter: ratelimit.New(nil),
 		Link:    &link.Service{Store: st, VA: vaClient, Cache: badges, Log: log},
 		BaseURL: "http://localhost:8000", Log: log, Dev: dev,
-		Static: DjangoStatic(filepath.Join("..", "..", "..")),
+		Static: DjangoStatic(filepath.Join("..", "..")),
 	}
 	ts := httptest.NewServer(s.Handler())
 	t.Cleanup(ts.Close)

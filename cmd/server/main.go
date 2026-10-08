@@ -4,7 +4,7 @@
 //	server [-env FILE] import FILE    one-shot cutover: Django dumpdata JSON → SQLITE_PATH ("-" = stdin)
 //	server healthcheck                exit 0 if GET /healthz on ADDR answers 200 (container probe)
 //
-// Local dev: cd go && go run ./cmd/server   (reads .env if present)
+// Local dev: go run ./cmd/server   (reads .env if present)
 package main
 
 import (

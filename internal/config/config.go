@@ -34,7 +34,7 @@ func FromEnv() (Config, error) {
 		ChzzkClientID:     os.Getenv("CHZZK_CLIENT_ID"),
 		ChzzkClientSecret: os.Getenv("CHZZK_CLIENT_SECRET"),
 		TokenKey:          os.Getenv("VARCHIVE_TOKEN_KEY"),
-		DjangoDir:         envOr("DJANGO_DIR", ".."),
+		DjangoDir:         envOr("DJANGO_DIR", "."),
 	}
 	if v := os.Getenv("DEV"); v != "" {
 		dev, err := strconv.ParseBool(v)
