@@ -66,10 +66,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
         with:
-          install_args: go
+          install_args: go sqlc
       # mise.toml and go.mod must pin the same Go version (GOTOOLCHAIN would
       # otherwise silently fetch a different one).
       - run: test "$(mise current go)" = "$(go mod edit -json | jq -r .Go)"
       - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      # Generated sqlc code must match queries.sql + migrations.
+      - run: sqlc diff
       - run: go vet ./...
       - run: go test -race -count=1 ./...

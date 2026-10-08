@@ -12,7 +12,7 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 - **UI Language:** Korean ONLY. All user-facing text must be written in Korean.
 - **Repository:** `chzzk-djclass-overlay`
 - **History:** originally a Next.js/Node app; rewritten to Python/Django in 2026-06. The legacy code has been removed — do NOT reintroduce a Node/Next.js app.
-- **Go migration (in progress):** a Go rewrite is being evaluated under `go/`. It currently holds only the Chzzk client (`internal/chzzk`), a receive-only Engine.IO v3 socket client (`internal/chzzk/eio3`) and a throwaway live-test harness (`cmd/spike`). The Django app remains the production service until the migration is decided.
+- **Go migration (in progress):** a Go rewrite is being evaluated under `go/`. It currently holds the Chzzk client (`internal/chzzk`), a receive-only Engine.IO v3 socket client (`internal/chzzk/eio3`), the SQLite store (`internal/store`) and a throwaway live-test harness (`cmd/spike`). The Django app remains the production service until the Go server replaces it; Python-side bugs are fixed in Go, not in Django.
 
 ---
 
@@ -31,8 +31,9 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 | daisyUI + Tailwind (CDN) | 5 / 4           | Config-page styling (no build step)                         |
 | htmx + Alpine.js         | —               | Config-page interactivity (`hx-boost` app shell)            |
 | pytest                   | —               | Tests (`pytest-django`, `pytest-httpx`)                     |
-| mise                     | —               | Tool versions (`mise.toml`: Go, Node) — local + CI          |
-| Go                       | 1.27            | `go/` migration spike (`coder/websocket`)                   |
+| mise                     | —               | Tool versions (`mise.toml`: Go, Node, sqlc) — local + CI    |
+| Go                       | 1.27            | `go/` migration (`coder/websocket`)                         |
+| SQLite (Go)              | —               | `modernc.org/sqlite` (pure Go), goose migrations, sqlc      |
 | ruff / djlint / mypy     | —               | Lint, format, template lint, strict typing                  |
 
 ---
@@ -73,6 +74,7 @@ manage.py
 go/                       # Go migration spike (own go.mod; not in the Docker image)
   internal/chzzk/         # Chzzk OAuth + session API client (port of common/chzzk.py)
   internal/chzzk/eio3/    # minimal Socket.IO v2 / Engine.IO v3 websocket client
+  internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
   cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
 mise.toml                 # pinned tool versions (replaces .nvmrc)
 ```
@@ -99,6 +101,12 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - The server computes DJ CLASS badges; the widget makes **zero network calls** beyond the SSE stream (`/widget/<channelId>/stream`). It renders `[{button}B {DJ CLASS}] message` — the Chzzk nickname is NOT shown; unverified viewers get a `미인증` badge.
 - A per-channel connect lock prevents duplicate connections; the ingestor tears down 30 s after the last subscriber leaves.
 - **Chzzk session socket facts** (verified live 2026-10, details in `go/internal/chzzk/eio3` package doc): the server is EIO3-only; a session URL is **single-use** (fetch a fresh one per (re)connect); the server closes sessions on its own after many hours (reconnect is normal operation); an open session outlives its access token, so refresh the token **before reconnecting**.
+
+### 5.2.1 Go store (SQLite)
+
+- One DB file, two pools: a **read pool** (`query_only`) and a **single write connection** (`_txlock=immediate`, WAL, `synchronous=NORMAL`, `foreign_keys=ON`). Writers queue in `database/sql`, not on SQLite's lock.
+- All writes go through `store.WriteTx(ctx, fn)`. Inside `fn`: use only the given `ctx`/`q`, keep it short, **no network I/O** (every writer waits), and never call `WriteTx`/`WriteDB()` again (the one connection is held → deadlock; nested `WriteTx` returns `ErrNestedWrite`).
+- Schema changes = a new goose file in `internal/store/migrations/` (never edit an applied one) + `sqlc generate`. Timestamps are unix seconds (INTEGER). Sessions use the `alexedwards/scs` sqlite3store table.
 
 ### 5.3 Tokens & sessions
 
@@ -154,7 +162,7 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - **djlint** — Django template lint/format (`profile = django`).
 - **mypy** — `strict` + `django-stubs`.
 - **eslint + prettier** — for the two first-party browser scripts only (`widget.js`, `components.js`); enforced by **local Git hooks, NOT CI**.
-- **gofmt + go vet** — Go code under `go/`; gofmt runs in lint-staged, CI's `go` job checks gofmt/vet/tests. Keep the Go version in `mise.toml` and `go/go.mod` identical (CI checks).
+- **gofmt + go vet + sqlc diff** — Go code under `go/`; gofmt runs in lint-staged, CI's `go` job checks gofmt/vet/tests and that sqlc output is up to date. Keep the Go version in `mise.toml` and `go/go.mod` identical (CI checks).
 
 ### 8.1 Mandatory commands
 
@@ -175,7 +183,7 @@ npm run lint:fix && npm run format
 **After Go changes:**
 
 ```bash
-cd go && gofmt -w . && go vet ./... && go test ./...
+cd go && sqlc generate && gofmt -w . && go vet ./... && go test ./...
 ```
 
 ---
