@@ -74,6 +74,9 @@ manage.py
 go/                       # Go migration spike (own go.mod; not in the Docker image)
   internal/chzzk/         # Chzzk OAuth + session API client (port of common/chzzk.py)
   internal/chzzk/eio3/    # minimal Socket.IO v2 / Engine.IO v3 websocket client
+  internal/djclass/       # pure DJ CLASS badge logic (port of djclass/badges.py) + Python golden data
+  internal/ttlcache/      # per-entry-TTL cache (port of common/cache.py)
+  internal/resolver/      # chat sender → badge status, cached (port of djclass/resolver.py)
   internal/crypto/        # AES-GCM token encryption, byte-compatible with common/crypto.py
   internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
   cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
@@ -84,7 +87,7 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 
 - **New pages:** a function-based view + URLconf entry in the relevant app, with a template under `djclass_overlay/templates/<app>/`.
 - **New shared utilities / external clients:** `djclass_overlay/common/`.
-- **Pure DJ CLASS logic** stays Django-free in `djclass_overlay/djclass/badges.py`.
+- **Pure DJ CLASS logic** stays Django-free in `djclass_overlay/djclass/badges.py`. Its Go port `go/internal/djclass` is checked against `testdata/python_golden.json` (generated from `badges.py` by `testdata/gen_golden.py`); until cutover, change both and regenerate the golden file.
 - **htmx partials** use Django 6.0 `{% partialdef name inline %}`, fetched standalone as `app/template.html#name`.
 
 ---
