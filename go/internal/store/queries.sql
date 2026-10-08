@@ -77,3 +77,18 @@ DELETE FROM sessions WHERE token = ?;
 
 -- name: DeleteExpiredSessions :exec
 DELETE FROM sessions WHERE expiry < julianday('now');
+
+-- name: GetActiveLink :one
+SELECT * FROM varchive_links WHERE user_id = ? AND is_active = 1;
+
+-- name: DeactivateLink :exec
+UPDATE varchive_links SET is_active = 0, updated_at = unixepoch() WHERE user_id = ?;
+
+-- name: DeleteDjClasses :exec
+DELETE FROM dj_classes WHERE user_id = ?;
+
+-- name: ListActiveLinks :many
+SELECT l.user_id, l.varchive_nickname, u.chzzk_id, u.chzzk_nickname
+FROM varchive_links l JOIN users u ON u.id = l.user_id
+WHERE l.is_active = 1
+ORDER BY l.user_id;

@@ -78,6 +78,10 @@ go/                       # Go migration spike (own go.mod; not in the Docker im
   internal/ttlcache/      # per-entry-TTL cache (port of common/cache.py)
   internal/resolver/      # chat sender → badge status, cached (port of djclass/resolver.py)
   internal/realtime/      # per-channel chat worker (ingest + 250 ms flush), hub, SSE subscriptions
+  internal/varchive/      # V-ARCHIVE client (token used once; ≤8 requests in flight process-wide)
+  internal/link/          # viewer linking: connect/sync/unlink/preferred button, daily SyncAll
+  internal/schedule/      # in-process daily job at a UTC hour (18:00 DJ CLASS sync)
+  internal/ratelimit/     # per-IP fixed-window limiter (CF-Connecting-IP)
   internal/crypto/        # AES-GCM token encryption, byte-compatible with common/crypto.py
   internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
   cmd/server/             # the Go server (HTTP + SSE + chat workers); `cd go && go run ./cmd/server`
@@ -126,6 +130,7 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 - **CDN assets** (daisyUI, Tailwind browser, htmx, Alpine) are version-pinned with SRI `integrity` in `templates/base.html`; bumping a version means recomputing its sha384.
 - `requireLogin`: htmx **fragment** requests get `HX-Redirect` to `/login/?next=<current page>`; normal and boosted requests redirect to the requested path.
 - Access log never records query strings (OAuth `code`).
+- `/link` actions (`internal/link`): V-ARCHIVE calls happen **outside** write transactions; the badge cache is invalidated **after** commit. An empty V-ARCHIVE fetch never wipes existing classes. Fragment handlers re-read the user before rendering (the request-scoped user predates the change).
 
 ### 5.2.1 Go store (SQLite)
 
