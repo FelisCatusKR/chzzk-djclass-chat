@@ -1,0 +1,127 @@
+[
+{
+  "model": "users.user",
+  "pk": 1,
+  "fields": {
+    "password": "!",
+    "last_login": null,
+    "is_superuser": false,
+    "chzzk_id": "streamer01",
+    "chzzk_nickname": "스트리머",
+    "preferred_button": null,
+    "is_active": true,
+    "is_staff": false,
+    "created_at": "2026-10-08T12:16:38.283Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "users.user",
+  "pk": 2,
+  "fields": {
+    "password": "!",
+    "last_login": null,
+    "is_superuser": false,
+    "chzzk_id": "viewer01",
+    "chzzk_nickname": "시청자",
+    "preferred_button": 8,
+    "is_active": true,
+    "is_staff": false,
+    "created_at": "2026-10-08T12:16:38.390Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "users.user",
+  "pk": 3,
+  "fields": {
+    "password": "!",
+    "last_login": null,
+    "is_superuser": false,
+    "chzzk_id": "old01",
+    "chzzk_nickname": "옛연동",
+    "preferred_button": null,
+    "is_active": true,
+    "is_staff": false,
+    "created_at": "2026-10-08T12:16:38.647Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "streamers.channel",
+  "pk": 1,
+  "fields": {
+    "user": 1,
+    "chzzk_channel_id": "streamer01",
+    "chzzk_access_token_encrypted": "K5cGWqPgXM2zE2E22MwJdqqnmgRZPhICygt/aCCacMPGp2eM",
+    "chzzk_refresh_token_encrypted": "/W35q9G4oh1VCnjChD/irx2K3EylVJ8mReSZlcW67sWcKY1QYw==",
+    "token_expires_at": "2026-10-08T15:16:38.330Z",
+    "created_at": "2026-10-08T12:16:38.332Z"
+  }
+},
+{
+  "model": "streamers.channel",
+  "pk": 2,
+  "fields": {
+    "user": 2,
+    "chzzk_channel_id": "viewer01",
+    "chzzk_access_token_encrypted": "1pBCsty+qTd1f0yY2tcAP5Ufzh+PU1PAJMIjbfUL54rOYyQD",
+    "chzzk_refresh_token_encrypted": null,
+    "token_expires_at": null,
+    "created_at": "2026-10-08T12:16:38.433Z"
+  }
+},
+{
+  "model": "viewers.varchivetoken",
+  "pk": 1,
+  "fields": {
+    "user": 2,
+    "varchive_nickname": "VA닉",
+    "varchive_user_no": 4242,
+    "is_active": true,
+    "created_at": "2026-10-08T12:16:38.488Z",
+    "updated_at": "2026-10-08T12:16:38.488Z"
+  }
+},
+{
+  "model": "viewers.varchivetoken",
+  "pk": 2,
+  "fields": {
+    "user": 3,
+    "varchive_nickname": "gone",
+    "varchive_user_no": null,
+    "is_active": false,
+    "created_at": "2026-10-08T12:16:38.710Z",
+    "updated_at": "2026-10-08T12:16:38.710Z"
+  }
+},
+{
+  "model": "djclass.djclass",
+  "pk": 1,
+  "fields": {
+    "user": 2,
+    "button": 4,
+    "dj_class": "SHOWSTOPPER II",
+    "dj_power_sum": 1.5,
+    "max_dj_power": 2.25,
+    "dj_power_conversion": 9823.0,
+    "synced_at": "2026-10-08T12:16:38.543Z"
+  }
+},
+{
+  "model": "djclass.djclass",
+  "pk": 2,
+  "fields": {
+    "user": 2,
+    "button": 8,
+    "dj_class": "HEADLINER IV",
+    "dj_power_sum": null,
+    "max_dj_power": null,
+    "dj_power_conversion": 9410.0,
+    "synced_at": "2026-10-08T12:16:38.593Z"
+  }
+}
+]

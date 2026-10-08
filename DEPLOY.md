@@ -19,6 +19,9 @@ previous image.
 
 ## Container contract
 
+> A Go replacement image (`--target go-runner`) is built alongside but not deployed yet;
+> its contract and the switch-over steps are in [`go/CUTOVER.md`](./go/CUTOVER.md).
+
 | Item         | Value                                                                                                    |
 | ------------ | -------------------------------------------------------------------------------------------------------- |
 | Build        | multi-stage [`Dockerfile`](./Dockerfile), target `runner`, no build args                                 |

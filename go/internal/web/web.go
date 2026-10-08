@@ -81,6 +81,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /widget/{channelID}/{$}", s.widgetPage)
 	mux.HandleFunc("GET /widget/{channelID}/stream", s.widgetStream)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", noDirListing(http.FileServerFS(s.Static))))
+	mux.HandleFunc("GET /healthz", s.healthz)
 
 	if s.Dev {
 		page("GET /dev", s.devPage)
@@ -109,6 +110,16 @@ func (s *Server) render(w http.ResponseWriter, status int, name string, data any
 	if err := templates.ExecuteTemplate(w, name, data); err != nil {
 		s.Log.Error("render template", "template", name, "err", err)
 	}
+}
+
+// healthz is the container health check: the process serves HTTP and the
+// database answers.
+func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
+	if err := s.Store.ReadDB().PingContext(r.Context()); err != nil {
+		http.Error(w, "db unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	w.Write([]byte("ok"))
 }
 
 func noDirListing(h http.Handler) http.Handler {

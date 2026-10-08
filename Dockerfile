@@ -1,3 +1,34 @@
+# ---------------------------------------------------------------------------
+# Go server (cutover target; see go/CUTOVER.md). Production still builds
+# `--target runner` (Django, below) until the cutover switches the target.
+# ---------------------------------------------------------------------------
+FROM golang:1.27.1-bookworm AS go-builder
+WORKDIR /src/go
+COPY go/go.mod go/go.sum ./
+RUN go mod download
+COPY go/ ./
+# Widget/page assets still live in the Django tree; bake them into the binary.
+COPY djclass_overlay/static/css/chat.css internal/web/static/css/
+COPY djclass_overlay/static/js/components.js internal/web/static/js/
+COPY djclass_overlay/overlay/static/overlay/widget.js internal/web/static/overlay/
+# modernc.org/sqlite is pure Go: a static binary, no cgo.
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/djclass ./cmd/server \
+ && mkdir -p /out/data
+
+FROM gcr.io/distroless/static-debian12:nonroot AS go-runner
+COPY --from=go-builder /out/djclass /djclass
+# /data holds the SQLite file (+ -wal/-shm): mount a persistent volume here.
+COPY --from=go-builder --chown=65532:65532 /out/data /data
+ENV SQLITE_PATH=/data/djclass.sqlite3 ADDR=:8000
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/djclass", "healthcheck"]
+ENTRYPOINT ["/djclass"]
+CMD ["serve"]
+
+# ---------------------------------------------------------------------------
+# Django app (current production target)
+# ---------------------------------------------------------------------------
 # Build stage — install deps + project into /app/.venv via uv
 FROM python:3.14-slim-bookworm AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv

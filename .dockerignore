@@ -10,4 +10,8 @@ test-data
 .env.*
 __pycache__
 .pytest_cache
-go
+# Also inside subdirectories (go/.env holds real secrets; go/*.sqlite3 real tokens)
+**/.env
+**/.env.*
+**/*.sqlite3
+**/*.sqlite3-*

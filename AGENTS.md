@@ -86,8 +86,9 @@ go/                       # Go migration spike (own go.mod; not in the Docker im
   internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
   cmd/server/             # the Go server (HTTP + SSE + chat workers); `cd go && go run ./cmd/server`
   internal/config/        # env/.env configuration
-  internal/web/           # widget page, SSE, OAuth login, /dev chat injection (DEV only)
-  CUTOVER.md              # what must be verified before Go replaces Django
+  internal/web/           # pages, widget + SSE, OAuth login, /link, /healthz, /dev (DEV only); static/ is filled at image build
+  internal/importer/      # one-shot cutover import: Django dumpdata JSON → SQLite (verifies every token decrypts)
+  CUTOVER.md              # cutover runbook: verification, steps, rollback, post-cutover cleanup
   cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
 mise.toml                 # pinned tool versions (replaces .nvmrc)
 ```
@@ -254,6 +255,7 @@ Go server (`go/.env` or real env; shares `CHZZK_*`, `VARCHIVE_TOKEN_KEY`, `BASE_
 - **Single `web` container, single instance**; **no worker** — the daily sync is in-process.
 - **Database:** PostgreSQL via `DATABASE_URL`.
 - **Docker:** multi-stage `Dockerfile` (Python 3.14 slim + uv); build target `runner`; `collectstatic` baked into the image; HEALTHCHECK on `:8000`; no build args.
+- **Go image (cutover target):** the same `Dockerfile` also has `go-builder` → `go-runner` (static binary on distroless, ~18 MB, SQLite in a `/data` volume, `/djclass healthcheck`). Production keeps building `--target runner` until the switch in [`go/CUTOVER.md`](./go/CUTOVER.md). `.dockerignore` excludes `**/.env*` and `**/*.sqlite3*` (go/.env and the dev DB hold real secrets). CI's `go-image` job builds it; keep the `golang:` tag equal to `mise.toml`'s Go (CI checks).
 - **Auto-deploy:** GitOps pull — the host polls `main` (~2 min), builds `--target runner`, then restarts the container, which runs `migrate --noinput` before `runasgi`. CI does not deploy; branch protection (required `build` check) is what gates `main`.
 
 ---
