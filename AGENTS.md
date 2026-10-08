@@ -74,6 +74,7 @@ manage.py
 go/                       # Go migration spike (own go.mod; not in the Docker image)
   internal/chzzk/         # Chzzk OAuth + session API client (port of common/chzzk.py)
   internal/chzzk/eio3/    # minimal Socket.IO v2 / Engine.IO v3 websocket client
+  internal/crypto/        # AES-GCM token encryption, byte-compatible with common/crypto.py
   internal/store/         # SQLite: migrations/ (goose, embedded), queries.sql → db/ (sqlc)
   cmd/spike/              # throwaway live test: OAuth login → session socket → print chat
 mise.toml                 # pinned tool versions (replaces .nvmrc)
@@ -110,7 +111,7 @@ mise.toml                 # pinned tool versions (replaces .nvmrc)
 
 ### 5.3 Tokens & sessions
 
-- **Chzzk channel tokens:** `AES-256-GCM` via `common/crypto.py` (key = `VARCHIVE_TOKEN_KEY`, random per-record salt), stored on the `Channel` model.
+- **Chzzk channel tokens:** `AES-256-GCM` via `common/crypto.py` (key = SHA-256 of `VARCHIVE_TOKEN_KEY`, random 12-byte nonce per value, stored as base64(nonce‖ciphertext‖tag)) on the `Channel` model. `go/internal/crypto` is byte-compatible (tested against Python-generated vectors) — keep the two in sync until cutover.
 - **V-ARCHIVE is token-less:** the 조회토큰 is used **once** (`djclass/varchive.py` → open-token endpoint → `{userNo, nickname}`) then **discarded, never stored**. Ongoing sync hits the **public** nickname endpoint; `VarchiveToken` keeps `varchive_user_no` + nickname only.
 - **Sessions:** Django's DB-backed session framework (signed by `SECRET_KEY`), 7-day cookie. There is no `SESSION_SECRET`.
 
