@@ -12,7 +12,7 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 - **UI Language:** Korean ONLY. All user-facing text must be written in Korean.
 - **Repository:** `chzzk-djclass-overlay`
 - **History:** originally a Next.js/Node app; rewritten to Python/Django in 2026-06. The legacy code has been removed — do NOT reintroduce a Node/Next.js app.
-- **Go migration (in progress):** a Go rewrite is being evaluated under `go/`. It currently holds the Chzzk client (`internal/chzzk`), a receive-only Engine.IO v3 socket client (`internal/chzzk/eio3`), the SQLite store (`internal/store`) and a throwaway live-test harness (`cmd/spike`). The Django app remains the production service until the Go server replaces it; Python-side bugs are fixed in Go, not in Django.
+- **Go migration (ready, awaiting cutover):** the Go server under `go/` implements every Django feature (realtime widget, login, dashboard, `/link`, daily sync), passed an independent security review and a live-broadcast test. Django stays in production until the switch in [`go/CUTOVER.md`](./go/CUTOVER.md) (host steps: homelab-infra runbook). Python-side bugs are fixed in Go, not in Django.
 
 ---
 
@@ -71,7 +71,7 @@ djclass_overlay/
   templates/              # Django templates
   static/                 # css/badge.css, js/components.js
 manage.py
-go/                       # Go migration spike (own go.mod; not in the Docker image)
+go/                       # Go server (own go.mod; built into the `go-runner` image target)
   internal/chzzk/         # Chzzk OAuth + session API client (port of common/chzzk.py)
   internal/chzzk/eio3/    # minimal Socket.IO v2 / Engine.IO v3 websocket client
   internal/djclass/       # pure DJ CLASS badge logic (port of djclass/badges.py) + Python golden data

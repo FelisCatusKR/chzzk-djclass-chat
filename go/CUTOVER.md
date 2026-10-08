@@ -6,11 +6,13 @@ GitOps build target) live in the private `homelab-infra` repo.
 
 ## Verify first
 
-- [ ] **Live broadcast run**: during a real stream, run the Go server's widget
-      next to the production widget in OBS (user sessions allow 3 sockets).
-      Check real CHAT payloads (emoji URLs, nickname, `senderChannelId`), no
-      dropped messages vs. production, and a full broadcast without stalls.
-      Expect real viewers to show `미인증` until data is imported.
+- [x] **Live broadcast run** (2026-10-08): the Go widget ran next to the
+      production one in OBS for a real stream — chat and emoji arrived, no
+      session drops; after the source closed the worker tore down 30 s later
+      and reconnected in ~0.2 s when it reopened. (The worker follows widget
+      subscribers, not live status: OBS keeps a loaded source open while
+      off-air, so the Chzzk session stays up then — cheap, and chat works the
+      moment the next stream starts.)
 - [ ] **Import rehearsal** (steps 2–3 below against a scratch volume, Django
       still serving): `import done` reports every token verified and the same
       row counts as Postgres; spot-check a few linked viewers' badges on the
@@ -83,3 +85,9 @@ is lost.
   Node) with one job — update the branch-protection required check;
   rewrite AGENTS.md / DEPLOY.md / CONTRIBUTING.md for Go.
 - Back up `/data` (e.g. Litestream or a periodic `VACUUM INTO` copy off-host).
+- Publish the image to GHCR from CI (like organon: `image_source: ghcr`,
+  `sha-<7>` tags, rollback = `pin`) instead of building on the Pi: only
+  CI-tested commits deploy, the host pulls ~18 MB instead of compiling.
+  Needs an arm64 build — cross-compile in the builder
+  (`FROM --platform=$BUILDPLATFORM golang…`, `GOARCH=$TARGETARCH`), no QEMU.
+  Do it after the cutover is stable, not together with it.
