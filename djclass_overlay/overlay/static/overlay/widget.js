@@ -94,7 +94,9 @@
       document.head.appendChild(link)
     }
     chat.style.fontFamily =
-      '"' + f.family + '", "Pretendard", system-ui, "Apple SD Gothic Neo", sans-serif'
+      '"' +
+      f.family +
+      '", "Pretendard", system-ui, "Apple SD Gothic Neo", sans-serif'
   }
 
   function parseFontSize(raw) {
@@ -211,15 +213,32 @@
     }, 250)
   }
 
-  var es = new EventSource('/widget/' + chat.dataset.channelId + '/stream')
-  es.onopen = function () {
-    statusEl.textContent = ''
+  // EventSource reconnects by itself after a dropped connection, but gives up
+  // for good when the server answers with a non-200 status (e.g. a 502 from the
+  // proxy while the app restarts on deploy, or a 503 over the connection cap):
+  // readyState becomes CLOSED. Reconnect ourselves then, with a growing,
+  // jittered delay, so OBS widgets recover without a manual refresh.
+  var RETRY_MIN_MS = 2000
+  var RETRY_MAX_MS = 60000
+  var retryMs = RETRY_MIN_MS
+
+  function connect() {
+    var es = new EventSource('/widget/' + chat.dataset.channelId + '/stream')
+    es.onopen = function () {
+      statusEl.textContent = ''
+      retryMs = RETRY_MIN_MS
+    }
+    es.onerror = function () {
+      statusEl.textContent = '채팅 연결 실패 (재연결 중…)'
+      if (es.readyState !== EventSource.CLOSED) return // the browser retries
+      es.close()
+      setTimeout(connect, retryMs + Math.floor(Math.random() * 1000))
+      retryMs = Math.min(retryMs * 2, RETRY_MAX_MS)
+    }
+    es.addEventListener('chat', function (e) {
+      var batch = JSON.parse(e.data)
+      ;(batch.messages || []).forEach(addMessage)
+    })
   }
-  es.onerror = function () {
-    statusEl.textContent = '채팅 연결 실패 (재연결 중…)'
-  }
-  es.addEventListener('chat', function (e) {
-    var batch = JSON.parse(e.data)
-    ;(batch.messages || []).forEach(addMessage)
-  })
+  connect()
 })()
