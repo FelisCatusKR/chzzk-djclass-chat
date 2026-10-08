@@ -3,13 +3,13 @@ module github.com/FelisCatusKR/chzzk-djclass-chat
 go 1.27.1
 
 require (
+	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/coder/websocket v1.8.15
 	github.com/pressly/goose/v3 v3.28.0
 	modernc.org/sqlite v1.60.1
 )
 
 require (
-	github.com/alexedwards/scs/v2 v2.9.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect

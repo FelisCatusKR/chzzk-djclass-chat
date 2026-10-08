@@ -200,7 +200,8 @@ func TestValidPreferredButton(t *testing.T) {
 }
 
 // TestPythonGolden compares against outputs of the Django implementation over
-// every rank/level x conversion (testdata/gen_golden.py regenerates the file).
+// every rank/level x conversion. The file was generated from the former
+// Django badges.py before its removal and is now a frozen oracle.
 func TestPythonGolden(t *testing.T) {
 	raw, err := os.ReadFile("testdata/python_golden.json")
 	if err != nil {

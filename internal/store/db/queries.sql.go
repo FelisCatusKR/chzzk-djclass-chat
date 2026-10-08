@@ -24,19 +24,6 @@ func (q *Queries) CommitSession(ctx context.Context, arg CommitSessionParams) er
 	return err
 }
 
-const countUsers = `-- name: CountUsers :one
-
-SELECT count(*) FROM users
-`
-
-// Cutover import (internal/importer): keeps Django's primary keys and timestamps.
-func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsers)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const deactivateLink = `-- name: DeactivateLink :exec
 UPDATE varchive_links SET is_active = 0, updated_at = unixepoch() WHERE user_id = ?
 `
@@ -169,116 +156,6 @@ func (q *Queries) HasActiveLink(ctx context.Context, userID int64) (bool, error)
 	var has_link bool
 	err := row.Scan(&has_link)
 	return has_link, err
-}
-
-const importChannel = `-- name: ImportChannel :exec
-INSERT INTO channels (id, user_id, chzzk_channel_id, access_token_encrypted, refresh_token_encrypted, token_expires_at, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-`
-
-type ImportChannelParams struct {
-	ID                    int64
-	UserID                int64
-	ChzzkChannelID        string
-	AccessTokenEncrypted  *string
-	RefreshTokenEncrypted *string
-	TokenExpiresAt        *int64
-	CreatedAt             int64
-}
-
-func (q *Queries) ImportChannel(ctx context.Context, arg ImportChannelParams) error {
-	_, err := q.db.ExecContext(ctx, importChannel,
-		arg.ID,
-		arg.UserID,
-		arg.ChzzkChannelID,
-		arg.AccessTokenEncrypted,
-		arg.RefreshTokenEncrypted,
-		arg.TokenExpiresAt,
-		arg.CreatedAt,
-	)
-	return err
-}
-
-const importDjClass = `-- name: ImportDjClass :exec
-INSERT INTO dj_classes (id, user_id, button, dj_class, dj_power_sum, max_dj_power, dj_power_conversion, synced_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-`
-
-type ImportDjClassParams struct {
-	ID                int64
-	UserID            int64
-	Button            int64
-	DjClass           string
-	DjPowerSum        *float64
-	MaxDjPower        *float64
-	DjPowerConversion *float64
-	SyncedAt          int64
-}
-
-func (q *Queries) ImportDjClass(ctx context.Context, arg ImportDjClassParams) error {
-	_, err := q.db.ExecContext(ctx, importDjClass,
-		arg.ID,
-		arg.UserID,
-		arg.Button,
-		arg.DjClass,
-		arg.DjPowerSum,
-		arg.MaxDjPower,
-		arg.DjPowerConversion,
-		arg.SyncedAt,
-	)
-	return err
-}
-
-const importUser = `-- name: ImportUser :exec
-INSERT INTO users (id, chzzk_id, chzzk_nickname, preferred_button, created_at)
-VALUES (?, ?, ?, ?, ?)
-`
-
-type ImportUserParams struct {
-	ID              int64
-	ChzzkID         string
-	ChzzkNickname   string
-	PreferredButton *int64
-	CreatedAt       int64
-}
-
-func (q *Queries) ImportUser(ctx context.Context, arg ImportUserParams) error {
-	_, err := q.db.ExecContext(ctx, importUser,
-		arg.ID,
-		arg.ChzzkID,
-		arg.ChzzkNickname,
-		arg.PreferredButton,
-		arg.CreatedAt,
-	)
-	return err
-}
-
-const importVarchiveLink = `-- name: ImportVarchiveLink :exec
-INSERT INTO varchive_links (id, user_id, varchive_nickname, varchive_user_no, is_active, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-`
-
-type ImportVarchiveLinkParams struct {
-	ID               int64
-	UserID           int64
-	VarchiveNickname string
-	VarchiveUserNo   *int64
-	IsActive         bool
-	CreatedAt        int64
-	UpdatedAt        int64
-}
-
-func (q *Queries) ImportVarchiveLink(ctx context.Context, arg ImportVarchiveLinkParams) error {
-	_, err := q.db.ExecContext(ctx, importVarchiveLink,
-		arg.ID,
-		arg.UserID,
-		arg.VarchiveNickname,
-		arg.VarchiveUserNo,
-		arg.IsActive,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
 }
 
 const listActiveLinks = `-- name: ListActiveLinks :many

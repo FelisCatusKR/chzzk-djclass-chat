@@ -4,8 +4,8 @@ docs/superpowers/
 # npm lockfile — managed by npm, not prettier
 package-lock.json
 
-# Generated parity data (go/internal/djclass/testdata/gen_golden.py)
-go/internal/djclass/testdata/python_golden.json
+# Frozen parity data (generated from the former Django badges.py)
+internal/djclass/testdata/python_golden.json
 
-# Templates (Django: djlint; Go html/template: no formatter) — prettier mangles {% %} / {{ }}
+# Go html/template files — prettier mangles {{ }}
 *.html

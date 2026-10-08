@@ -18,11 +18,6 @@
       "prettier --write"
     ],
     "*.{css,md,json,jsonc,yml,yaml}": "prettier --write",
-    "*.py": [
-      "uv run ruff format",
-      "uv run ruff check --fix"
-    ],
-    "*.html": "bash -c 'uv run djlint --reformat \"$@\" || true' --",
     "*.go": "gofmt -w"
   },
   "devDependencies": {

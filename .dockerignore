@@ -1,16 +1,11 @@
 .git
 node_modules
-.next
-.venv
-staticfiles
 data
 test-data
 *.sqlite3
 .env
 .env.*
-__pycache__
-.pytest_cache
-# Also inside subdirectories (go/.env holds real secrets; go/*.sqlite3 real tokens)
+# Also inside subdirectories (a local .env holds real secrets; dev DBs real tokens)
 **/.env
 **/.env.*
 **/*.sqlite3

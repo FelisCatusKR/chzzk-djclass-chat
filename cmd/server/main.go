@@ -1,7 +1,6 @@
 // Command server is the DJ CLASS overlay service binary.
 //
 //	server [-env FILE] [serve]        HTTP (pages, widget, SSE) + chat workers + daily sync
-//	server [-env FILE] import FILE    one-shot cutover: Django dumpdata JSON → SQLITE_PATH ("-" = stdin)
 //	server healthcheck                exit 0 if GET /healthz on ADDR answers 200 (container probe)
 //
 // Local dev: go run ./cmd/server   (reads .env if present)
@@ -25,7 +24,6 @@ import (
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/chzzk"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/config"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/crypto"
-	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/importer"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/link"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/ratelimit"
 	"github.com/FelisCatusKR/chzzk-djclass-chat/internal/realtime"
@@ -50,10 +48,8 @@ func main() {
 		err = healthcheck()
 	case cmd == "serve" && len(args) == 0:
 		err = withConfig(*envFile, func(cfg config.Config) error { return serve(cfg, log) })
-	case cmd == "import" && len(args) == 1:
-		err = withConfig(*envFile, func(cfg config.Config) error { return importDump(cfg, args[0], log) })
 	default:
-		err = fmt.Errorf("usage: server [-env FILE] [serve | import FILE | healthcheck]")
+		err = fmt.Errorf("usage: server [-env FILE] [serve | healthcheck]")
 	}
 	if err != nil {
 		log.Error(cmd+" failed", "err", err)
@@ -91,35 +87,6 @@ func healthcheck() error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("healthz: HTTP %d", resp.StatusCode)
 	}
-	return nil
-}
-
-func importDump(cfg config.Config, path string, log *slog.Logger) error {
-	in := os.Stdin
-	if path != "-" {
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		in = f
-	}
-	ctx := context.Background()
-	st, err := store.Open(ctx, cfg.SQLitePath)
-	if err != nil {
-		return err
-	}
-	defer st.Close()
-	box, err := crypto.New(cfg.TokenKey)
-	if err != nil {
-		return err
-	}
-	rep, err := importer.Import(ctx, st, box, in)
-	if err != nil {
-		return err
-	}
-	log.Info("import done", "db", cfg.SQLitePath, "users", rep.Users, "channels", rep.Channels,
-		"links", rep.Links, "dj_classes", rep.DjClasses, "tokens_verified", rep.TokensVerified)
 	return nil
 }
 
