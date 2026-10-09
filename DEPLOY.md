@@ -56,4 +56,23 @@ The container must be reachable **only through the tunnel**: rate limiting trust
 - Daily sync: grep the logs for `daily sync done synced=X failed=Y` (18:00 UTC / 03:00 KST).
 - Chat connections: `chat socket connected` / `chat subscription confirmed` per channel;
   `chat session ended` lines carry the reason and the retry delay.
-- Back up `/data` (the SQLite file) off-host.
+- Back up the database off-host with the built-in snapshot (safe while serving; see below).
+
+## Backup and restore
+
+Never copy the live `/data/djclass.sqlite3` (or its `-wal`) — a copy taken mid-write
+can be torn. Use the binary's snapshot, which reads only committed data on its own
+read-only connection, checks `PRAGMA integrity_check`, and never blocks the server:
+
+```sh
+# stream a snapshot into restic (the homelab host does this on a timer)
+podman exec chatoverlay-web /djclass backup - \
+  | restic backup --stdin --stdin-filename chatoverlay.sqlite3 --tag chatoverlay
+```
+
+`/djclass backup /data/some-file.sqlite3` writes the snapshot to a file instead.
+
+Restore: stop the container, `restic restore` the snapshot, replace
+`/data/djclass.sqlite3` with it and delete any `djclass.sqlite3-wal` / `-shm` next to
+it, then start the container (pending migrations apply on start). The snapshot is a
+single self-contained file.

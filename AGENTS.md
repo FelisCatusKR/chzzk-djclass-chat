@@ -48,7 +48,7 @@ An OBS Browser Source widget service that displays V-ARCHIVE DJ CLASS badges on 
 ## 4. Directory Structure
 
 ```
-cmd/server/            # main: `serve` (default) | `healthcheck`
+cmd/server/            # main: `serve` (default) | `healthcheck` | `backup FILE|-`
 internal/
   web/                 # HTTP: pages, widget page + SSE, OAuth login, /link, /healthz, /dev (DEV only)
     templates/         #   html/template (base.html layout + pages/, widget.html, dev.html)
@@ -129,6 +129,10 @@ Chzzk and V-ARCHIVE HTTP calls use an **8-second timeout**. Errors never quote U
 ### 5.9 Daily sync
 
 `internal/schedule` runs `link.SyncAll` at **18:00 UTC** in-process (log: `daily sync done synced=X failed=Y`). No worker container, no external cron.
+
+### 5.11 Backups
+
+`djclass backup FILE|-` makes a consistent snapshot of the live database (`store.Snapshot`: `VACUUM INTO` on a separate read-only connection — only committed data, never blocks writers — then `PRAGMA integrity_check`). `-` streams it to stdout for `restic backup --stdin`; logs go to stderr. Never copy the live `.sqlite3`/`-wal` files directly. The host-side schedule, retention and S3 credentials live in homelab-infra.
 
 ### 5.10 Logging
 
