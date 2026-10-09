@@ -2,6 +2,8 @@
 //
 //	server [-env FILE] [serve]        HTTP (pages, widget, SSE) + chat workers + daily sync
 //	server healthcheck                exit 0 if GET /healthz on ADDR answers 200 (container probe)
+//	server backup FILE|-              consistent snapshot of SQLITE_PATH while serving; "-" streams it
+//	                                  to stdout (e.g. | restic backup --stdin)
 //
 // Local dev: go run ./cmd/server   (reads .env if present)
 package main
@@ -11,11 +13,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -46,10 +50,12 @@ func main() {
 	switch {
 	case cmd == "healthcheck" && len(args) == 0:
 		err = healthcheck()
+	case cmd == "backup" && len(args) == 1:
+		err = backup(args[0], log)
 	case cmd == "serve" && len(args) == 0:
 		err = withConfig(*envFile, func(cfg config.Config) error { return serve(cfg, log) })
 	default:
-		err = fmt.Errorf("usage: server [-env FILE] [serve | healthcheck]")
+		err = fmt.Errorf("usage: server [-env FILE] [serve | healthcheck | backup FILE|-]")
 	}
 	if err != nil {
 		log.Error(cmd+" failed", "err", err)
@@ -87,6 +93,44 @@ func healthcheck() error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("healthz: HTTP %d", resp.StatusCode)
 	}
+	return nil
+}
+
+// backup needs no secrets: only the database path. Logs go to stderr, so
+// stdout carries nothing but the snapshot in "-" mode.
+func backup(target string, log *slog.Logger) error {
+	src := os.Getenv("SQLITE_PATH")
+	if src == "" {
+		src = "djclass.sqlite3"
+	}
+	ctx := context.Background()
+	if target != "-" {
+		if err := store.Snapshot(ctx, src, target); err != nil {
+			return err
+		}
+		log.Info("backup written", "file", target)
+		return nil
+	}
+
+	dir, err := os.MkdirTemp("", "djclass-backup-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir)
+	tmp := filepath.Join(dir, "snapshot.sqlite3")
+	if err := store.Snapshot(ctx, src, tmp); err != nil {
+		return err
+	}
+	f, err := os.Open(tmp)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	n, err := io.Copy(os.Stdout, f)
+	if err != nil {
+		return err
+	}
+	log.Info("backup streamed", "bytes", n)
 	return nil
 }
 
