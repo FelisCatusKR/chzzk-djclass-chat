@@ -206,6 +206,7 @@ Read from the environment or `./.env` (see `.env.example`).
 - **Auto-deploy:** CI publishes `ghcr.io/feliscatuskr/chzzk-djclass-chat` (`main` + `sha-<7>`, amd64 + arm64) for every main commit that passed `build` and `go-image`; docs-only commits are not published. The host's reconcile pulls `:main` and restarts the container when the image revision changes. **Every published merge restarts production** (widgets reconnect). Rollback = pin `sha-<7>` in homelab-infra.
 - The Quadlet health check MUST be exec form: `HealthCmd=["/djclass","healthcheck"]` (distroless has no shell).
 - Branch protection requires `build` and `go-image`.
+- **Build caches:** most of a clean Go compile is `modernc.org/sqlite`. The Dockerfile precompiles it in its own layer (rebuilt only when `go.mod`/`go.sum` change — keep its `CGO_ENABLED`/`-trimpath` identical to the final build), which speeds up builds with a layer cache (local/Pi). CI's `build` job caches `GOCACHE`/`GOMODCACHE` keyed on `mise.toml` + `go.sum`. `go-image`/`publish` deliberately have **no** BuildKit layer cache: on GitHub runners the import/export cost about what it saved.
 
 ---
 
