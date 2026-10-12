@@ -65,7 +65,7 @@ internal/
   ratelimit/ ttlcache/ schedule/ config/
 tests/widget-smoke.cjs # executes widget.js / components.js under stubs (CI)
 public/                # cover image, deployed to Cloudflare Pages (deploy-assets.yml)
-docs/                  # screenshot, cutover record, older design notes
+docs/                  # screenshot, cutover record, Spring PoC summary, older design notes
 ```
 
 ### 4.1 Adding things
