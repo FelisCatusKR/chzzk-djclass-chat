@@ -27,6 +27,21 @@ jobs:
       # mise.toml, go.mod and the Dockerfile builder must pin the same Go.
       - run: test "$(mise current go)" = "$(go mod edit -json | jq -r .Go)"
       - run: grep -q "^FROM golang:$(mise current go)-" Dockerfile
+      # Go build + module cache, keyed on the Go version and go.sum. Most of a
+      # cold compile is modernc.org/sqlite (twice here: vet/build and -race), and
+      # it only changes with go.sum. Saved only on a key miss, so it stays bounded;
+      # test results are never cached (-count=1).
+      - id: goenv
+        run: |
+          echo "cache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "modcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.goenv.outputs.cache }}
+            ${{ steps.goenv.outputs.modcache }}
+          key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml', 'go.sum') }}
+          restore-keys: go-${{ runner.os }}-${{ runner.arch }}-
       - run: test -z "$(gofmt -l cmd internal)" || { gofmt -l cmd internal; exit 1; }
       # Generated sqlc code must match queries.sql + migrations.
       - run: sqlc diff
@@ -39,6 +54,9 @@ jobs:
       - run: node tests/widget-smoke.cjs
 
   # The production image must keep building (static binary, distroless).
+  # No layer cache here or in `publish`: measured on GitHub runners, the sqlite
+  # compile it would skip (~19 s) costs about as much as importing/exporting the
+  # cached layers (golang base included), so the job time did not change.
   go-image:
     runs-on: ubuntu-latest
     steps:

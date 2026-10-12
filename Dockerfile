@@ -4,6 +4,11 @@ FROM golang:1.27.1-trixie AS go-builder
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
+# Precompile modernc.org/sqlite (SQLite transpiled to Go, ~80% of a clean build)
+# into the Go build cache of its own layer: rebuilt only when go.mod/go.sum change,
+# so source-only builds with a layer cache reuse it (on the Pi: 133 s -> 46-60 s).
+# CGO_ENABLED and -trimpath must match the build below or the cache entries miss.
+RUN CGO_ENABLED=0 go build -trimpath modernc.org/sqlite
 COPY cmd/ cmd/
 COPY internal/ internal/
 # modernc.org/sqlite is pure Go: a static binary, no cgo.
